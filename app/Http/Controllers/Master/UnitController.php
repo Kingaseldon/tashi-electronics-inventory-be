@@ -1,0 +1,170 @@
+<?php
+
+namespace App\Http\Controllers\Master;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use App\Models\Unit;
+use DB;
+
+class UnitController extends Controller
+{
+    public function __construct()
+     {
+         $this->middleware('permission:units.view')->only('index', 'show');
+         $this->middleware('permission:units.store')->only('store');
+         $this->middleware('permission:units.update')->only('update');       
+         $this->middleware('permission:units.edit-units')->only('editUnit');       
+     }
+    public function index()
+    {
+        try{
+
+            $units = Unit::orderBy('id')->get();
+            if($units->isEmpty()){
+                $units = [];
+            }   
+                return response([
+                    'message' => 'success',
+                    'unit' =>$units
+                ],200);
+        }catch(Exception $e){
+            return response([
+                'message' => $e->getMessage()
+            ], 400);
+        }
+    }
+    /**
+     * Store a newly created resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function store(Request $request)
+    {
+        $this->validate($request, [
+            'name' => 'required',
+        ]);
+
+        DB::beginTransaction();
+
+        try{
+            $unit = new Unit;
+            $unit->name = $request->name;
+            $unit->code = $request->code;
+            $unit->save();
+
+        }catch(\Exception $e)
+        {
+            DB::rollback();
+            return response()->json([  
+                'message'=> $e->getMessage(),                                                        
+            ], 500);
+        }
+
+        DB::commit();
+        return response()->json([
+            'message' => 'Unit has been created Successfully'
+        ], 200);
+    }
+
+    /**
+     * Display the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function show($id)
+    {
+        //
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function editUnit($id)
+    {
+        try{
+            $unit = Unit::find($id);
+                
+            if(!$unit){
+                return response()->json([
+                    'message' => 'The Unit you are trying to update doesn\'t exist.'
+                ], 404);
+            }
+            return response([
+                'message' => 'success',
+                'unit' =>$unit
+            ],200);
+        }catch(Exception $e){
+            return response([
+                'message' => $e->getMessage()
+            ], 400);
+        }
+    }
+
+    /**
+     * Update the specified resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function update(Request $request, $id)
+    {
+        $this->validate($request, [
+            'name' => 'required',
+        ]);
+        DB::beginTransaction();
+        try{
+            $unit = Unit::find($id);
+            
+            if(!$unit){
+                return response()->json([
+                    'message' => 'The Unit you are trying to update doesn\'t exist.'
+                ], 404);
+            }
+
+            $unit->name = $request->name;
+            $unit->code = $request->code;
+            $unit->save();
+
+        }catch(\Exception $e)
+        {
+            DB::rollback();
+            return response()->json([  
+                'message'=> $e->getMessage(),                                                        
+            ], 500);
+        }
+
+        DB::commit();
+        return response()->json([
+            'message' => 'Unit has been updated Successfully'
+        ], 200);
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function destroy($id)
+    {
+        try {
+
+            Unit::find($id)->delete(); 
+
+            return response()->json([
+                'message' => 'Unit deleted successfully',
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([                           
+                'message' => 'Unit cannot be delete. Already used by other records.'
+            ], 202);
+        }
+    }
+}
