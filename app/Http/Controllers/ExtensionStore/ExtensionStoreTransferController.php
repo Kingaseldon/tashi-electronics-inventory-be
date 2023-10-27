@@ -106,7 +106,6 @@ class ExtensionStoreTransferController extends Controller
         $this->validate($request, [
             'received_date' => 'required',
         ]);
-
         DB::beginTransaction();
         try {
             $receiveProduct = ProductMovement::with('product')->findOrFail($id);
@@ -122,7 +121,7 @@ class ExtensionStoreTransferController extends Controller
                 $requisition->update([
                     'status' => 'supplied',
                 ]);
-            }
+            }            
 
             //check if there is  product in that particular extension
             $transaction = ProductTransaction::where('product_id', $receiveProduct->product_id)->where('region_extension_id', $receiveProduct->region_extension_id)->first();
@@ -139,39 +138,62 @@ class ExtensionStoreTransferController extends Controller
                     'sold_quantity' => 0,
                     'updated_by' => auth()->user()->id,
                 ]);
-            } else { //if there is no transaction in that particular extension then create new transaction
-
+            } 
+            else { //if there is no transaction in that particular extension then create new transaction
+             
                 //update existing region store quantity 
                 $productTransactions = ProductTransaction::where('product_id', $receiveProduct->product_id)->first();
-                $regionStoreQuatity = $productTransactions->region_store_quantity;
+             
+                if($productTransactions==null){
+                    //inserting new row
+                    $productTransaction = new ProductTransaction;
+                    $productTransaction->product_movement_id = $receiveProduct->id;
+                    $productTransaction->product_id = $receiveProduct->product_id;
+                    $productTransaction->region_extension_id = $receiveProduct->region_extension_id;
+                    $productTransaction->requisition_number = $receiveProduct->requisition_number;
+                    $productTransaction->movement_date = $receiveProduct->movement_date;
+                    $productTransaction->received_date = $request->received_date;
+                    $productTransaction->receive = $receiveProduct->receive;
+                    $productTransaction->store_quantity = $receiveProduct->receive;
+                    $productTransaction->region_store_quantity = 0;
+                    $productTransaction->region_transfer_quantity = 0;
+                    $productTransaction->sold_quantity = 0;
+                    $productTransaction->status = 'receive';
+                    $productTransaction->sale_status = 'stock';
+                    $productTransaction->created_by = auth()->user()->id;
+                    $productTransaction->description = $request->transfer_description;
+                    $productTransaction->save();
+                }
+                else{
+                    $regionStoreQuatity = $productTransactions->region_store_quantity;
 
-                $productTransactions->update([
-                    'region_store_quantity' => $regionStoreQuatity - $receiveProduct->receive,
-                    'store_quantity' => $regionStoreQuatity - $receiveProduct->receive,
-                    'region_transfer_quantity' =>$receiveProduct->receive,
-                    'updated_by' => auth()->user()->id,
-                ]);
-                //inserting new row
-                $productTransaction = new ProductTransaction;
-
-                $productTransaction->product_movement_id = $receiveProduct->id;
-                $productTransaction->product_id = $receiveProduct->product_id;
-                $productTransaction->region_extension_id = $receiveProduct->region_extension_id;
-                $productTransaction->requisition_number = $receiveProduct->requisition_number;
-                $productTransaction->movement_date = $receiveProduct->movement_date;
-                $productTransaction->received_date = $request->received_date;
-                $productTransaction->receive = $receiveProduct->receive;
-                $productTransaction->store_quantity = $receiveProduct->receive;
-                $productTransaction->region_store_quantity = $receiveProduct->receive;
-                $productTransaction->region_transfer_quantity = 0;
-                $productTransaction->sold_quantity = 0;
-                $productTransaction->status = 'receive';
-                $productTransaction->sale_status = 'stock';
-                $productTransaction->created_by = auth()->user()->id;
-                $productTransaction->description = $request->transfer_description;
-                $productTransaction->save();
-
-
+                    $productTransactions->update([
+                        'region_store_quantity' => $regionStoreQuatity - $receiveProduct->receive,
+                        'store_quantity' => $regionStoreQuatity - $receiveProduct->receive,
+                        'region_transfer_quantity' => $receiveProduct->receive,
+                        'updated_by' => auth()->user()->id,
+                    ]);
+                    //inserting new row
+                    $productTransaction = new ProductTransaction;
+                    $productTransaction->product_movement_id = $receiveProduct->id;
+                    $productTransaction->product_id = $receiveProduct->product_id;
+                    $productTransaction->region_extension_id = $receiveProduct->region_extension_id;
+                    $productTransaction->requisition_number = $receiveProduct->requisition_number;
+                    $productTransaction->movement_date = $receiveProduct->movement_date;
+                    $productTransaction->received_date = $request->received_date;
+                    $productTransaction->receive = $receiveProduct->receive;
+                    $productTransaction->store_quantity = $receiveProduct->receive;
+                    $productTransaction->region_store_quantity = 0;
+                    $productTransaction->region_transfer_quantity = 0;
+                    $productTransaction->sold_quantity = 0;
+                    $productTransaction->status = 'receive';
+                    $productTransaction->sale_status = 'stock';
+                    $productTransaction->created_by = auth()->user()->id;
+                    $productTransaction->description = $request->transfer_description;
+                    $productTransaction->save();
+                }
+             
+                
 
             }
         } catch (\Exception $e) {

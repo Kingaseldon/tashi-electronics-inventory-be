@@ -490,7 +490,7 @@ class ExtensionStoreSaleController extends Controller
                     break;
                 }
             }
-            $saleVoucher = SaleVoucher::with('saleVoucherDetails.product')->find($id);
+            $saleVoucher = SaleVoucher::with('customer.customerType', 'saleVoucherDetails.product.saleType', 'saleVoucherDetails.discount', 'user.assignAndEmployee.extension', 'user.assignAndEmployee.region')->find($id);
             $paymentHistory = PaymentHistory::where('sale_voucher_id', $saleVoucher->id)->orderBy('receipt_no', 'desc')->get();
             $invoicePayment = $paymentHistory->sum('total_amount_paid');
 

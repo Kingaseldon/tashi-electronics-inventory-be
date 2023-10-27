@@ -225,7 +225,7 @@ class MainStoreSaleController extends Controller
     public function show($id, SerialNumberGenerator $receipt)
     {
         try {
-            $saleVoucher = SaleVoucher::with('customer.customerType', 'saleVoucherDetails.product.saleType', 'saleVoucherDetails.discount')->find($id);
+            $saleVoucher = SaleVoucher::with('customer.customerType', 'saleVoucherDetails.product.saleType', 'saleVoucherDetails.discount', 'user.assignAndEmployee.region','user.assignAndEmployee.extension')->find($id);
 
             $paymentHistory = PaymentHistory::where('sale_voucher_id', $saleVoucher->id)->orderBy('receipt_no', 'desc')->get();
             $invoicePayment = $paymentHistory->sum('total_amount_paid');

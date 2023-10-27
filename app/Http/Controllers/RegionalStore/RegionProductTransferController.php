@@ -198,7 +198,7 @@ class RegionProductTransferController extends Controller
                 //product table should be update after transfer of the product
                 $product->update([
                     'quantity' => $quantityafterDistribute - $transferQuantity,
-                    'distributed_quantity' => $totalDistribute + $transferQuantity,
+                    'region_transfer' => $transferQuantity,
                     'sale_status' => $saleStatus,
                     'region_store_quantity'=> $quantityafterDistribute- $transferQuantity
                 ]);

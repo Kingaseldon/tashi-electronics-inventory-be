@@ -22,6 +22,7 @@ class CreateDiscountTypesTable extends Migration
             $table->string('discount_name');
             $table->string('discount_type');
             $table->string('discount_value'); 
+            $table->string('applicable_to'); 
             $table->date('start_date')->nullable();
             $table->date('end_date')->nullable();     
             $table->text('description')->nullable();

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\SalesAndOrder;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
+use App\Models\Warranty;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -22,7 +23,22 @@ class WarrantyController extends Controller
      */
     public function index()
     {
-        //
+        try{
+
+            //for printing warranty in invoice
+            $warranties = Warranty::all();
+            return response([
+                'message' => 'success',
+                'warranties' => $warranties
+            ], 200);
+        }
+        
+        catch (Exception $e) {
+            return response([
+                'message' => $e->getMessage()
+            ], 400);
+        }
+
     }
 
     /**

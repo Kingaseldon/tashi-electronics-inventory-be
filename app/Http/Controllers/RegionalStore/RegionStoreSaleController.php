@@ -500,7 +500,7 @@ class RegionStoreSaleController extends Controller
             }
 
 
-            $saleVoucher = SaleVoucher::with('saleVoucherDetails.product', 'region', 'customer')->find($id);
+            $saleVoucher = SaleVoucher::with('saleVoucherDetails.product','saleVoucherDetails.discount', 'region', 'customer', 'user.assignAndEmployee.region')->find($id);
             $paymentHistory = PaymentHistory::where('sale_voucher_id', $saleVoucher->id)->orderBy('receipt_no', 'desc')->get();
             $invoicePayment = $paymentHistory->sum('total_amount_paid');
             $bank = Bank::with('region', 'extension')->orderBy('id')->get();

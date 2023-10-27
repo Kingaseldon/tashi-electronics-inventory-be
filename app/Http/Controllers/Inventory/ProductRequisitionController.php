@@ -51,11 +51,8 @@ class ProductRequisitionController extends Controller
                 $products = Product::with('saleType')->select('item_number','description','sale_type_id', \DB::raw('SUM(quantity) as total_quantity'))
                                         ->groupBy('item_number', 'sale_type_id','description')
                                         ->get();
-            }
-            
-
-
-            $requisitions = ProductRequisition::with('saleType', 'region', 'extension', 'createdBy')->where('regional_id', $employees->assignAndEmployee->regional_id)->where('region_extension_id', $employees->assignAndEmployee->extension_id)->orderBy('id')->get();   
+            }            
+            $requisitions = ProductRequisition::with('saleType', 'region', 'extension', 'createdBy')->where('regional_id', $employees->assignAndEmployee->regional_id)->where('status','requested')->where('region_extension_id', $employees->assignAndEmployee->extension_id)->orderBy('id')->get();   
             $regions = Region::with('dzongkhag')->orderBy('id')->get();
 
             if($requisitions->isEmpty()){
@@ -111,7 +108,6 @@ class ProductRequisitionController extends Controller
                 $requisition[$key]['request_quantity'] = $value['request_quantity'];
                 $requisition[$key]['created_by'] = auth()->user()->id;
             }
-
             ProductRequisition::insert($requisition);
  
         }catch(\Exception $e)
@@ -120,8 +116,7 @@ class ProductRequisitionController extends Controller
             return response()->json([  
                 'message'=> $e->getMessage(),                                                        
             ], 500);
-        }
- 
+        } 
         DB::commit();
         return response()->json([
             'message' => 'Product Requisition submitted Successfully'

@@ -77,6 +77,7 @@ class DiscountTypeController extends Controller
             $discountType->extension_id = $request->extension;
             $discountType->discount_name = $request->discount_name;
             $discountType->discount_type = $request->discount_type;
+            $discountType->applicable_to = $request->applicable_to;
             $discountType->discount_value = $request->discount_value;
             $discountType->start_date = $request->start_date == null ? null : date('Y-m-d', strtotime($request->start_date));
             $discountType->end_date = $request->end_date == null ? null : date('Y-m-d', strtotime($request->end_date));            
@@ -181,6 +182,7 @@ class DiscountTypeController extends Controller
             $discountType->sub_category_id = $request->sub_category;
             $discountType->discount_name = $request->discount_name;
             $discountType->discount_type = $request->discount_type;
+            $discountType->applicable_to = $request->applicable_to;
             $discountType->region_id = $request->region;
             $discountType->extension_id = $request->extension;
             $discountType->discount_value = $request->discount_value;
