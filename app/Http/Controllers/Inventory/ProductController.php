@@ -110,13 +110,14 @@ class ProductController extends Controller
                     $itemProduct[$key]['description'] = empty($value['description']) == 'true' ? null : $value['description'];
                     $itemProduct[$key]['quantity'] = $value['quantity'];
                     $itemProduct[$key]['total_quantity'] = $value['quantity'];
-                                 // $itemProduct[$key]['store_id'] = empty($value['store']) != true ? null : $value['store']; 
+                    // $itemProduct[$key]['store_id'] = empty($value['store']) != true ? null : $value['store']; 
                     $itemProduct[$key]['created_by'] = auth()->user()->id;
                 }
             }
 
             DB::table('products')->insert($itemProduct);
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             DB::rollback();
             return response()->json([
                 'message' => $e->getMessage(),

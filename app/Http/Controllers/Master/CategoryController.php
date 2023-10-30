@@ -165,6 +165,7 @@ class CategoryController extends Controller
             $subModuleIdsFromRequestCount = sizeof($request->subCategories);
 
             //store the incoming form values in an array but only the sub modules/menus id
+             $subModuleIdsFromRequest =[];
             foreach ($request->subCategories as $value) {
                 if(isset($value['sub_category_id'])) {
                 $subModuleIdsFromRequest [] = (int) $value['sub_category_id'];
@@ -177,28 +178,45 @@ class CategoryController extends Controller
             //after that remove the deleted sub module from the system_sub_menus table
             SubCategory::whereIn('id', $uniqueSubModuleIds)->delete();
 
-            foreach($request->subCategories as $key => $value){
+            // foreach($request->subCategories as $key => $value){
 
-                if(isset($value['sub_category_id'])) {
-                    $category->sub_categories()->updateOrCreate(
-                        ['id' => $value['sub_category_id']],
-                        [
-                            'name' => $value['name'],
-                            'code' => $value['code'],
-                            'description' => isset($value['description']) == true ? $value['description'] : null ,
-                            'created_by' => auth()->user()->id,
-                        ]
-                    );
+            //     if(isset($value['sub_category_id'])) {
+            //         $category->sub_categories()->updateOrCreate(
+            //             ['id' => $value['sub_category_id']],
+            //             [
+            //                 'name' => $value['name'],
+            //                 'code' => $value['code'],
+            //                 'description' => isset($value['description']) == true ? $value['description'] : null ,
+            //                 'created_by' => auth()->user()->id,
+            //             ]
+            //         );
+            //     } else {
+            //         $category->sub_categories()->create([
+            //             'name' => $value['name'],
+            //             'code' => $value['code'],
+            //             'description' => isset($value['description']) == true ? $value['description'] : null ,
+            //             'created_by' => auth()->user()->id,
+            //         ]);
+            //     }
+            // }
+            foreach ($request->subCategories as $key => $value) {
+                $subCategory = SubCategory::whereId($value['sub_category_id'])->first();
+                if ($subCategory) {
+                    $subCategory->update([
+                        'name' => $value['name'],
+                        'code' => $value['code'],
+                        'description' => isset($value['description']) == true ? $value['description'] : null,
+                        'created_by' => auth()->user()->id,
+                    ]);
                 } else {
                     $category->sub_categories()->create([
                         'name' => $value['name'],
                         'code' => $value['code'],
-                        'description' => isset($value['description']) == true ? $value['description'] : null ,
+                        'description' => isset($value['description']) == true ? $value['description'] : null,
                         'created_by' => auth()->user()->id,
                     ]);
                 }
             }
-
         }catch(\Exception $e)
         {
             DB::rollback();
