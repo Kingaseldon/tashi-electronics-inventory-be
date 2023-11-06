@@ -38,8 +38,8 @@ class BankController extends Controller
                return response([
                    'message' => 'success',
                    'bank' => $banks,
-                   'extension' => $extensions,
-                   'region' => $regions,
+                //    'extension' => $extensions,
+                //    'region' => $regions,
                ],200);
        }catch(Exception $e){
            return response([
