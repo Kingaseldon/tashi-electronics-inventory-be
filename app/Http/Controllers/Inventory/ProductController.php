@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Inventory;
 
 use App\Http\Controllers\Controller;
+
+use Exception;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Services\SerialNumberGenerator;
@@ -90,34 +92,45 @@ class ProductController extends Controller
 
         try {
             //creating products
-            $itemProduct = [];
-            foreach ($request->products as $key => $value) {
-                foreach ($request->products as $key => $value) {
-                    $itemProduct[$key]['item_number'] = empty($value['item_number']) == 'true' ? null : $value['item_number'];
-                    $itemProduct[$key]['serial_no'] = $value['serial_no'];
-                    $itemProduct[$key]['batch_no'] = $batchNo;
-                    $itemProduct[$key]['category_id'] = empty($value['category']) == 'true' ? null : $value['category'];
-                    $itemProduct[$key]['sub_category_id'] = empty($value['sub_category']) == 'true' ? null : $value['sub_category'];
-                    // $itemProduct[$key]['unit_id'] = $value['unit']; 
-                    $itemProduct[$key]['price'] = $value['price'];
-                    // $itemProduct[$key]['brand_id'] = empty($value['brand']) != true ? null : $value['brand']; 
-                    $itemProduct[$key]['sale_type_id'] = $value['type'];
-                    $itemProduct[$key]['sub_inventory'] = $value['sub_inventory'];
-                    $itemProduct[$key]['locator'] = $value['locator'];
-                    $itemProduct[$key]['iccid'] = $value['iccid'];
-                    $itemProduct[$key]['status'] = "new";
-                    $itemProduct[$key]['sale_status'] = "stock";
-                    $itemProduct[$key]['description'] = empty($value['description']) == 'true' ? null : $value['description'];
-                    $itemProduct[$key]['quantity'] = $value['quantity'];
-                    $itemProduct[$key]['total_quantity'] = $value['quantity'];
-                    // $itemProduct[$key]['store_id'] = empty($value['store']) != true ? null : $value['store']; 
-                    $itemProduct[$key]['created_by'] = auth()->user()->id;
+            $itemProduct = new Product;
+            $jsonData = $request->json()->all();
+   
+            foreach ($jsonData as $item) {
+
+                if ($request->product_category_name == $itemProduct['product_type'] && $request->product_sub_category_name == $itemProduct['sub_category']) {
+                    $itemProduct->item_number = empty($item['item_number']) == 'true' ? null : $item['item_number'];
+                    $itemProduct->serial_no = $item['serial_no'];
+                    $itemProduct->batch_no = $batchNo;
+                    $itemProduct->category_id = empty($item['category']) == 'true' ? null : $item['category'];
+                    $itemProduct->sub_category_id = empty($item['sub_category']) == 'true' ? null : $item['sub_category'];
+                    $itemProduct->color_id = empty($item['color']) == 'true' ? null : $item['color'];
+                    // $itemProduct['unit_id'] =$item['unit']; 
+                    $itemProduct->price = $item['price'];
+                    // $itemProduct['brand_id'] = empty($value['brand']) != true ? null :$item['brand']; 
+                    $itemProduct->sale_type_id = $item['type'];
+                    $itemProduct->sub_inventory = empty($item['sub_inventory']) == 'true' ? null : $item['sub_inventory'];
+                    $itemProduct->locator = empty($item['locator']) == 'true' ? null : $item['locator'];
+                    $itemProduct->iccid = empty($item['iccid']) == 'true' ? null : $item['iccid'];
+                    $itemProduct->status = "new";
+                    $itemProduct->sale_status = "stock";
+                    $itemProduct->description= empty($item['description']) == 'true' ? null : $item['description'];
+                    $itemProduct->main_store_qty = $item['quantity'];
+                    $itemProduct->total_quantity= $item['quantity'];
+                    $itemProduct->created_date= date('Y-m-d', strtotime(Carbon::now()));
+                    // $itemProduct['store_id'] = empty($item['store']) != true ? null : $item['store']; 
+                    $itemProduct->created_by = auth()->user()->id;
+                    $itemProduct->save();
+                } else {
+                    return response()->json([
+                        'message' => 'Category and sub-category doesnot match',
+                    ], 500);
                 }
+
             }
 
-            DB::table('products')->insert($itemProduct);
-        }
-        catch (\Exception $e) {
+
+
+        } catch (\Exception $e) {
             DB::rollback();
             return response()->json([
                 'message' => $e->getMessage(),
@@ -136,37 +149,122 @@ class ProductController extends Controller
     public function importProduct(Request $request, SerialNumberGenerator $invoice)
     {
         try {
+         
             //unique number generator
             $batchNo = $invoice->batchNumber('Product', 'created_date');
 
-            if (($request->hasFile('attachment')) == true) {
-                if ($request->product_category == '1') { //when product category is phone
+            if ($request->hasFile('attachment')) {
+                if ($request->product_category == '1') {
+                    // When the product category is 'phone'                
                     $filePath = $request->file('attachment');
                     $import = new ProductImport($request, $filePath, $batchNo);
                     Excel::import($import, $filePath);
-                } elseif ($request->product_category == '2') { //when product category is accessory
-                    $filePath = $request->file('attachment');
+                    $rowCount = $import->getRowCount();
+
+
+                    // Retrieve validation errors from the import class
+                    $validationErrors = $import->getValidationErrors();
+                    $serialNoValidationError = $import->serialNovalidation();
+             
+
+
+                    if (!empty($validationErrors)) {
+                        // Return error messages if any rows failed validation.
+                        return response()->json([
+                            'message' => 'Category and sub-category doesnot match',
+                            'errors' => $validationErrors
+                        ], 201);
+
+                       } elseif(!empty($serialNoValidationError)) {
+                        $serialNumbersString = implode(', ', $serialNoValidationError);
+
+
+                        // Return error messages if any rows failed validation.
+                            return response()->json([
+                                // 'message' => 'FAILED! Please check Product Type and Sub Category',
+                                'message' => 'Some Serial Numbers already exists '. $serialNumbersString
+                        ], 201);
+                        }
+                     else {
+                        return response()->json([
+                            'message' => 'You have Successfully uploaded ' . $rowCount . ' number of products',
+
+                        ], 200);
+                    }
+                } elseif ($request->product_category == '2') {
+            
+                    // When the product category is 'accessory'
+                    $filePath = $request->file('attachment')->store('temporary');
+                
                     $import = new AccessoryImport($request, $filePath, $batchNo);
-                    Excel::import($import, $filePath);
-                } else { //when product category is sim
+                             
+
+                    // Import data
+                    Excel::import($import, storage_path("app/{$filePath}")); // Use storage_path to get the full path
+
+                    // Get total quantity after the import
+                    $totalQuantity = $import->getTotalQuantity();
+                    //delete the file from storage folder after getting the total counts
+                    Storage::delete($filePath);
+
+                    $validationErrors = $import->getValidationErrors();
+
+                    if (!empty($validationErrors)) {
+                        // Return error messages if any rows failed validation.
+                        return response()->json([
+                            'message' => 'Category and sub-category doesnot match',
+                            'errors' => $validationErrors
+                        ], 201);
+                    } else {
+                        return response()->json([
+                            'message' => 'You have Successfully uploaded ' . $totalQuantity . ' number of products',
+                        ], 200);
+                    }
+                } else {
+                    // When the product category is 'sim'
                     $filePath = $request->file('attachment');
                     $import = new SimImport($request, $filePath, $batchNo);
                     Excel::import($import, $filePath);
+                    $rowCount = $import->getRowCount();
+
+                    $validationErrors = $import->getValidationErrors();
+                    $validation= $import->getValidation();
+
+                    if (!empty($validationErrors)) {
+                        // Return error messages if any rows failed validation.
+                        return response()->json([
+                            'message' => 'Category and sub category doesnot match',
+                            'errors' => $validationErrors
+                        ], 201);
+                    }
+                    elseif(!empty($validation)){
+                        $serialNumbersString = implode(', ', $validation);
+
+                        return response()->json([
+                            // 'message' => 'serial number already exists',
+                            'message' => 'Some Serial Numbers already exists '. $serialNumbersString
+                        ], 201);
+                    }
+                     else {
+                        return response()->json([
+                            'message' => 'You have Successfully uploaded ' . $rowCount . ' number of products',
+                        ], 200);
+                    }
                 }
-                return response()->json([
-                    'message' => 'Product has been uploaded Successfully'
-                ], 200);
+
+
             } else {
                 return response()->json([
                     'message' => 'Please attach the file'
                 ], 200);
             }
-        } catch (Execption $e) {
+        } catch (Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
         }
     }
+
 
     /**
      * Display the specified resource.

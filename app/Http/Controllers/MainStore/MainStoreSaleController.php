@@ -40,7 +40,7 @@ class MainStoreSaleController extends Controller
         try {
             $saleVouchers = SaleVoucher::with('saleVoucherDetails.discount')->orderBy('id')->where('regional_id',null)->where('region_extension_id',null)->get();
             $customers = Customer::with('customerType')->orderBy('id')->get();
-            $products = Product::where('quantity', '!=', 0)->with('unit', 'brand', 'store', 'category', 'subCategory', 'saleType')->orderBy('id')->get();
+            $products = Product::where('main_store_qty', '!=', 0)->with('unit', 'brand', 'store', 'category', 'subCategory', 'saleType')->orderBy('id')->get();
 
             if ($saleVouchers->isEmpty()) {
                 $saleVouchers = [];
@@ -102,8 +102,14 @@ class MainStoreSaleController extends Controller
                     for ($i = 1; $i < count($flattenedArray); $i++) {
                         $product = Product::where('serial_no', $flattenedArray[$i][0])->first();//serial number of exel
 
-                        if ($product) { // serial number present
-                           
+                        if ($product) { // serial number present  
+
+                            if ($product->main_store_qty < $flattenedArray[$i][2]) {
+                                return response()->json([
+                                    'success' => true,
+                                    'message' => 'Quantity cannot be greater that store quantity',
+                                ], 203);
+                            }                       
 
                             $saleOrderDetails[$i]['sale_voucher_id'] = $saleVoucher->id;
                             $saleOrderDetails[$i]['product_id'] = $product->id;
@@ -137,8 +143,8 @@ class MainStoreSaleController extends Controller
                             $quantityafterDistribute = $product->total_quantity;
 
                             $product->update([
-                                'quantity' => $quantityafterDistribute - $flattenedArray[$i][2],
-                                'main_store_sold_quantity' => $flattenedArray[$i][2],
+                                'main_store_qty' => $quantityafterDistribute - $flattenedArray[$i][2],
+                                'main_store_sold_qty' => $flattenedArray[$i][2],
                             ]);
                         }
                         else{
@@ -194,8 +200,8 @@ class MainStoreSaleController extends Controller
                     $quantityafterDistribute = $mainTransfer->total_quantity;
 
                     $mainTransfer->update([
-                        'quantity' => $quantityafterDistribute - $value['quantity'],
-                        'main_store_sold_quantity' => $value['quantity'],
+                        'main_store_qty' => $quantityafterDistribute - $value['quantity'],
+                        'main_store_sold_qty' => $value['quantity'],
                     ]);
                     // $saleOrderDetails[$key]['created_by'] = $request->user()->id;
                 }

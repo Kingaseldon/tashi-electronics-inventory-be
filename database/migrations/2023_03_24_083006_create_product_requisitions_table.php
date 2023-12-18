@@ -17,7 +17,8 @@ class CreateProductRequisitionsTable extends Migration
             $table->id();
             $table->string('requisition_number')->comment('requistion number when requested . i can be multiple since they request multiple');
             $table->string('product_item_number')->comment('product item number is capture here, cannot capture product sice product will have same item number with different serial number');
-            $table->integer('requisition_to');
+            $table->integer('requisition_to');//1 for main store and 2 for region store, 3 for exten to extension transfer
+            $table->integer('requested_extension')->nullable();
             $table->foreignId('sale_type_id')->constrained('sale_types')->comment('phone, spare parts and sim, its product type');
             $table->foreignId('regional_id')->nullable()->constrained('regions');
             $table->foreignId('region_extension_id')->nullable()->constrained('extensions');

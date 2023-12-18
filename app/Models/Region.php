@@ -20,5 +20,10 @@ class Region extends Model implements Auditable
     {
         return $this->hasMany(Extension::class, 'regional_id');
     }
+    public function stores()
+    {
+        return $this->hasOne(Store::class, 'region_id');
+    }
+  
     
 }

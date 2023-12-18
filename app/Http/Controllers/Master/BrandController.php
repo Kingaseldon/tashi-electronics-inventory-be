@@ -24,7 +24,6 @@ class BrandController extends Controller
     public function index()
     {
         try{
-
             $brands = Brand::orderBy('id')->get();
             if($brands->isEmpty()){
                 $brands = [];

@@ -58,7 +58,7 @@ class SerialNumberGenerator
     public function mainInvoiceNumber($modelClass, $dateColumn)
     {
         $model = 'App\Models\\' . $modelClass;
-        $totalRows = $model::where('regional_id','=', null)->orderBy('id', 'desc')->first();
+        $totalRows = $model::where('regional_id', null)->where('region_extension_id',null)->orderBy('id', 'desc')->first();
         
         if ($totalRows) {
             if($totalRows->invoice_no != ""){
@@ -94,7 +94,7 @@ class SerialNumberGenerator
         return $invoiceNo = 'Inv-'. $firstWord.'-'.str_pad($invoiceNo, 4, '0', STR_PAD_LEFT);
     }
 
-    //inv0ice generation in regionals
+    //inv0ice generation in extension
     public function extensionInvoiceNumber($modelClass, $dateColumn, $extensionId, $firstWord)
     {
         $model = 'App\Models\\' . $modelClass;
@@ -116,8 +116,11 @@ class SerialNumberGenerator
     //receipt for main store sale
     public function mainReceiptNumber($modelClass, $dateColumn)
     {
+        
         $model = 'App\Models\\' . $modelClass;
-        $totalRows = $model::orderBy('id', 'desc')->first();
+        $totalRows = $model::with('saleVoucher')->whereHas('saleVoucher', function ($query) {
+            $query->where('regional_id', null)->where('region_extension_id', null);
+        })->orderBy('id', 'desc')->first();
         if ($totalRows) {
             if($totalRows->receipt_no != ""){
                 $strToBeRemoved = substr($totalRows->receipt_no, -4);
@@ -176,7 +179,7 @@ class SerialNumberGenerator
         return $receiptNo ='Recei-'. $firstWord. '-'.str_pad($receiptNo, 5, '0', STR_PAD_LEFT);
     }
 
-    //receipt for regional store sale
+    //receipt for extension store sale
     public function extensionReceiptNumber($modelClass, $dateColumn, $firstWord)
     {
         $model = 'App\Models\\' . $modelClass;
@@ -206,7 +209,6 @@ class SerialNumberGenerator
         if ($totalRows) {
             if($totalRows->receipt_no != ""){
                 $strToBeRemoved = substr($totalRows->receipt_no, -4);
-                // $receiptNo = explode($strToBeRemoved, $totalRows->receipt_no)[1];
                 $receiptNo = (int) $strToBeRemoved + 1;
             }else{
                 $receiptNo = '0001';
@@ -216,6 +218,7 @@ class SerialNumberGenerator
         }
 
         return $receiptNo = 'Recei-'.$firstWord.'-' .str_pad($receiptNo, 5, '0', STR_PAD_LEFT);
+        
     }
 
     ///batch number is generated in batch when uploading the products

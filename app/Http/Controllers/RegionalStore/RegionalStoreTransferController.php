@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\RegionalStore;
 
 use App\Http\Controllers\Controller;
+use App\Models\Product;
+use App\Models\Store;
 use Illuminate\Http\Request;
 use App\Models\ProductTransaction;
 use App\Services\SerialNumberGenerator;
@@ -46,22 +48,42 @@ class RegionalStoreTransferController extends Controller
             }
 
             if ($isSuperUser) {
-                $transactions = ProductMovement::where('status', 'process')->with('product', 'region', 'extension', 'product.saleType')->orderBy('id')->get();
+                // $transactions = ProductMovement::where('status', 'process')->with('product', 'region', 'extension', 'product.saleType')->orderBy('id')->get();
                 $receiveProducts = ProductTransaction::with('product', 'region', 'extension', 'product.saleType')
                     ->join('product_movements as Tb1', 'Tb1.id', 'product_transactions.product_movement_id')
                     ->select('product_transactions.*', 'Tb1.regional_transfer_id')
                     ->where('product_transactions.receive', '!=', 0)
+                    ->where('product_transactions.regional_id','!=',null)
                     ->orderBy('id')
                     ->get();
 
+            //check
+                $transactions = ProductMovement::query()
+                    ->select('product_movements.requisition_number', 'product_movements.regional_transfer_id', DB::raw('SUM(product_movements.receive) as total_qty'), 'product_movements.status')
+                    ->join('products', 'products.id', 'product_movements.product_id')
+                    ->where('product_movements.status', 'process')
+                    ->groupBy('product_movements.requisition_number', 'product_movements.regional_transfer_id', 'product_movements.status')
+                    ->get();
+
+                // $transactions = ProductMovement::with('product')->select('product_movements.requisition_number', 'product_movements.regional_transfer_id', DB::raw('SUM(product_movements.receive) as total_qty'), 'product_movements.status')
+                //     ->groupBy('product_movements.requisition_number', 'product_movements.id', 'product_movements.regional_transfer_id', 'product_movements.status')
+                //     ->get();
+
                 // The user has a role with is_super_user set to 1
             } else {
-                $transactions = ProductMovement::where('status', 'process')->with('product', 'region', 'extension', 'product.saleType')->orderBy('id')->loggedInAssignRegion()->get();
+                // $transactions = ProductMovement::where('status', 'process')->with('product', 'region', 'extension', 'product.saleType')->orderBy('id')->loggedInAssignRegion()->get();
                 $receiveProducts = ProductTransaction::with('product', 'region', 'extension', 'product.saleType')
                     ->join('product_movements as Tb1', 'Tb1.id', 'product_transactions.product_movement_id')
                     ->select('product_transactions.*', 'Tb1.regional_transfer_id')
                     ->where('product_transactions.receive', '!=', 0)
                     ->orderBy('product_transactions.id')
+                    ->loggedInAssignRegion()
+                    ->get();
+                $transactions = ProductMovement::query()
+                    ->select('product_movements.requisition_number', 'product_movements.regional_transfer_id', DB::raw('SUM(product_movements.receive) as total_qty'), 'product_movements.status')
+                    ->join('products', 'products.id', 'product_movements.product_id')
+                    ->where('product_movements.status', 'process')
+                    ->groupBy('product_movements.requisition_number', 'product_movements.regional_transfer_id', 'product_movements.status')
                     ->loggedInAssignRegion()
                     ->get();
             }
@@ -92,7 +114,7 @@ class RegionalStoreTransferController extends Controller
         try {
             $requisitions = ProductRequisition::with('region', 'extension', 'saleType')->where('requisition_number', $reqNo)->where('status', 'requested')->get();
             //check that paricular reqNo number
-            if (isset($requisitions)) {
+            if (!isset($requisitions)) {
                 return response()->json([
                     'message' => 'The Requisition Number you are trying to find doesn\'t exist.'
                 ], 404);
@@ -113,10 +135,14 @@ class RegionalStoreTransferController extends Controller
             ], 400);
         }
     }
+
+    //get details of requested product for acknowledging 
     public function show($id)
     {
+    
         try {
-            $receiveProduct = ProductMovement::with('product.saleType', 'region', 'extension', 'product.color', 'product.subCategory')->findOrFail($id);
+            $receiveProduct = ProductMovement::with('product.saleType', 'region', 'extension', 'product.color', 'product.subCategory')->where('requisition_number', $id)->where('status','process')->get();
+     
             $regions = Region::with('extensions:id,regional_id,name')->orderBy('name')->get(['id', 'name']);
 
             if (!$receiveProduct) {
@@ -143,73 +169,95 @@ class RegionalStoreTransferController extends Controller
      * @return \Illuminate\Http\Response
      */
 
-    ///product acknowledge
+    ///product acknowledgement
     public function update(Request $request, $id)
     {
-        $this->validate($request, [
-            'received_date' => 'required',
-        ]);
 
+        // $this->validate($request, [
+        //     'received_date' => 'required',
+        // ]);
         DB::beginTransaction();
         try {
-            $receiveProduct = ProductMovement::with('product')->findOrFail($id);
+            $receiveProduct = ProductMovement::with('product')->where('requisition_number', $id)->get();
+            $jsonData = $request->json()->all();
 
-            $receiveProduct->received_date = $request->received_date;
-            $receiveProduct->status = 'receive';
-            $receiveProduct->save();
 
-            //sending the product if requsition is there
-            if ($receiveProduct->product_requisition_id != null) {
-                $requisition = ProductRequisition::find($receiveProduct->product_requisition_id);
+            foreach ($jsonData as $item) {
+              
+                $item_id = $item['id'];              
+                $received_date =  date('Y-m-d', strtotime($item['received_date']));
+                $description = $item['transfer_description'];
+                $itemProduct = ProductMovement::with('product')->findOrFail($item_id);             
+                $itemProduct->received_date = $received_date;
+                $itemProduct->status = 'receive';
+                $itemProduct->save();
 
-                $requisition->update([
-                    'status' => 'supplied',
-                ]);
-            }
+                if ($itemProduct->$item_id != null) {
+                    $requisition = ProductRequisition::find($receiveProduct->$item_id);
 
-            //check if there is  product in that particular regional
-            $transaction = ProductTransaction::where('product_id', $receiveProduct->product_id)->where('regional_id', $receiveProduct->regional_id)->first();
-            if ($transaction) {
-                //total receive product so far
-                $totalReceive = $transaction->receive;
-                //updating the total product
-                $transaction->update([
-                    'receive' => $totalReceive + $receiveProduct->receive,
-                    'store_quantity' => $totalReceive + $receiveProduct->receive,
-                    'region_store_quantity' => $totalReceive + $receiveProduct->receive,
-                    'sold_quantity' => 0,
+                    $requisition->update([
+                        'status' => 'supplied',
+                    ]);
+                }
+
+                
+
+                //check if there is  product in that particular regional
+                $transaction = ProductTransaction::where('product_id', $itemProduct->product_id)->where('regional_id', $itemProduct->regional_id)->first();
+                
+                if ($transaction) {
+                   
+                    //total receive product so far
+                    $totalReceive = $transaction->receive;
+                    //updating the total product
+                    $transaction->update([
+                        'receive' => $totalReceive + $itemProduct->receive,
+                        // 'store_quantity' => $totalReceive + $itemProduct->receive,
+                        'region_store_quantity' => $totalReceive + $itemProduct->receive,
+                        // 'sold_quantity' => 0,
+                        'updated_by' => auth()->user()->id,
+                    ]);
+                } else { //if there is no transaction in that particular regional then create new transaction
+
+                    $productTransaction = new ProductTransaction;
+
+                    $productTransaction->product_movement_id = $itemProduct->id;
+                    $productTransaction->product_id = $itemProduct->product_id;
+                    $productTransaction->regional_id = $itemProduct->regional_id;
+                    $productTransaction->requisition_number = $itemProduct->requisition_number;
+                    $productTransaction->movement_date = $itemProduct->movement_date;
+                    $productTransaction->received_date = $received_date;
+                    $productTransaction->receive = $itemProduct->receive;
+                    $productTransaction->store_quantity = 0;
+                    $productTransaction->region_store_quantity = $itemProduct->receive;
+                    $productTransaction->sold_quantity = 0;
+                    $productTransaction->status = 'receive';
+                    $productTransaction->sale_status = 'stock';
+                    $productTransaction->created_by = auth()->user()->id;
+                    $productTransaction->description = $description;
+                    $productTransaction->save();
+                }
+
+                $product_table = Product::where('id', $itemProduct->product_id)->first();
+                $store = Store::where('region_id', $itemProduct->regional_id)->first();
+                $product_table->update([
+                    'region_store_qty' => $itemProduct->receive,
+                    'store_id' => $store->id,
                     'updated_by' => auth()->user()->id,
                 ]);
-            } else { //if there is no transaction in that particular regional then create new transaction
-
-                $productTransaction = new ProductTransaction;
-
-                $productTransaction->product_movement_id = $receiveProduct->id;
-                $productTransaction->product_id = $receiveProduct->product_id;
-                $productTransaction->regional_id = $receiveProduct->regional_id;
-                $productTransaction->requisition_number = $receiveProduct->requisition_number;
-                $productTransaction->movement_date = $receiveProduct->movement_date;
-                $productTransaction->received_date = $request->received_date;
-                $productTransaction->receive = $receiveProduct->receive;
-                $productTransaction->store_quantity = $receiveProduct->receive;
-                $productTransaction->region_store_quantity = $receiveProduct->receive;
-                $productTransaction->sold_quantity = 0;
-                $productTransaction->status = 'receive';
-                $productTransaction->sale_status = 'stock';
-                $productTransaction->created_by = auth()->user()->id;
-                $productTransaction->description = $request->transfer_description;
-                $productTransaction->save();
             }
+
         } catch (\Exception $e) {
             DB::rollback();
             return response()->json([
                 'message' => $e->getMessage(),
             ], 500);
         }
-
         DB::commit();
         return response()->json([
             'message' => 'Product has been Acknowledged Successfully'
         ], 200);
+
+      
     }
 }

@@ -52,9 +52,9 @@ class RegionStoreSaleController extends Controller
                 }
             }
             if ($isSuperUser) {
-                $saleVouchers = SaleVoucher::with('saleVoucherDetails.discount')->orderBy('id')->where('regional_id', !null)->get();
+                $saleVouchers = SaleVoucher::with('saleVoucherDetails.discount')->orderBy('id')->where('regional_id', '!=', null)->get();
                 $customers = Customer::with('customerType')->orderBy('id')->get();
-                $products = ProductTransaction::with('product', 'region', 'extension')->orderBy('id')->where('store_quantity', '>', 0)->where('region_extension_id', null)->orderBy('id')->get();
+                $products = ProductTransaction::with('product', 'region', 'extension')->orderBy('id')->where('region_store_quantity', '>', 0)->where('regional_id', '!=', null)->get();
 
                 if ($saleVouchers->isEmpty()) {
                     $saleVouchers = [];
@@ -68,7 +68,7 @@ class RegionStoreSaleController extends Controller
             } else {
                 $saleVouchers = SaleVoucher::with('saleVoucherDetails.discount')->orderBy('id')->loggedInAssignRegion()->get();
                 $customers = Customer::with('customerType')->orderBy('id')->get();
-                $products = ProductTransaction::with('product', 'region', 'extension')->orderBy('id')->where('store_quantity', '>', 0)->where('region_extension_id', null)->orderBy('id')->loggedInAssignRegion()->get();
+                $products = ProductTransaction::with('product', 'region', 'extension')->orderBy('id')->where('region_store_quantity', '>', 0)->orderBy('id')->loggedInAssignRegion()->get();
 
                 if ($saleVouchers->isEmpty()) {
                     $saleVouchers = [];
@@ -200,9 +200,15 @@ class RegionStoreSaleController extends Controller
                                 ->where('regional_id',$request->region)
                                 ->where('Tb1.serial_no', $flattenedArray[$i][0])
                                 ->first();//serial number of exel
+                            
 
                             if ($product) { // serial number present
-
+                                if ($product->region_store_quantity < $flattenedArray[$i][2]) {
+                                    return response()->json([
+                                        'success' => true,
+                                        'message' => 'Quantity cannot be greater that store quantity',
+                                    ], 203);
+                                }
 
                                 $saleOrderDetails[$i]['sale_voucher_id'] = $saleVoucher->id;
                                 $saleOrderDetails[$i]['product_id'] = $product->id;
@@ -239,9 +245,16 @@ class RegionStoreSaleController extends Controller
                                 $regionStoreQuantity = $regionTransfer->region_store_quantity;
 
                                 $regionTransfer->update([
-                                    'store_quantity' => $storequantity - $flattenedArray[$i][2],
+                                    // 'store_quantity' => $storequantity - $flattenedArray[$i][2],
                                     'sold_quantity' => $soldquantity + $flattenedArray[$i][2],
                                     'region_store_quantity' => $regionStoreQuantity - $flattenedArray[$i][2],
+                                ]);
+
+                                $product_table = Product::where('id', $product->product_id)->first();
+                                $product_table->update([
+                                    'region_store_qty'=>$storequantity - $flattenedArray[$i][2],
+                                    'region_store_sold_qty' => $regionStoreQuantity - $flattenedArray[$i][2],                                   
+                                    'updated_by' => auth()->user()->id,
                                 ]);
 
 
@@ -304,9 +317,15 @@ class RegionStoreSaleController extends Controller
                         $regionStoreQuantity = $regionTransfer->region_store_quantity;
 
                         $regionTransfer->update([
-                            'store_quantity' => $storequantity - $value['quantity'],
+                            // 'store_quantity' => $storequantity - $value['quantity'],
                             'region_store_quantity' => $regionStoreQuantity - $value['quantity'],
                             'sold_quantity' => $soldquantity + $value['quantity'],
+                        ]);
+                        $product_table = Product::where('id', $regionTransfer->product_id)->first();
+                        $product_table->update([
+                            'region_store_qty'=> $regionStoreQuantity - $value['quantity'],
+                            'region_store_sold_qty' => $soldquantity + $value['quantity'],
+                            'updated_by' => auth()->user()->id,
                         ]);
                         // $saleOrderDetails[$key]['created_by'] = $request->user()->id;
                     }
@@ -351,8 +370,13 @@ class RegionStoreSaleController extends Controller
                                 ->first();
                             $saleOrderDetails = [];
                             if ($product) { // serial number present
-                              
 
+                                if ($product->region_store_quantity < $flattenedArray[$i][2]) {
+                                    return response()->json([
+                                        'success' => true,
+                                        'message' => 'Quantity cannot be greater that store quantity',
+                                    ], 203);
+                                }
                                 $saleOrderDetails[$i]['sale_voucher_id'] = $saleVoucher->id;
                                 $saleOrderDetails[$i]['product_id'] = $product->id;
                                 $saleOrderDetails[$i]['quantity'] = $flattenedArray[$i][2]; //get the quantity data in exel file
@@ -389,10 +413,17 @@ class RegionStoreSaleController extends Controller
                                 $regionStoreQuantity = $regionTransfer->region_store_quantity;
 
                                 $regionTransfer->update([
-                                    'store_quantity' => $storequantity - $flattenedArray[$i][2],
+                                    // 'store_quantity' => $storequantity - $flattenedArray[$i][2],
                                     'region_store_quantity' => $regionStoreQuantity - $flattenedArray[$i][2],
                                     'sold_quantity' => $soldquantity + $flattenedArray[$i][2],
                                 ]);
+                                $product_table = Product::where('id', $product->product_id)->first();
+                                $product_table->update([
+                                    'region_store_sold_qty' => $soldquantity + $flattenedArray[$i][2],
+                                    'region_store_qty' => $regionStoreQuantity - $flattenedArray[$i][2],
+                                    'updated_by' => auth()->user()->id,
+                                ]);
+                                
 
 
                             } else {
@@ -452,9 +483,15 @@ class RegionStoreSaleController extends Controller
                         $regionStoreQuantity = $regionTransfer->region_store_quantity;
 
                         $regionTransfer->update([
-                            'store_quantity' => $storequantity - $value['quantity'],
+                            // 'store_quantity' => $storequantity - $value['quantity'],
                             'region_store_quantity' => $regionStoreQuantity - $value['quantity'],
                             'sold_quantity' => $soldquantity + $value['quantity'],
+                        ]);
+                        $product_table = Product::where('id', $regionTransfer->product_id)->first();
+                        $product_table->update([
+                            'region_store_qty' => $regionStoreQuantity - $value['quantity'],
+                            'region_store_sold_qty' => $soldquantity + $value['quantity'],
+                            'updated_by' => auth()->user()->id,
                         ]);
                         // $saleOrderDetails[$key]['created_by'] = $request->user()->id;
                     }

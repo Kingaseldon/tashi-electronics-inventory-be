@@ -17,15 +17,22 @@ class AuthController extends Controller
             $user = User::where('username', $username)->with('roles.permissions')->first();   
             //if no user
             if($user == null ){
-                return response()->json(['error' => 'No user found with this username'], 404);
+             
+                return response([
+                    'message' => 'Credentials doesnot match',                 
+                ], 404);
             }
             //checking password
-            if(Hash::check($request->password, $user->password) == false){ 
-                return response()->json(['error' => 'Password enter is wrong'], 401); 
+            if(Hash::check($request->password, $user->password) == false){               
+                 return response([
+                'message' => 'Credentials doesnot match',                     
+            ],406);
             }
             //authenticate user
             if (! $token = auth()->attempt($credentials)) {
-                return response()->json(['error' => 'Unauthorized'], 401);
+                return response([
+                    'message' => 'Unauthorized',                    
+                ], 401);
             }
             //get login user detail
             $user = User::where('username', $username)->with('roles.permissions', 'roles', 'assignAndEmployee.region', 'assignAndEmployee.extension')->first();          

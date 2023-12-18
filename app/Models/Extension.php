@@ -19,4 +19,8 @@ class Extension extends Model implements Auditable
     {
         return $this->belongsTo(Region::class, 'regional_id');
     }
+    public function stores()
+    {
+        return $this->hasOne(Store::class, 'extension_id');
+    }
 }

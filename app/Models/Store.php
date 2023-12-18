@@ -15,4 +15,13 @@ class Store extends Model implements Auditable
     {
         return $this->belongsTo(Dzongkhag::class);
     }
+
+    public function region()
+    {
+        return $this->belongsTo(Region::class);
+    }
+    public function extension()
+    {
+        return $this->belongsTo(Extension::class);
+    }
 }

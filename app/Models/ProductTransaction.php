@@ -19,6 +19,7 @@ class ProductTransaction extends Model implements Auditable
         'sale_status',
         'region_store_quantity',
         'region_transfer_quantity',
+        'extension_transfer_quantity',
         'updated_by',
         
     ];
@@ -47,7 +48,7 @@ class ProductTransaction extends Model implements Auditable
     //for particular extension assign
     public function scopeLoggedInAssignExtension($query)
     {
-        return $query->where('region_extension_id', auth()->user()->assignAndEmployee->extension_id);
+        return $query->where('product_transactions.region_extension_id', auth()->user()->assignAndEmployee->extension_id);
     }
 
     public function getReceivedDateAttribute($value)

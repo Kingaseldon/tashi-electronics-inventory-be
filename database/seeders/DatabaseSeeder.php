@@ -19,5 +19,7 @@ class DatabaseSeeder extends Seeder
         $this->call(VillageTableSeeder::class);
         $this->call(CustomerTypeSeeder::class);
         $this->call(SaleTypes::class);
+        $this->call(CategorySeeder::class);
+        $this->call(StoreSeeder::class);
     }
 }

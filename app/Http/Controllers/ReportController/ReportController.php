@@ -95,7 +95,7 @@ class ReportController extends Controller
                     DB::raw('COALESCE(GROUP_CONCAT(p.sub_inventory), "--") AS subInventory'),
                     DB::raw('COALESCE(GROUP_CONCAT(p.locator), "--") AS locator'),
                     DB::raw('COALESCE(GROUP_CONCAT(p.iccid), "--") AS iccid'),
-                    DB::raw('SUM(COALESCE(p.quantity, 0) + COALESCE(pt.store_quantity, 0) + COALESCE(pt.region_store_quantity, 0)) AS total_qty')
+                    DB::raw('SUM(COALESCE(p.main_store_qty, 0) + COALESCE(pt.store_quantity, 0) + COALESCE(pt.region_store_quantity, 0)) AS total_qty')
                 )
                 ->groupBy('p.id')
                 ->havingRaw('total_qty != 0')->orderBy('p.id')

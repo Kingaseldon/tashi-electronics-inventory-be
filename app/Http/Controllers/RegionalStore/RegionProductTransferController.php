@@ -23,15 +23,16 @@ class RegionProductTransferController extends Controller
         $this->middleware('permission:regional-transfers.store')->only('store');
         $this->middleware('permission:regional-transfers.regional-requisitions')->only('requestedRegionalTransfer');
         // $this->middleware('permission:regional-stores.get-transfer-regional')->only('transferRegionalProduct');       
-        // $this->middleware('permission:regional-stores.regional-transfer')->only('regionalTransfer');   
     }
     /**
      * Display a listing of the resource.
      *
      * @return \Illuminate\Http\Response
      */
-    //get regional transfer index page 
-    //extention to regional controller
+
+
+
+    //region store transaction's index history
     public function index(Request $request)
     {
         try {
@@ -46,30 +47,30 @@ class RegionProductTransferController extends Controller
                 }
             }
             if ($isSuperUser) {
-                $giveProducts = ProductTransaction::with('product', 'region', 'extension')->orderBy('id')->where('receive', '!=', 0)->get();
+                $giveProducts = ProductTransaction::with('product', 'region', 'extension')->orderBy('id')->where('receive', '!=', 0)->where('regional_id', '!=',null)->get();
                 $requisitions = ProductRequisition::select('region_extension_id', 'requisition_number', DB::raw('SUM(request_quantity) as quantity'))
-                ->with('saleType', 'region', 'extension')
-                ->where('status', 'requested')                
-                ->where('requisition_to', '=', 2)
-                ->groupBy('region_extension_id', 'requisition_number')
-                ->get();
+                    ->with('saleType', 'region', 'extension')
+                    ->where('status', 'requested')
+                    ->where('requisition_to', '=', 2)
+                    ->groupBy('region_extension_id', 'requisition_number')
+                    ->get();
 
                 // The user has a role with is_super_user set to 1
             } else {
-                $giveProducts = ProductTransaction::with('product', 'region', 'extension')->orderBy('id')->where('receive', '!=', 0)->loggedInAssignRegion()->get();             
+                $giveProducts = ProductTransaction::with('product', 'region', 'extension')->orderBy('id')->where('receive', '!=', 0)->loggedInAssignRegion()->get();
                 $requisitions = ProductRequisition::select('region_extension_id', 'requisition_number', DB::raw('SUM(request_quantity) as quantity'))
-                ->with('saleType', 'region', 'extension')
-                ->where('status', 'requested')
-                ->whereIn('region_extension_id', function ($query) use ($giveProducts) {
-                    $query->select('id')
-                    ->from('extensions')
-                    ->where('regional_id', $giveProducts->first()->regional_id);
-                })
+                    ->with('saleType', 'region', 'extension')
+                    ->where('status', 'requested')
+                    ->whereIn('region_extension_id', function ($query) use ($giveProducts) {
+                        $query->select('id')
+                            ->from('extensions')
+                            ->where('regional_id', $giveProducts->first()->regional_id);
+                    })
                     ->where('requisition_to', '=', 2)
                     ->groupBy('region_extension_id', 'requisition_number')
                     ->get();
                 // The user does not have a role with is_super_user set to 1
-            }        
+            }
 
             if ($giveProducts->isEmpty()) {
                 $giveProducts = [];
@@ -90,7 +91,7 @@ class RegionProductTransferController extends Controller
     {
 
         try {
-            if (isset($requisitions)) {
+            if (!isset($reqNo)) {
                 return response()->json([
                     'message' => 'The Requisition Number you are trying to find doesn\'t exist.'
                 ], 404);
@@ -109,13 +110,13 @@ class RegionProductTransferController extends Controller
             if ($isSuperUser) {
 
                 $requisitions = ProductRequisition::with('region', 'extension', 'saleType')->where('requisition_number', $reqNo)->where('status', 'requested')->get();
-                $products = ProductTransaction::with('product', 'region', 'extension', 'product.saleType')->orderBy('id')->where('store_quantity', '!=', 0)->get();
+                $products = ProductTransaction::with('product', 'region', 'extension', 'product.saleType')->orderBy('id')->where('region_store_quantity', '!=', 0)->get();
                 $regions = Region::with('extensions:id,regional_id,name')->orderBy('name')->get(['id', 'name']);
                 // The user has a role with is_super_user set to 1
             } else {
                 $requisitions = ProductRequisition::with('region', 'extension', 'saleType')->where('requisition_number', $reqNo)->where('status', 'requested')->get();
                 //check that paricular reqNo number
-                $products = ProductTransaction::with('product', 'region', 'extension', 'product.saleType')->orderBy('id')->where('store_quantity', '!=', 0)->loggedInAssignRegion()->get();
+                $products = ProductTransaction::with('product', 'region', 'extension', 'product.saleType')->orderBy('id')->where('region_store_quantity', '!=', 0)->loggedInAssignRegion()->get();
                 $regions = Region::with('extensions:id,regional_id,name')->orderBy('name')->get(['id', 'name']);
             }
 
@@ -135,7 +136,7 @@ class RegionProductTransferController extends Controller
     //get regional specific transfer product
     public function show(Request $request, $id)
     {
-        
+
         try {
             $transferToRegional = ProductTransaction::with('product.unit', 'product.brand', 'product.store', 'product.category', 'product.saleType', 'product.subCategory', 'region', 'extension')->findOrFail($id);
             $particularExtensions = Extension::where('regional_id', $transferToRegional->regional_id)->orderBy('id', 'desc')->get();
@@ -160,13 +161,14 @@ class RegionProductTransferController extends Controller
             ], 400);
         }
     }
-///region to extension transfer
+    ///region to extension transfer
     public function store(Request $request)
     {
         $this->validate($request, []);
 
         DB::beginTransaction();
         try {
+
             $date = date('Y-m-d', strtotime($request->transfer_date));
             $regionId = $request->region;
             $extensionId = $request->extension;
@@ -177,30 +179,41 @@ class RegionProductTransferController extends Controller
                 $product = Product::where('serial_no', $value['serial_no'])
                     ->join('product_transactions as Tb1', 'Tb1.product_id', '=', 'products.id')
                     ->first();
+                $productTable = Product::where('serial_no', $value['serial_no'])->first();
+                $transaction = ProductTransaction::where('product_id', $product->product_id)->where('regional_id', $product->regional_id)->first();
 
 
-                $quantityafterDistribute = $product->receive;
-                $totalDistribute = $product->distributed_quantity;
+                // $quantityafterDistribute = $product->receive;
+
+                $totalDistribute = $productTable->region_store_distributed_qty;
+                $regionStoreQty = $productTable->region_store_qty;
 
                 //check when transfer quantity should not be greater than the stock quantity in
-                if ($transferQuantity > $quantityafterDistribute) {
+                if ($transferQuantity > $regionStoreQty) {
                     return response()->json([
                         'message' => 'Transfer Quantity should not be greater than the quantity in stock'
                     ], 422);
                 }
 
                 //if stock quantity is greater than transfer quantity tha saleStatus should be stock and if zero then transfer 
-                if ($quantityafterDistribute > $transferQuantity) {
+                if ($regionStoreQty > $transferQuantity) {
                     $saleStatus = "stock";
                 } else {
                     $saleStatus = "transfer";
                 }
                 //product table should be update after transfer of the product
-                $product->update([
-                    'quantity' => $quantityafterDistribute - $transferQuantity,
-                    'region_transfer' => $transferQuantity,
+                $productTable->update([
+                    'region_store_distributed_qty' => $totalDistribute + $transferQuantity,
                     'sale_status' => $saleStatus,
-                    'region_store_quantity'=> $quantityafterDistribute- $transferQuantity
+                    'region_store_qty' => $regionStoreQty - $transferQuantity
+                ]);
+                $regionalStoreQty = $transaction->region_store_quantity;
+
+                $regionalTransferQty = $transaction->region_transfer_quantity;
+
+                $transaction->update([
+                    'region_store_quantity' => $regionalStoreQty - $transferQuantity,
+                    'region_transfer_quantity' => $regionalTransferQty + $transferQuantity
                 ]);
 
                 //here we should update the status of requisition after  it is transfer 
@@ -244,60 +257,5 @@ class RegionProductTransferController extends Controller
             'message' => 'Product has been transfered Successfully'
         ], 200);
     }
-    //regional transfer
-    public function update(Request $request, SerialNumberGenerator $serial)
-    {
-      
-        DB::beginTransaction();
 
-        try {
-            $productTransfer = ProductTransaction::with('product')->findOrFail($request->transaction_id);
-
-            //unique number generator
-            $movementNo = $serial->movementNumber('ProductMovement', 'movement_date');
-            //get total receive product so far
-            $transferToRegional = $productTransfer->receive;
-
-            //if quatity is more than 1 for the product type accessory the sale_status is not changed if more then it should be change to transfer
-            if ($productTransfer->receive > 1) {
-                $saleStatus = "stock";
-            } else {
-                $saleStatus = "transfer";
-            }
-
-            //updating the total product
-            $productTransfer->update([
-                'receive' => $transferToRegional - $request->transfer_no,
-                'give_back' => $request->transfer_no,
-                'sale_status' => $saleStatus,
-                'updated_by' => auth()->user()->id,
-            ]);
-
-            $productMovement = new ProductMovement;
-
-            $productMovement->product_id = $productTransfer->product_id;
-            $productMovement->transfer_type = $request->transfer_type;
-            $productMovement->regional_transfer_id = $productTransfer->region->name;
-            $productMovement->region_extension_id = $request->extension_name;
-            $productMovement->regional_id = $request->region_name;
-            $productMovement->main_transfer_store = $request->transfer_type != 'transfer to main store' ? null : 'main store';
-            $productMovement->movement_date = $productTransfer->movement_date;
-            $productMovement->receive = $request->transfer_no;
-            $productMovement->product_movement_no = $movementNo;
-            $productMovement->status = 'process';
-            $productMovement->created_by = auth()->user()->id;
-            $productMovement->description = $request->transfer_description;
-            $productMovement->save();
-        } catch (Exception $e) {
-            DB::rollback();
-            return response()->json([
-                'message' => $e->getMessage(),
-            ], 500);
-        }
-
-        DB::commit();
-        return response()->json([
-            'message' => 'Product has been transfered Successfully'
-        ], 200);
-    }
 }

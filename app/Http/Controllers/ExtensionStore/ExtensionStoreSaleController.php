@@ -49,9 +49,9 @@ class ExtensionStoreSaleController extends Controller
                 }
             }
             if ($isSuperUser) {
-                $saleVouchers = SaleVoucher::with('saleVoucherDetails.discount')->orderBy('id')->where('region_extension_id', !null)->get();
+                $saleVouchers = SaleVoucher::with('saleVoucherDetails.discount')->orderBy('id')->where('region_extension_id', '!=', null)->get();
                 $customers = Customer::with('customerType')->orderBy('id')->get();
-                $products = ProductTransaction::with('product', 'region', 'extension')->orderBy('id')->where('store_quantity', '>', 0)->where('region_extension_id', !null)->orderBy('id')->get();
+                $products = ProductTransaction::with('product', 'region', 'extension')->orderBy('id')->where('store_quantity', '>', 0)->where('region_extension_id', '!=', null)->orderBy('id')->get();
 
                 if ($saleVouchers->isEmpty()) {
                     $saleVouchers = [];
@@ -109,7 +109,7 @@ class ExtensionStoreSaleController extends Controller
             }
 
             if ($isSuperUser) {
-                $product = ProductTransaction::with('product', 'region', 'product.category', 'product.subcategory', 'product.color', 'product.saleType')->where('product_id', $id)->where('region_extension_id', !null)->where('store_quantity','>',0)->get();
+                $product = ProductTransaction::with('product', 'region', 'product.category', 'product.subcategory', 'product.color', 'product.saleType')->where('product_id', $id)->where('region_extension_id', '!=', null)->where('store_quantity', '>', 0)->get();
 
             } else {
                 $extensionId = auth()->user()->assignAndEmployee->extension_id;
@@ -147,7 +147,7 @@ class ExtensionStoreSaleController extends Controller
         // The first element of the $wordArray will contain the first word
         $firstWord = $wordArray[0];
         //unique number generator
-        $invoiceNo = $invoice->invoiceNumber('SaleVoucher', 'invoice_date', $extensionId, $firstWord);
+        $invoiceNo = $invoice->extensionInvoiceNumber('SaleVoucher', 'invoice_date', $extensionId, $firstWord);
 
         // return response()->json($request->all());
         DB::beginTransaction();
@@ -201,9 +201,15 @@ class ExtensionStoreSaleController extends Controller
                                 ->where('Tb1.serial_no', $flattenedArray[$i][0])
                                 ->first(); //serial number of exel
 
+
                             if ($product) { // serial number present
 
-
+                                if ($product->store_quantity < $flattenedArray[$i][2]) {
+                                    return response()->json([
+                                        'success' => true,
+                                        'message' => 'Quantity cannot be greater that store quantity',
+                                    ], 406);
+                                }
                                 $saleOrderDetails[$i]['sale_voucher_id'] = $saleVoucher->id;
                                 $saleOrderDetails[$i]['product_id'] = $product->id;
                                 $saleOrderDetails[$i]['quantity'] = $flattenedArray[$i][2]; //get the quantity data in exel file
@@ -240,10 +246,14 @@ class ExtensionStoreSaleController extends Controller
                                 $regionTransfer->update([
                                     'store_quantity' => $storequantity - $flattenedArray[$i][2],
                                     'sold_quantity' => $soldquantity + $flattenedArray[$i][2],
-                                    'region_store_quantity' => 0,
+                                    // 'region_store_quantity' => 0,
                                 ]);
-
-
+                                $product_table = Product::where('id', $regionTransfer->product_id)->first();
+                                $product_table->update([
+                                    'extension_store_qty' => $storequantity - $flattenedArray[$i][2],
+                                    'extension_store_sold_qty' => $soldquantity + $flattenedArray[$i][2],
+                                    'updated_by' => auth()->user()->id,
+                                ]);
 
                             } else {
                                 $errorSerialNumbers[] = $flattenedArray[$i][0];
@@ -303,7 +313,13 @@ class ExtensionStoreSaleController extends Controller
                         $regionTransfer->update([
                             'store_quantity' => $storequantity - $value['quantity'],
                             'sold_quantity' => $soldquantity + $value['quantity'],
-                            'region_store_quantity' => 0,
+                            // 'region_store_quantity' => 0,
+                        ]);
+                        $product_table = Product::where('id', $regionTransfer->product_id)->first();
+                        $product_table->update([
+                            'extension_store_qty' => $storequantity - $value['quantity'],
+                            'extension_store_sold_qty' => $soldquantity + $value['quantity'],
+                            'updated_by' => auth()->user()->id,
                         ]);
                         // $saleOrderDetails[$key]['created_by'] = $request->user()->id;
                     }
@@ -347,8 +363,17 @@ class ExtensionStoreSaleController extends Controller
                                 ->where('Tb1.serial_no', $flattenedArray[$i][0])
                                 ->first();
 
+
                             $saleOrderDetails = [];
-                            if ($product) { // serial number present
+                            if ($product) {
+
+                                if ($product->store_quantity < $flattenedArray[$i][2]) {
+                                    return response()->json([
+                                        'success' => true,
+                                        'message' => 'Quantity cannot be greater that store quantity',
+                                    ], 406);
+                                }
+                                // serial number present
                                 $saleOrderDetails[$i]['sale_voucher_id'] = $saleVoucher->id;
                                 $saleOrderDetails[$i]['product_id'] = $product->id;
                                 $saleOrderDetails[$i]['quantity'] = $flattenedArray[$i][2]; //get the quantity data in exel file
@@ -358,7 +383,7 @@ class ExtensionStoreSaleController extends Controller
 
                                 // $discountName = DiscountType::where('discount_name', 'like', '%' . $flattenedArray[$i][1] . '%')->first();
                                 $discountName = DiscountType::where('discount_name', 'like', trim($flattenedArray[$i][1]))->first(); // search discount id based on name
-
+                              
                                 if ($discountName) {
                                     if ($discountName->discount_type === 'Percentage') {
                                         $netPay = $grossForEachItem - (($discountName->discount_value / 100) * $grossForEachItem);
@@ -382,13 +407,20 @@ class ExtensionStoreSaleController extends Controller
                                 $regionTransfer = ProductTransaction::where('product_id', $product->id)->LoggedInAssignExtension()->first();
                                 $storequantity = $regionTransfer->store_quantity;
                                 $soldquantity = $regionTransfer->sold_quantity;
-                            
+
 
                                 $regionTransfer->update([
                                     'store_quantity' => $storequantity - $flattenedArray[$i][2],
                                     'sold_quantity' => $soldquantity + $flattenedArray[$i][2],
-                                    'region_store_quantity' => 0,
+                                    // 'region_store_quantity' => 0,
                                 ]);
+                                $product_table = Product::where('id', $regionTransfer->product_id)->first();
+                                $product_table->update([
+                                    'extension_store_qty' => $storequantity - $flattenedArray[$i][2],
+                                    'extension_store_sold_qty' => $soldquantity + $flattenedArray[$i][2],
+                                    'updated_by' => auth()->user()->id,
+                                ]);
+
 
 
                             } else {
@@ -449,7 +481,13 @@ class ExtensionStoreSaleController extends Controller
                         $regionTransfer->update([
                             'store_quantity' => $storequantity - $value['quantity'],
                             'sold_quantity' => $soldquantity + $value['quantity'],
-                             'region_store_quantity' => 0,
+                            //  'region_store_quantity' => 0,
+                        ]);
+                        $product_table = Product::where('id', $regionTransfer->product_id)->first();
+                        $product_table->update([
+                            'extension_store_qty' => $storequantity - $value['quantity'],
+                            'extension_store_sold_qty' => $soldquantity + $value['quantity'],
+                            'updated_by' => auth()->user()->id,
                         ]);
                         // $saleOrderDetails[$key]['created_by'] = $request->user()->id;
                     }
@@ -476,6 +514,8 @@ class ExtensionStoreSaleController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
+
+    //show sale voucher to do payment)
     public function show($id, SerialNumberGenerator $receipt)
     {
         try {

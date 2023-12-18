@@ -14,8 +14,15 @@ class Product extends Model implements Auditable
         'item_number',
         'description',
         'total_quantity',
-        'distributed_quantity',
-        'quantity',
+        'main_store_distributed_qty',
+        'main_store_qty',
+        'main_store_sold_qty',
+        'region_store_distributed_qty',
+        'region_store_qty',
+        'region_store_sold_qty',
+        'extension_store_sold_qty',
+        'extension_store_qty',
+        'extension_distributed_qty',
         'serial_no',
         'sale_status',
         'price',
@@ -23,14 +30,15 @@ class Product extends Model implements Auditable
         'status',
         'sale_type_id',
         'category_id',
+        'store_id',
         'sub_category_id',
         'color_id',
         'iccid',
         'sub_inventory',
         'locator',
         'batch_no',
-        'created_date',
-        'main_store_sold_quantity'
+        'created_date',        
+      
     ];
 
     public function unit() 

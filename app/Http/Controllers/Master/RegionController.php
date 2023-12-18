@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Master;
 
 use App\Http\Controllers\Controller;
+use App\Models\Store;
 use Illuminate\Http\Request;
 use App\Models\Dzongkhag;
 use App\Models\Extension;
@@ -21,23 +22,23 @@ class RegionController extends Controller
     {
         $this->middleware('permission:regions.view')->only('index', 'show');
         $this->middleware('permission:regions.store')->only('store');
-        $this->middleware('permission:regions.update')->only('update');       
-        $this->middleware('permission:regions.edit-regions')->only('editRegion');       
+        $this->middleware('permission:regions.update')->only('update');
+        $this->middleware('permission:regions.edit-regions')->only('editRegion');
     }
     public function index()
     {
-        try{
-            $regions = Region::with('extensions:id,regional_id,name,description','dzongkhag')->get(['id', 'name', 'dzongkhag_id','description']);
+        try {
+            $regions = Region::with('extensions:id,regional_id,name,description', 'dzongkhag')->get(['id', 'name', 'dzongkhag_id', 'description']);
             $dzongkhags = Dzongkhag::orderBy('id')->get();
-            if($regions->isEmpty()){
+            if ($regions->isEmpty()) {
                 $regions = [];
-            }   
-                return response([
-                    'message' => 'success',
-                    'region' =>$regions,
-                    'dzongkhags' =>$dzongkhags,
-                ],200);
-        }catch(Exception $e){
+            }
+            return response([
+                'message' => 'success',
+                'region' => $regions,
+                'dzongkhags' => $dzongkhags,
+            ], 200);
+        } catch (Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -58,7 +59,7 @@ class RegionController extends Controller
 
         DB::beginTransaction();
 
-        try{
+        try {
             $region = new Region();
 
             $region->dzongkhag_id = $request->dzongkhag_id;
@@ -66,21 +67,44 @@ class RegionController extends Controller
             $region->description = $request->description;
             $region->save();
 
+            //creating new store
+            $store = new Store();
+            $store->store_name = $request->name;
+            $store->region_id = $region->id;
+            $store->extension_id = null;
+            $store->save();
+
+            $regionalExtensions = [];
+
             $regionalExtensions = [];
             foreach ($request->extensions as $key => $value) {
-                $regionalExtensions[$key]['regional_id'] = $region->id;
-                $regionalExtensions[$key]['name'] = $value['name'];
-                $regionalExtensions[$key]['description'] = isset($value['description']) == true ? $value['description'] : null ;                
-                $regionalExtensions[$key]['created_by'] = auth()->user()->id;
+                $extensionData = [
+                    'regional_id' => $region->id,
+                    'name' => $value['name'],
+                ];
+
+                // Check if the extension already exists by name  
+                $extension = Extension::firstOrNew($extensionData);
+                // Set other attributes
+                $extension->description = isset($value['description']) ? $value['description'] : null;
+                $extension->created_by = auth()->user()->id;
+                // Save the extension
+                $extension->save();
+                $extension_store = new Store();
+                $extension_store->store_name = $value['name'];
+                $extension_store->region_id = null;
+                $extension_store->extension_id = $extension->id;
+                $extension_store->save();
             }
+            $region->extensions()->insert($regionalExtensions);
+            // No need to insert $regionalExtensions again here
 
             $region->extensions()->insert($regionalExtensions);
 
-        }catch(\Exception $e)
-        {
+        } catch (\Exception $e) {
             DB::rollback();
-            return response()->json([  
-                'message'=> $e->getMessage(),                                                        
+            return response()->json([
+                'message' => $e->getMessage(),
             ], 500);
         }
 
@@ -109,19 +133,19 @@ class RegionController extends Controller
      */
     public function editRegion($id)
     {
-        try{
+        try {
             $region = Region::with('extensions', 'dzongkhag')->find($id);
-                
-            if(!$region){
+
+            if (!$region) {
                 return response()->json([
                     'message' => 'The region you are trying to update doesn\'t exist.'
                 ], 404);
             }
             return response([
                 'message' => 'success',
-                'Region' =>$region
-            ],200);
-        }catch(Exception $e){
+                'Region' => $region
+            ], 200);
+        } catch (Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -139,10 +163,10 @@ class RegionController extends Controller
     {
         // return response()->json($request->all());
         DB::beginTransaction();
-        try{
+        try {
             $region = Region::findOrFail($id);
-            
-            if(!$region){
+
+            if (!$region) {
                 return response()->json([
                     'message' => 'The Region you are trying to update doesn\'t exist.'
                 ], 404);
@@ -153,6 +177,13 @@ class RegionController extends Controller
             $region->description = $request->description;
             $region->save();
 
+            //Updating new store
+            $store = Store::where('region_id', $region->id)->first();
+            $store->store_name = $request->name;
+            $store->region_id = $region->id;
+            $store->extension_id = null;
+            $store->save();
+
             $subModuleIdsFromTheDatabase = Extension::where('regional_id', $region->id)->pluck('id')->toArray();
             $subModuleIdsFromTheDatabaseCount = sizeof($subModuleIdsFromTheDatabase);
 
@@ -162,8 +193,8 @@ class RegionController extends Controller
             $subModuleIdsFromRequest = [];
             //store the incoming form values in an array but only the sub modules/menus id
             foreach ($request->extensions as $value) {
-                if(isset($value['extension_id'])) {
-                $subModuleIdsFromRequest [] = (int) $value['extension_id'];
+                if (isset($value['extension_id'])) {
+                    $subModuleIdsFromRequest[] = (int) $value['extension_id'];
                 }
             }
 
@@ -174,32 +205,47 @@ class RegionController extends Controller
             Extension::whereIn('id', $uniqueSubModuleIds)->delete();
 
             // return response()->json($request->extensions);
-            foreach($request->extensions as $key => $value){
-    
-                if(isset($value['extension_id'])) {
+            foreach ($request->extensions as $key => $value) {
+
+                if (isset($value['extension_id'])) {
                     $region->extensions()->updateOrCreate(
                         ['id' => $value['extension_id']],
                         [
                             'name' => $value['name'],
-                            'description' => isset($value['description']) == true ? $value['description'] : null ,
+                            'description' => isset($value['description']) == true ? $value['description'] : null,
                             'created_by' => auth()->user()->id,
                         ]
+
                     );
+                    $existing_store = Store::where('extension_id', $value['extension_id'])->first();
+                    $existing_store->store_name = $value['name'];
+                    $existing_store->region_id = null;
+                    $existing_store->extension_id = $value['extension_id'];
+                    $existing_store->save();
                 } else {
-                    $region->extensions()->create([
+                    $extension = $region->extensions()->create([
                         'name' => $value['name'],
-                        'description' => isset($value['description']) == true ? $value['description'] : null ,
+                        'description' => isset($value['description']) ? $value['description'] : null,
                         'created_by' => auth()->user()->id,
                     ]);
+
+                    // Retrieve the ID of the newly created extension
+                    $extensionId = $extension->id;
+
+                    $new_store = new Store();
+                    $new_store->store_name = $value['name'];
+                    $new_store->region_id = null;
+                    $new_store->extension_id = $extensionId;
+                    $new_store->save();
+
 
                 }
             }
 
-        }catch(\Exception $e)
-        {
+        } catch (\Exception $e) {
             DB::rollback();
-            return response()->json([  
-                'message'=> $e->getMessage(),                                                        
+            return response()->json([
+                'message' => $e->getMessage(),
             ], 500);
         }
 
@@ -220,13 +266,14 @@ class RegionController extends Controller
     {
         try {
 
-            Region::find($id)->delete(); 
+            Region::find($id)->delete();
+            
 
             return response()->json([
                 'message' => 'Region has been deleted successfully',
             ], 200);
         } catch (\Exception $e) {
-            return response()->json([                          
+            return response()->json([
                 'message' => 'Region cannot be delete. Already used by other records.'
             ], 202);
         }

@@ -26,6 +26,7 @@ class CreateProductTransactionsTable extends Migration
             $table->decimal('store_quantity')->nullable();
             $table->decimal('region_store_quantity',10,2)->nullable();
             $table->decimal('region_transfer_quantity',10,2)->nullable();
+            $table->decimal('extension_transfer_quantity',10,2)->nullable();
             $table->decimal('sold_quantity')->default(0);
             $table->text('description')->nullable();
             $table->string('status')->comment('process, receive');

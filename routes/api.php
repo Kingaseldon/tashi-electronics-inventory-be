@@ -1,10 +1,19 @@
 <?php
 
 use App\Http\Controllers\DashboardController\DashboardController;
+use App\Http\Controllers\inventory\ExtensionRequisitionController;
 use App\Http\Controllers\Master\MasterWarrantyController;
+use App\Http\Controllers\Notification\NotificationController;
+use App\Http\Controllers\ReportController\CashReceiptController;
+use App\Http\Controllers\ReportController\OnHandItemsController;
+use App\Http\Controllers\ReportController\OnlineReceiptController;
+use App\Http\Controllers\ReportController\PostedSalesInvoiceController;
 use App\Http\Controllers\ReportController\ReportController;
+use App\Http\Controllers\ReportController\SalesAndStockController;
+use App\Http\Controllers\ReportController\SalesOrderListController;
 use App\Http\Controllers\SalesAndOrder\Warranty;
 use App\Http\Controllers\SalesAndOrder\WarrantyController;
+use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
@@ -101,8 +110,8 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     Route::resource('colors', ColorController::class);
     Route::get('edit-colors/{id}', [ColorController::Class, 'editColor']);
 
-    Route::resource('employees', EmployeeController::class);
-    Route::get('edit-employees/{id}', [EmployeeController::class, 'editEmployee']);
+    // Route::resource('employees', EmployeeController::class);
+    // Route::get('edit-employees/{id}', [EmployeeController::class, 'editEmployee']);
 
     Route::resource('master-warranties', MasterWarrantyController::class);
     Route::get('edit-master-warranties/{id}', [MasterWarrantyController::class, 'editWarranty']);
@@ -135,13 +144,13 @@ Route::group(['middleware' => ['jwt.auth']], function () {
 
     Route::get('main-transfers/{id}', [MainStoreTransferController::Class, 'mainStoreTransfer']);
     Route::get('request-transfers/{id}', [MainStoreTransferController::Class, 'requestedTransfer']);
-    Route::post('verify-products', [MainStoreTransferController::Class, 'physicalVerification']);
+    // Route::post('verify-products', [MainStoreTransferController::Class, 'physicalVerification']);
     Route::resource('main-stores', MainStoreTransferController::class);
 
     //route for sale voucher
     Route::resource('main-store-sales', MainStoreSaleController::class);
     Route::post('make-payments', [MainStoreSaleController::class, 'makePayment']);
-    Route::resource('phone-emis', PhoneEmiController::class);
+    // Route::resource('phone-emis', PhoneEmiController::class);
 
     //route for regional office
     Route::resource('regional-stores', RegionalStoreTransferController::class);
@@ -160,12 +169,17 @@ Route::group(['middleware' => ['jwt.auth']], function () {
 
     //route for extension office
     Route::resource('extension-stores', ExtensionStoreTransferController::class);
-    //for transfer route in extension
-    Route::resource('extension-transfers', ExtensionProductTransferController::class);
 
     //for transfer route in extension
-    Route::get('get-extension-transfer', [ExtensionStoreTransferController::Class, 'getExtensionTransfer']);
-    Route::get('get-transfer-extension/{id}', [ExtensionStoreTransferController::Class, 'transferExtensionProduct']);
+    Route::resource('extension-transfers', ExtensionProductTransferController::class);
+    Route::get('view-extension-requisitions/{id}', [ExtensionStoreTransferController::Class, 'viewExtensionRequisition']);
+    Route::get('get-extension-requisitions', [ExtensionStoreTransferController::Class, 'getExtensionRequisition']);
+    Route::post('extension-to-extension-transfers', [ExtensionStoreTransferController::class, 'extensionTransfer']);
+
+
+    //for transfer route in extension
+    // Route::get('get-extension-transfer', [ExtensionStoreTransferController::Class, 'getExtensionTransfer']);
+    // Route::get('get-transfer-extension/{id}', [ExtensionStoreTransferController::Class, 'transferExtensionProduct']);
     Route::put('extension-transfer/{id}', [ExtensionStoreTransferController::Class, 'extensionTransfer']);
     //route for sale voucher
     Route::resource('extension-store-sales', ExtensionStoreSaleController::class);
@@ -174,8 +188,9 @@ Route::group(['middleware' => ['jwt.auth']], function () {
 
 
     //route for requisition
-    //askhla
     Route::resource('requisitions', ProductRequisitionController::class);
+    Route::resource('extension-requisitions', ExtensionRequisitionController::class);
+    Route::get('requisition-lists', [ExtensionRequisitionController::class, 'requisitionList']);
     Route::get('edit-requisitions/{id}', [ProductRequisitionController::Class, 'editRequisition']);
 
     //dashboardController
@@ -183,16 +198,28 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     Route::get('invoices', [DashboardController::class, 'invoice']);
     Route::get('payments', [DashboardController::class, 'payment']);
     Route::get('sales', [DashboardController::class, 'sale']);
+    Route::get('product-list', [DashboardController::class, 'productList']);
+    Route::get('repair-list', [DashboardController::class, 'repair']);
+    Route::get('replace-list', [DashboardController::class, 'replace']);
 
     //ReportController
-    Route::get('postedsalesinvoice', [ReportController::class, 'salesinvoice']);
-    Route::get('onhanditems', [ReportController::class, 'onhand']);
-    Route::get('salesandstocks', [ReportController::class, 'stock']);
-    Route::get('salesorderlist', [ReportController::class, 'orderlist']);
-    Route::get('cashreceipt', [ReportController::class, 'cash']);
-    Route::get('onlinereceipt', [ReportController::class, 'online']);
+    Route::resource('postedsalesinvoice', PostedSalesInvoiceController::class);
+    Route::resource('onhanditems', OnHandItemsController::class);
+    Route::resource('salesandstocks',SalesAndStockController::class);
+    Route::resource('salesorderlist',SalesOrderListController::class);
+    Route::resource('cashreceipt',CashReceiptController::class);
+    Route::resource('onlinereceipt',OnlineReceiptController::class);
 
     //warrantyCOntroller
     Route::resource('warranties', WarrantyController::class);
+    Route::get('search-warranties', [WarrantyController::class, 'searchForWarranty']);
+    Route::post('replace', [WarrantyController::class, 'Replace']);
+    Route::post('repair', [WarrantyController::class, 'Repair']);
+
+
+    //Notification
+    Route::resource('notifications',NotificationController::class);
+    Route::get('get-notifications/{id}', [NotificationController::class, 'getNotificationsforUser']);
+
 
 });

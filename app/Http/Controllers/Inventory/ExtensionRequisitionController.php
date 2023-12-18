@@ -1,31 +1,80 @@
 <?php
 
-namespace App\Http\Controllers\Inventory;
+namespace App\Http\Controllers\inventory;
 
 use App\Http\Controllers\Controller;
-use App\Services\SerialNumberGenerator;
-use Illuminate\Http\Request;
+use App\Models\Extension;
+use App\Models\Product;
 use App\Models\ProductRequisition;
 use App\Models\ProductTransaction;
-use App\Models\Product;
-use App\Models\Extension;
 use App\Models\Region;
 use App\Models\User;
-use DB;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use App\Services\SerialNumberGenerator;
 
-class ProductRequisitionController extends Controller {
-    public function __construct() {
-        $this->middleware('permission:requisitions.view')->only('index', 'show');
-        $this->middleware('permission:requisitions.store')->only('store');
-        $this->middleware('permission:requisitions.update')->only('update');
-        $this->middleware('permission:requisitions.edit-requisitions')->only('editRequisition');
-    }
+class ExtensionRequisitionController extends Controller {
     /**
      * Display a listing of the resource.
      *
      * @return \Illuminate\Http\Response
      */
+
+    public function __construct() {
+        $this->middleware('permission:extension-requisitions.view')->only('index', 'show');
+        $this->middleware('permission:extension-requisitions.requisition-lists')->only('requisitionList');
+        $this->middleware('permission:extension-requisitions.update')->only('update');
+        $this->middleware('permission:extension-requisitions.store')->only('store');
+
+
+    }
     public function index() {
+        try {
+            $user = auth()->user();
+            $assignExtension = $user->assignAndEmployee;
+
+            $products = DB::table('product_transactions as pt')
+                ->select(
+                    'pt.id as id',
+                    'p.id as product_id',
+                    'pt.region_extension_id as extension_id',
+                    'e.name as extension',
+                    'pt.store_quantity as qty',
+                    'p.description',
+                    'p.item_number',
+                    'p.category_id',
+                    's.name as category',
+                    'p.sub_category_id',
+                    'sub.name as sub_category',
+                    'c.name as color',
+                    'p.price'
+                )
+                ->leftJoin('products as p', 'pt.product_id', '=', 'p.id')
+                ->leftJoin('extensions as e', 'pt.region_extension_id', '=', 'e.id')
+                ->leftJoin('sale_types as s', 'p.category_id', '=', 's.id')
+                ->leftJoin('sub_categories as sub', 'p.sub_category_id', '=', 'sub.id')
+                ->leftJoin('colors as c', 'p.color_id', '=', 'c.id')
+                ->where('pt.region_extension_id', '!=', null)->where('pt.region_extension_id', '!=', $assignExtension->extension_id)
+                ->where('pt.store_quantity', '>', 0)
+                ->get();
+
+            // Access the result as an array or object
+// For example, you can use $result->id, $result->product_id, etc.
+            ;
+            return response([
+                'message' => 'success',
+                'products' => $products
+
+            ], 200);
+
+        } catch (Exception $e) {
+            return response([
+                'message' => $e->getMessage()
+            ], 400);
+        }
+    }
+
+    public function requisitionList() {
 
         try {
             $employees = User::where('id', auth()->user()->id)->with('assignAndEmployee.region', 'assignAndEmployee.extension')->first();
@@ -49,7 +98,7 @@ class ProductRequisitionController extends Controller {
                     ->groupBy('item_number', 'sale_type_id', 'description')
                     ->get();
             }
-            $requisitions = ProductRequisition::with('saleType', 'region', 'extension', 'createdBy')->where('regional_id', $employees->assignAndEmployee->regional_id)->where('status', 'requested')->where('region_extension_id', $employees->assignAndEmployee->extension_id)->where('requested_extension', null)->orderBy('id')->get();
+            $requisitions = ProductRequisition::with('saleType', 'region', 'extension', 'createdBy')->where('status', 'requested')->where('region_extension_id', $employees->assignAndEmployee->extension_id)->where('requested_extension', '!=',null)->orderBy('id')->get();
             $regions = Region::with('dzongkhag')->orderBy('id')->get();
 
             if($requisitions->isEmpty()) {
@@ -69,6 +118,14 @@ class ProductRequisitionController extends Controller {
                 'message' => $e->getMessage()
             ], 400);
         }
+    }
+    /**
+     * Show the form for creating a new resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function create() {
+        //
     }
 
     /**
@@ -91,6 +148,7 @@ class ProductRequisitionController extends Controller {
             $requisition = [];
             $date = date('Y-m-d', strtotime($request->request_date));
             $requisitionTo = $request->requisition_to;
+            $requestedExtension = $request->requested_extension;
             foreach($request->productDetails as $key => $value) {
                 $requisition[$key]['requisition_number'] = $requestedNo;
                 $requisition[$key]['product_item_number'] = $value['product_item_number'];
@@ -100,6 +158,7 @@ class ProductRequisitionController extends Controller {
                 $requisition[$key]['region_extension_id'] = $employees->assignAndEmployee->extension_id;
                 $requisition[$key]['request_date'] = $date;
                 $requisition[$key]['requisition_to'] = $requisitionTo;
+                $requisition[$key]['requested_extension'] = $requestedExtension;
                 $requisition[$key]['status'] = 'requested';
                 $requisition[$key]['request_quantity'] = $value['request_quantity'];
                 $requisition[$key]['created_by'] = auth()->user()->id;
@@ -119,45 +178,61 @@ class ProductRequisitionController extends Controller {
     }
 
     /**
-     * Show the form for editing the specified resource.
+     * Display the specified resource.
      *
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function editRequisition($id) {
+    public function show($id) {
         try {
-            $employees = User::where('id', auth()->user()->id)->with('assignAndEmployee.region', 'assignAndEmployee.extension')->first();
-            $products = [];
-            if($employees->assignAndEmployee->regional_id) {
-                $products = Product::with('saleType')->select('item_number', 'description', 'sale_type_id', DB::raw('SUM(main_store_qty) as total_quantity'))
-                    ->groupBy('item_number', 'sale_type_id', 'description')
-                    ->get();
-            }
-            else{
-                $products = Product::with('saleType')->select('item_number', 'description', 'sale_type_id', DB::raw('SUM(region_store_qty) as total_quantity'))
-                    ->groupBy('item_number', 'sale_type_id', 'description')
-                    ->get();
-            }
 
-           
+            $products = DB::table('product_transactions as pt')
+                ->select(
+                    'pt.region_extension_id as extension_id',
+                    'e.name as extension',
+                    DB::raw('SUM(pt.store_quantity) as qty'),
+                    'p.description',
+                    'p.item_number',
+                    'p.category_id',
+                    's.name as category',
+                    'p.sub_category_id',
+                    'sub.name as sub_category',
+                    DB::raw('COALESCE(c.name, "--") as color'),
+                    'p.price'
+                )
+                ->leftJoin('products as p', 'pt.product_id', '=', 'p.id')
+                ->leftJoin('extensions as e', 'pt.region_extension_id', '=', 'e.id')
+                ->leftJoin('sale_types as s', 'p.category_id', '=', 's.id')
+                ->leftJoin('sub_categories as sub', 'p.sub_category_id', '=', 'sub.id')
+                ->leftJoin('colors as c', 'p.color_id', '=', 'c.id')
+                ->where('pt.region_extension_id', $id)
+                ->where('pt.store_quantity', '>', 0)
+                ->groupBy('p.sub_category_id', 'pt.region_extension_id', 'e.name', 'p.description', 'p.item_number', 'p.category_id', 's.name', 'sub.name', 'c.name', 'p.price')
+                ->get();
 
-            $requisition = ProductRequisition::where('regional_id', $employees->assignAndEmployee->regional_id)->where('status', '=', 'requested')->with('saleType', 'region', 'extension')->find($id);
 
-            if(!$requisition) {
-                return response()->json([
-                    'message' => 'The Product Requisition you are trying to update doesn\'t exist.'
-                ], 404);
-            }
             return response([
                 'message' => 'success',
-                'requisition' => $requisition,
-                'products' => $products,
+                'products' => $products
+
             ], 200);
+
         } catch (Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
         }
+
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function edit($id) {
+        //
     }
 
     /**
@@ -168,40 +243,7 @@ class ProductRequisitionController extends Controller {
      * @return \Illuminate\Http\Response
      */
     public function update(Request $request, $id) {
-
-        $this->validate($request, [
-        ]);
-        DB::beginTransaction();
-        try {
-            $requisition = ProductRequisition::find($id);
-            $employees = User::where('id', auth()->user()->id)->with('assignAndEmployee.region', 'assignAndEmployee.extension')->first();
-
-            if(!$requisition) {
-                return response()->json([
-                    'message' => 'The Product Requisition you are trying to update doesn\'t exist.'
-                ], 404);
-            }
-
-            $requisition->product_item_number = $request->product_item_number;
-            $requisition->regional_id = $employees->assignAndEmployee->regional_id;
-            $requisition->region_extension_id = $employees->assignAndEmployee->extension_id;
-            $requisition->request_date = $request->request_date;
-            $requisition->sale_type_id = $request->sale_type;
-            $requisition->request_quantity = $request->request_quantity;
-            $requisition->description = $request->description;
-            $requisition->save();
-
-        } catch (\Exception $e) {
-            DB::rollback();
-            return response()->json([
-                'message' => $e->getMessage(),
-            ], 500);
-        }
-
-        DB::commit();
-        return response()->json([
-            'message' => 'Product Requisition has been updated Successfully'
-        ], 200);
+        //
     }
 
     /**
@@ -211,17 +253,6 @@ class ProductRequisitionController extends Controller {
      * @return \Illuminate\Http\Response
      */
     public function destroy($id) {
-        try {
-
-            ProductRequisition::find($id)->delete();
-
-            return response()->json([
-                'message' => 'Product Requisition deleted successfully',
-            ], 200);
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Product Requisition cannot be delete. Already used by other records.'
-            ], 202);
-        }
+        //
     }
 }

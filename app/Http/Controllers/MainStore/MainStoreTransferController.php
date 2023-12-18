@@ -10,7 +10,7 @@ use App\Models\ProductRequisition;
 use App\Models\Product;
 use App\Models\Region;
 use Carbon\Carbon;
-use DB;
+use Illuminate\Support\Facades\DB;
 
 class MainStoreTransferController extends Controller
 {
@@ -22,7 +22,7 @@ class MainStoreTransferController extends Controller
         $this->middleware('permission:main-stores.update')->only('update');       
         $this->middleware('permission:main-stores.main-transfers')->only('mainStoreTransfer');       
         $this->middleware('permission:main-stores.request-transfers')->only('requestedTransfer');     
-        $this->middleware('permission:main-stores.verify-products')->only('physicalVerification');     
+        // $this->middleware('permission:main-stores.verify-products')->only('physicalVerification');     
     }
 
     /**
@@ -33,9 +33,9 @@ class MainStoreTransferController extends Controller
     public function index(Request $request)
     {
         try {
-            $products = Product::with('unit', 'brand', 'store', 'category', 'subCategory', 'saleType')->orderBy('id')->where('quantity','!=',0)->get();  
+            $products = Product::with('unit', 'brand', 'store', 'category', 'subCategory', 'saleType')->orderBy('id')->where('main_store_qty','!=',0)->get();  
             $transactions = ProductMovement::where('status', 'process')->with('product', 'region', 'extension')->orderBy('status')->get(); 
-            $transferProducts = Product::with('saleType')->select('item_number', 'description', 'sale_type_id', \DB::raw('SUM(quantity) as total_quantity'))
+            $transferProducts = Product::with('saleType')->select('item_number', 'description', 'sale_type_id', \DB::raw('SUM(main_store_qty) as total_quantity'))
                                     ->groupBy('item_number', 'sale_type_id', 'description')
                                     ->get(); 
             $requisitions = ProductRequisition::select('regional_id', 'region_extension_id', 'requisition_number', DB::raw('SUM(request_quantity) as quantity'))
@@ -62,7 +62,7 @@ class MainStoreTransferController extends Controller
         }
     }
 
-    //create transfering with respect to requisition mainstore
+    //get requisition details 
     public function requestedTransfer($reqNo)
     {
         try {
@@ -74,7 +74,7 @@ class MainStoreTransferController extends Controller
                 ], 404);
             }
             $requisitions = ProductRequisition::with('region', 'extension', 'saleType')->where('requisition_number', $reqNo)->where('status', 'requested')->where('requisition_to', '=',1 )->get();
-            $products = Product::with('saleType')->where('quantity', '>', 0)->get(); 
+            $products = Product::with('saleType')->where('main_store_qty', '>', 0)->get(); 
             $regions = Region::with('extensions:id,regional_id,name')->orderBy('name')->get(['id', 'name']);
                                         
             return response([
@@ -138,6 +138,8 @@ class MainStoreTransferController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
+
+    //trasfer from main store
     public function store(Request $request)
     {
             $this->validate($request, [                
@@ -155,8 +157,8 @@ class MainStoreTransferController extends Controller
                         $transferQuantity = $value['transfer_quantity'];
                         $product = Product::where('serial_no', $value['serial_no'])->first();                       
 
-                        $quantityafterDistribute = $product->quantity;
-                        $totalDistribute = $product->distributed_quantity;
+                        $quantityafterDistribute = $product->main_store_qty;
+                        $totalDistribute = $product->main_store_distributed_qty;
 
                         //check when transfer quantity should not be greater than the stock quantity in
                         if ($transferQuantity > $quantityafterDistribute) {
@@ -173,8 +175,8 @@ class MainStoreTransferController extends Controller
                         }      
                         //product table should be update after transfer of the product
                         $product->update([
-                            'quantity' => $quantityafterDistribute - $transferQuantity,
-                            'distributed_quantity' => $totalDistribute + $transferQuantity,
+                            'main_store_qty' => $quantityafterDistribute - $transferQuantity,
+                            'main_store_distributed_qty' => $totalDistribute + $transferQuantity,
                             'sale_status' => $saleStatus,
                             ]);
                             
@@ -281,8 +283,8 @@ class MainStoreTransferController extends Controller
 
         //total_quantity is total purchase and quantity is after it is distrbuted and distributed_quantity is total product distributed
         $mainTransfer->update([
-            'quantity' => $quantityafterDistribute - $request->transfer_no,
-            'distributed_quantity' => $totalDistribute + $request->transfer_no,
+            'main_store_qty' => $quantityafterDistribute - $request->transfer_no,
+            'main_store_distributed_qty' => $totalDistribute + $request->transfer_no,
             'sale_status' => $saleStatus,
             ]);
         //sending the product if requsition is there
@@ -329,7 +331,7 @@ class MainStoreTransferController extends Controller
      */
     public function destroy($id)
     {
-        //
+        
     }
 
     //product verification with physical product

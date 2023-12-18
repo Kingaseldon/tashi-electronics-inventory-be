@@ -15,7 +15,7 @@ class CreateRegionsTable extends Migration
     {
         Schema::create('regions', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('dzongkhag_id')->constrained('dzongkhags'); 
+            $table->foreignId('dzongkhag_id')->constrained('dzongkhags');
             $table->string('name')->comment('regional name');
             $table->text('description')->nullable();
             $table->timestamps();

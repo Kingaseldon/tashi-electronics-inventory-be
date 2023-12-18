@@ -16,10 +16,11 @@ class CreateStoresTable extends Migration
         Schema::create('stores', function (Blueprint $table) {
             $table->id();
             $table->string('store_name');
-            $table->foreignId('dzongkhag_id')->constrained('dzongkhags');            
+            $table->foreignId('region_id')->nullable()->constrained('regions')->onDelete('cascade');            
+            $table->foreignId('extension_id')->nullable()->constrained('extensions')->onDelete('cascade');            
             $table->string('code')->nullable();
             $table->timestamps();
-            $table->foreignId('created_by')->index()->constrained('users');
+            $table->foreignId('created_by')->index()->nullable()->constrained('users');
             $table->foreignId('updated_by')->index()->nullable()->constrained('users');
         });
     }

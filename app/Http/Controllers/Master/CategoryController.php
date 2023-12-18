@@ -204,14 +204,14 @@ class CategoryController extends Controller
                 if ($subCategory) {
                     $subCategory->update([
                         'name' => $value['name'],
-                        'code' => $value['code'],
+                        'code' => isset($value['code']) == true ? $value['code'] : null,
                         'description' => isset($value['description']) == true ? $value['description'] : null,
                         'created_by' => auth()->user()->id,
                     ]);
                 } else {
                     $category->sub_categories()->create([
                         'name' => $value['name'],
-                        'code' => $value['code'],
+                        'code' => isset($value['code']) == true ? $value['code'] : null,
                         'description' => isset($value['description']) == true ? $value['description'] : null,
                         'created_by' => auth()->user()->id,
                     ]);
