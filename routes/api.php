@@ -1,7 +1,7 @@
 <?php
 
 use App\Http\Controllers\DashboardController\DashboardController;
-use App\Http\Controllers\inventory\ExtensionRequisitionController;
+use App\Http\Controllers\Inventory\ExtensionRequisitionController;
 use App\Http\Controllers\Master\MasterWarrantyController;
 use App\Http\Controllers\Notification\NotificationController;
 use App\Http\Controllers\ReportController\CashReceiptController;

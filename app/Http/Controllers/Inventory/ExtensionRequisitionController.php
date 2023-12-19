@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\inventory;
+namespace App\Http\Controllers\Inventory;
 
 use App\Http\Controllers\Controller;
 use App\Models\Extension;
