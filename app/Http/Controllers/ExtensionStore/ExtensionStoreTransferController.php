@@ -52,7 +52,7 @@ class ExtensionStoreTransferController extends Controller {
                 $receiveProducts =
                     ProductTransaction::join('product_movements as Tb1', 'Tb1.id', 'product_transactions.product_movement_id')
                         ->with('product', 'product.saleType', 'region', 'extension')
-                        ->select('product_movements.regional_transfer_id', 'product_transactions.*')
+                        ->select('Tb1.regional_transfer_id', 'product_transactions.*')
                         ->orderBy('product_transactions.id')->where('product_transactions.receive', '!=', 0)
                         ->where('product_transactions.region_extension_id', '!=', null)->get();
 
@@ -74,7 +74,7 @@ class ExtensionStoreTransferController extends Controller {
                     ->get();
                 $receiveProducts = ProductTransaction::join('product_movements as Tb1', 'Tb1.id', 'product_transactions.product_movement_id')
                     ->with('product', 'product.saleType', 'region', 'extension')
-                    ->select('product_movements.regional_transfer_id', 'product_transactions.*')
+                    ->select('Tb1.regional_transfer_id', 'product_transactions.*')
                     ->orderBy('product_transactions.id')->where('product_transactions.receive', '!=', 0)
                     ->LoggedInAssignExtension()->get();
 
