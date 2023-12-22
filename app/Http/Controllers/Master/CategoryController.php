@@ -144,10 +144,10 @@ class CategoryController extends Controller
             'sale_type' => 'required',
         ]);
         DB::beginTransaction();
-        try{
+        try {
             $category = Category::findOrFail($id);
-            
-            if(!$category){
+
+            if (!$category) {
                 return response()->json([
                     'message' => 'The Category you are trying to update doesn\'t exist.'
                 ], 404);
@@ -165,10 +165,10 @@ class CategoryController extends Controller
             $subModuleIdsFromRequestCount = sizeof($request->subCategories);
 
             //store the incoming form values in an array but only the sub modules/menus id
-             $subModuleIdsFromRequest =[];
+            $subModuleIdsFromRequest = [];
             foreach ($request->subCategories as $value) {
-                if(isset($value['sub_category_id'])) {
-                $subModuleIdsFromRequest [] = (int) $value['sub_category_id'];
+                if (isset($value['sub_category_id'])) {
+                    $subModuleIdsFromRequest[] = (int) $value['sub_category_id'];
                 }
             }
 
@@ -178,27 +178,7 @@ class CategoryController extends Controller
             //after that remove the deleted sub module from the system_sub_menus table
             SubCategory::whereIn('id', $uniqueSubModuleIds)->delete();
 
-            // foreach($request->subCategories as $key => $value){
 
-            //     if(isset($value['sub_category_id'])) {
-            //         $category->sub_categories()->updateOrCreate(
-            //             ['id' => $value['sub_category_id']],
-            //             [
-            //                 'name' => $value['name'],
-            //                 'code' => $value['code'],
-            //                 'description' => isset($value['description']) == true ? $value['description'] : null ,
-            //                 'created_by' => auth()->user()->id,
-            //             ]
-            //         );
-            //     } else {
-            //         $category->sub_categories()->create([
-            //             'name' => $value['name'],
-            //             'code' => $value['code'],
-            //             'description' => isset($value['description']) == true ? $value['description'] : null ,
-            //             'created_by' => auth()->user()->id,
-            //         ]);
-            //     }
-            // }
             foreach ($request->subCategories as $key => $value) {
                 $subCategory = SubCategory::whereId($value['sub_category_id'])->first();
                 if ($subCategory) {
@@ -209,19 +189,20 @@ class CategoryController extends Controller
                         'created_by' => auth()->user()->id,
                     ]);
                 } else {
-                    $category->sub_categories()->create([
+
+                    SubCategory::create([
                         'name' => $value['name'],
+                        'category_id' => $category->id,
                         'code' => isset($value['code']) == true ? $value['code'] : null,
                         'description' => isset($value['description']) == true ? $value['description'] : null,
                         'created_by' => auth()->user()->id,
                     ]);
                 }
             }
-        }catch(\Exception $e)
-        {
+        } catch (\Exception $e) {
             DB::rollback();
-            return response()->json([  
-                'message'=> $e->getMessage(),                                                        
+            return response()->json([
+                'message' => $e->getMessage(),
             ], 500);
         }
 
@@ -230,6 +211,7 @@ class CategoryController extends Controller
             'message' => 'Category has been updated Successfully'
         ], 200);
     }
+
 
     /**
      * Remove the specified resource from storage.
