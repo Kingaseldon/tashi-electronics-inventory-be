@@ -145,6 +145,8 @@ class CategoryController extends Controller
         DB::beginTransaction();
         try {
             $category = Category::findOrFail($id);
+         
+       
 
             if (!$category) {
                 return response()->json([
@@ -189,7 +191,8 @@ class CategoryController extends Controller
                     ]);
                 } else {
 
-                    SubCategory::create([
+                    $subCategories = new SubCategory;
+                    $subCategories->create([
                         'name' => $value['name'],
                         'category_id' => $category->id,
                         'code' => isset($value['code']) == true ? $value['code'] : null,
