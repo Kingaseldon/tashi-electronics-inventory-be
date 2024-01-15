@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Controllers\DashboardController\DashboardController;
+use App\Http\Controllers\Emi\ApplyEmi;
+use App\Http\Controllers\Emi\ApproveEmi;
+use App\Http\Controllers\Emi\EmiController;
 use App\Http\Controllers\Inventory\ExtensionRequisitionController;
 use App\Http\Controllers\Master\MasterWarrantyController;
 use App\Http\Controllers\Notification\NotificationController;
@@ -11,6 +14,7 @@ use App\Http\Controllers\ReportController\PostedSalesInvoiceController;
 use App\Http\Controllers\ReportController\ReportController;
 use App\Http\Controllers\ReportController\SalesAndStockController;
 use App\Http\Controllers\ReportController\SalesOrderListController;
+use App\Http\Controllers\ReportController\StaffEmiController;
 use App\Http\Controllers\SalesAndOrder\Warranty;
 use App\Http\Controllers\SalesAndOrder\WarrantyController;
 use App\Models\Notification;
@@ -151,7 +155,8 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     Route::resource('main-store-sales', MainStoreSaleController::class);
     Route::post('make-payments', [MainStoreSaleController::class, 'makePayment']);
     // Route::resource('phone-emis', PhoneEmiController::class);
-
+ 
+    
     //route for regional office
     Route::resource('regional-stores', RegionalStoreTransferController::class);
     Route::get('regional-transfer/{id}', [RegionalStoreTransferController::Class, 'requestedRegionalTransfer']);
@@ -209,6 +214,7 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     Route::resource('salesorderlist',SalesOrderListController::class);
     Route::resource('cashreceipt',CashReceiptController::class);
     Route::resource('onlinereceipt',OnlineReceiptController::class);
+    Route::resource('staff-emi',StaffEmiController::class);
 
     //warrantyCOntroller
     Route::resource('warranties', WarrantyController::class);
@@ -220,6 +226,16 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     //Notification
     Route::resource('notifications',NotificationController::class);
     Route::get('get-notifications/{id}', [NotificationController::class, 'getNotificationsforUser']);
+
+    //EMI
+
+    // Route::resource('emi', EmiController::class);
+    Route::resource('apply-emi', ApplyEmi::class);
+    Route::get('phone-details', [ApplyEmi::class, 'productDetails']);
+
+    Route::resource('approve-emi', ApproveEmi::class);
+    Route::put('update-product/{id}', [ApplyEmi::class, 'updateProduct']);
+
 
 
 });

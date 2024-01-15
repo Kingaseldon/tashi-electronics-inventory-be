@@ -138,7 +138,6 @@ class ProductRequisitionController extends Controller {
                     ->groupBy('item_number', 'sale_type_id', 'description')
                     ->get();
             }
-
            
 
             $requisition = ProductRequisition::where('regional_id', $employees->assignAndEmployee->regional_id)->where('status', '=', 'requested')->with('saleType', 'region', 'extension')->find($id);

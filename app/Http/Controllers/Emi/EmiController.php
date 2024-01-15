@@ -1,8 +1,11 @@
 <?php
 
-namespace App\Http\Controllers\MainStore;
+namespace App\Http\Controllers\Emi;
 
 use App\Http\Controllers\Controller;
+use App\Models\CustomerEmi;
+use App\Models\Product;
+use Illuminate\Http\Request;
 use App\Imports\SaleProduct;
 use App\Models\DiscountType;
 use App\Models\Extension;
@@ -11,45 +14,40 @@ use App\Models\Region;
 use App\Models\Store;
 use App\Models\User;
 use App\Services\SerialNumberGenerator;
-use Illuminate\Http\Request;
-use App\Models\CustomerEmi;
-use App\Models\Product;
-use App\Models\PaymentHistory;
 use App\Models\SaleVoucher;
-use App\Models\Customer;
-use App\Models\Bank;
 use Carbon\Carbon;
 use DB;
 use Maatwebsite\Excel\Facades\Excel;
 
-class PhoneEmiController extends Controller
+class EmiController extends Controller
 {
-
-    public function __construct()
-    {
-        $this->middleware('permission:phone-emis.view')->only('index', 'show');
-        $this->middleware('permission:phone-emis.store')->only('store');
-        $this->middleware('permission:phone-emis.update')->only('update');
-        $this->middleware('permission:phone-emis.emi-payments')->only('emiPayments');
-    }
     /**
      * Display a listing of the resource.
      *
      * @return \Illuminate\Http\Response
      */
+    public function __construct()
+    {
+        $this->middleware('permission:emi.view')->only('index', 'show');
+        $this->middleware('permission:emi.store')->only('store');
+        $this->middleware('permission:emi.update')->only('update');
+        $this->middleware('permission:emi.emi-payments')->only('emiPayments');
+    }
     public function index()
     {
         try {
-            $customerEmi = CustomerEmi::with('emiDetail')->orderBy('id')->get();
-            $products = Product::where('quantity', '!=', 0)->with('unit', 'brand', 'store', 'category', 'subCategory', 'saleType')->orderBy('id')->get();
-
+          
+            // $customerEmi = CustomerEmi::with('emiDetail')->orderBy('id')->get();
+            $products=Product::where('category_id', 1)->select('item_number','sub_category_id','description','price')
+                ->groupBy('sub_category_id','item_number','description','price')
+                ->get();
             if ($products->isEmpty()) {
                 $products = [];
             }
             return response([
                 'message' => 'success',
                 'product' => $products,
-                'customerEmi' => $customerEmi,
+                // 'customerEmi' => $customerEmi,
             ], 200);
         } catch (Exception $e) {
             return response([
@@ -173,8 +171,7 @@ class PhoneEmiController extends Controller
                             if ($discountName) {
                                 if ($discountName->discount_type === 'Percentage') {
                                     $netPay = $grossForEachItem - (($discountName->discount_value / 100) * $grossForEachItem);
-                                } 
-                                else { // lumpsum
+                                } else { // lumpsum
                                     $netPay = $grossForEachItem - $discountName->discount_value;
                                 }
                             } else { // discount is not defined
@@ -340,6 +337,7 @@ class PhoneEmiController extends Controller
             'message' => 'Sale Voucher for EMI created Successfully'
         ], 200);
     }
+
 
     /**
      * Display the specified resource.

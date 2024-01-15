@@ -15,17 +15,19 @@ class CreateCustomerEmisTable extends Migration
     {
         Schema::create('customer_emis', function (Blueprint $table) {
             $table->id('id');
-            $table->foreignId('customer_id')->index()->constrained('customers');
-            $table->string('emi_no')->comment('unique number for each emi');
-            $table->foreignId('sale_voucher_id')->index()->constrained('sale_vouchers');
-            $table->foreignId('product_id')->index()->constrained('products');
-            $table->foreignId('discount_type_id')->index()->constrained('discount_types');
-            $table->foreignId('promotion_type_id')->index()->constrained('promotion_types');
-            $table->integer('quantity');
+            $table->foreignId('user_id')->index()->constrained('users');
+            $table->string('emi_no')->nullable()->comment('unique number for each emi');
+            $table->foreignId('sale_voucher_id')->index()->nullable()->constrained('sale_vouchers');
+            $table->foreignId('product_id')->nullable()->index()->constrained('products');
+            $table->integer('quantity')->default(1);
+            $table->date('request_date');
             $table->integer('emi_duration');
-            $table->integer('gst')->nullable();
-            $table->decimal('price', 10, 2)->nullable()->default(0);
+            $table->decimal('monthly_emi', 10, 2)->nullable()->default(0);
             $table->decimal('total', 10, 2)->nullable()->default(0);
+            $table->date('deduction_from')->nullable();
+            $table->string('status')->nullable();
+            $table->string('description')->nullable();
+            $table->string('item_number')->nullable();
             $table->timestamps();
             $table->foreignId('created_by')->index()->constrained('users');
             $table->foreignId('updated_by')->index()->nullable()->constrained('users');

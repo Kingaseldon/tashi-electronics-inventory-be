@@ -23,7 +23,8 @@ class ProductMovement extends Model implements Auditable
         'receive',
         'created_by',
         'status',
-        'created_by'
+        'created_by',
+        'product_movement_no'
     ];
 
 

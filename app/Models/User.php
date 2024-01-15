@@ -75,4 +75,9 @@ class User extends Authenticatable implements JWTSubject
         return $this->hasOne(AssignRegionExtension::class, 'user_id');
     }
 
+    public function customerEmi()
+    {
+        return $this->hasMany(CustomerEmi::class);
+    }
+
 }

@@ -162,7 +162,7 @@ class RegionProductTransferController extends Controller
         }
     }
     ///region to extension transfer
-    public function store(Request $request)
+    public function store(Request $request, SerialNumberGenerator $serial)
     {
         $this->validate($request, []);
 
@@ -173,6 +173,8 @@ class RegionProductTransferController extends Controller
             $regionId = $request->region;
             $extensionId = $request->extension;
             $requisitionId = $request->product_requisition;
+            $movementNo = $serial->movementNumber('ProductMovement', 'movement_date');
+
 
             foreach ($request->productDetails as $key => $value) {
                 $transferQuantity = $value['transfer_quantity'];
@@ -236,6 +238,7 @@ class RegionProductTransferController extends Controller
                     'product_id' => $product->product_id,
                     'regional_transfer_id' => $request->from,
                     'regional_id' => $regionId,
+                    'product_movement_no' => $movementNo,
                     'region_extension_id' => $extensionId,
                     'requisition_number' => $requisitionId,
                     'movement_date' => $date,

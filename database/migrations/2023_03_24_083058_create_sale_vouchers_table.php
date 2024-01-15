@@ -18,6 +18,7 @@ class CreateSaleVouchersTable extends Migration
             $table->foreignId('regional_id')->nullable()->constrained('regions');
             $table->foreignId('region_extension_id')->nullable()->constrained('extensions');
             $table->foreignId('customer_id')->index()->nullable()->comment('if the sale is from agent to customer')->constrained('customers');
+            $table->foreignId('user_id')->index()->nullable()->comment('to store staff id for staff emi')->constrained('users');
             $table->string('sale_type')->nullable()->comment('walk in, bulk, emi, corporate, Distributor');
             $table->string('walk_in_customer')->nullable()->comment('walk in customer name');
             $table->string('contact_no')->nullable()->comment('customer number');

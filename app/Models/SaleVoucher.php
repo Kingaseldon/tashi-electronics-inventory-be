@@ -21,12 +21,13 @@ class SaleVoucher extends Model implements Auditable
     }
 
     public function user(){
-        return $this -> belongsTo(User::class,'created_by');    
+        return $this->belongsTo(User::class,'user_id');    
     }
 
-    public function region()
+
+    public function customerEMI()
     {
-        return $this->belongsTo(Region::class, 'regional_id');
+        return $this->belongsTo(CustomerEmi::class, 'regional_id');
     }
     
     public function extension()

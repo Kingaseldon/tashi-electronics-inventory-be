@@ -10,9 +10,35 @@ use App\Traits\CreatedByTrait;
 class CustomerEmi extends Model implements Auditable
 {
     use HasFactory, CreatedByTrait, \OwenIt\Auditing\Auditable;
+    protected $fillable = [
+        'user_id',
+        'emi_no',
+        'sale_voucher_id',
+        'product_id',
+        'created_by',
+        'quantity',
+        'request_date',
+        'emi_duration',
+        'product_id',
+        'monthly_emi',
+        'total',
+        'deduction_from',
+        'status',
+        'updated_by'
+    ];
 
-    public function emiDetail()
+    public function user()
     {
-        return $this->hasMany(CustomerEmiDetail::class, 'customer_emi_id');
+        return $this->belongsTo(User::class);
+    }
+
+    public function saleVoucher()
+    {
+        return $this->belongsTo(SaleVoucher::class);
+    }
+
+    public function product()
+    {
+        return $this->belongsTo(Product::class);
     }
 }

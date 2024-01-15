@@ -27,7 +27,7 @@ class MainStoreSaleController extends Controller
         $this->middleware('permission:main-store-sales.store')->only('store');
         $this->middleware('permission:main-store-sales.update')->only('update');
         $this->middleware('permission:main-store-sales.make-payments')->only('makePayment');
-    
+
     }
 
     /**
@@ -38,7 +38,7 @@ class MainStoreSaleController extends Controller
     public function index()
     {
         try {
-            $saleVouchers = SaleVoucher::with('saleVoucherDetails.discount')->orderBy('id')->where('regional_id',null)->where('region_extension_id',null)->get();
+            $saleVouchers = SaleVoucher::with('saleVoucherDetails.discount')->orderBy('id')->where('regional_id', null)->where('region_extension_id', null)->get();
             $customers = Customer::with('customerType')->orderBy('id')->get();
             $products = Product::where('main_store_qty', '!=', 0)->with('unit', 'brand', 'store', 'category', 'subCategory', 'saleType')->orderBy('id')->get();
 
@@ -73,7 +73,7 @@ class MainStoreSaleController extends Controller
         $invoiceNo = $invoice->mainInvoiceNumber('SaleVoucher', 'invoice_date');
 
         try {
-                  
+
             if ($request->customerType == 2) {
                 $request->validate([
                     'attachment' => 'required|mimes:xls,xlsx',
@@ -82,7 +82,7 @@ class MainStoreSaleController extends Controller
                     $file = $request->file('attachment');
                     $nestedCollection = Excel::toCollection(new SaleProduct, $file);
                     // Flatten and transform the nested collection into a simple array
-                    $flattenedArray = $nestedCollection->flatten(1)->toArray();         
+                    $flattenedArray = $nestedCollection->flatten(1)->toArray();
 
                     $saleVoucher = new SaleVoucher;
                     $saleVoucher->invoice_no = $invoiceNo;
@@ -100,7 +100,7 @@ class MainStoreSaleController extends Controller
                     $errorSerialNumbers = [];
                     $saleOrderDetails = [];
                     for ($i = 1; $i < count($flattenedArray); $i++) {
-                        $product = Product::where('serial_no', $flattenedArray[$i][0])->first();//serial number of exel
+                        $product = Product::where('serial_no', $flattenedArray[$i][0])->first(); //serial number of exel
 
                         if ($product) { // serial number present  
 
@@ -109,7 +109,7 @@ class MainStoreSaleController extends Controller
                                     'success' => true,
                                     'message' => 'Quantity cannot be greater that store quantity',
                                 ], 203);
-                            }                       
+                            }
 
                             $saleOrderDetails[$i]['sale_voucher_id'] = $saleVoucher->id;
                             $saleOrderDetails[$i]['product_id'] = $product->id;
@@ -146,22 +146,21 @@ class MainStoreSaleController extends Controller
                                 'main_store_qty' => $quantityafterDistribute - $flattenedArray[$i][2],
                                 'main_store_sold_qty' => $flattenedArray[$i][2],
                             ]);
-                        }
-                        else{
+                        } else {
                             $errorSerialNumbers[] = $flattenedArray[$i][0];
                         }
 
                         $saleVoucher->saleVoucherDetails()->insert($saleOrderDetails);
 
                     } // foreach ends
-                    if(count($errorSerialNumbers)>0){
+                    if (count($errorSerialNumbers) > 0) {
                         return response()->json([
                             'success' => false,
                             'message' => $errorMessage,
                             'serialNumbers' => $errorSerialNumbers
                         ], 203);
                     }
-                    
+
                     // update to sale voucher
                     SaleVoucher::where('id', $lastInsertedId)->update([
                         'net_payable' => $netPayable,
@@ -169,8 +168,7 @@ class MainStoreSaleController extends Controller
                     ]);
 
                 }
-            } 
-            else {//if no attachment uploaded
+            } else { //if no attachment uploaded
                 $saleVoucher = new SaleVoucher;
                 $saleVoucher->invoice_no = $invoiceNo;
                 $saleVoucher->invoice_date = date('Y-m-d', strtotime(Carbon::now()));
@@ -198,10 +196,11 @@ class MainStoreSaleController extends Controller
 
                     $mainTransfer = Product::find($value['product']);
                     $quantityafterDistribute = $mainTransfer->total_quantity;
+                    $main_sold=$mainTransfer->main_store_sold_qty;
 
                     $mainTransfer->update([
                         'main_store_qty' => $quantityafterDistribute - $value['quantity'],
-                        'main_store_sold_qty' => $value['quantity'],
+                        'main_store_sold_qty' => $main_sold+ $value['quantity'],
                     ]);
                     // $saleOrderDetails[$key]['created_by'] = $request->user()->id;
                 }
@@ -231,7 +230,7 @@ class MainStoreSaleController extends Controller
     public function show($id, SerialNumberGenerator $receipt)
     {
         try {
-            $saleVoucher = SaleVoucher::with('customer.customerType', 'saleVoucherDetails.product.saleType', 'saleVoucherDetails.discount', 'user.assignAndEmployee.region','user.assignAndEmployee.extension')->find($id);
+            $saleVoucher = SaleVoucher::with('customer.customerType', 'saleVoucherDetails.product.saleType', 'saleVoucherDetails.discount', 'user.assignAndEmployee.region', 'user.assignAndEmployee.extension')->find($id);
 
             $paymentHistory = PaymentHistory::where('sale_voucher_id', $saleVoucher->id)->orderBy('receipt_no', 'desc')->get();
             $invoicePayment = $paymentHistory->sum('total_amount_paid');
