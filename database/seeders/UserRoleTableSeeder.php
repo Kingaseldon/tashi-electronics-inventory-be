@@ -51,6 +51,7 @@ class UserRoleTableSeeder extends Seeder
             array('name' => 'Manager', 'guard_name' => 'api', 'description' => 'Managers'),
             array('name' => 'Accountant', 'guard_name' => 'api', 'description' => 'Accountant of the reginal/extension'),
             array('name' => 'Customer Care Executives', 'guard_name' => 'api', 'description' => 'Customer Care Executives regional/extension'),
+            array('name' => 'Staff', 'guard_name' => 'api', 'description' => 'Employee'),
         );
         Role::insert($roles);
     }
