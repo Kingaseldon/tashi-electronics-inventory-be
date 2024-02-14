@@ -293,6 +293,7 @@ class DashboardController extends Controller
                     ->leftJoin('extensions', 'extensions.id', '=', 'product_transactions.region_extension_id')
                     ->groupBy('sale_types.name', 'sub_categories.name', 'stores.store_name', 'products.sale_type_id', 'products.store_id')
                     ->whereNotNull(\DB::raw('CASE WHEN products.sale_type_id != 2 AND products.store_id = 1 THEN stores.store_name END'))
+                    ->havingRaw('SUM(products.main_store_qty) != 0')
                     ->union(
                         Product::select(
                             'sale_types.name as category',
@@ -304,6 +305,7 @@ class DashboardController extends Controller
                             ->leftJoin('sub_categories', 'sub_categories.id', '=', 'products.sub_category_id')
                             // ->where('products.sale_type_id', '=', 2)
                             // ->where('products.store_id', '!=', 1)
+                            // ->whereNotNull('products.main_store_qty')
                             ->where('products.main_store_qty', '>', 0)
                             ->groupBy('sale_types.name', 'sub_categories.name', 'store_name')
                     )

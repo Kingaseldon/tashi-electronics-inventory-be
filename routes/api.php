@@ -83,6 +83,9 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     Route::get('roles-base/{id}', [RoleController::Class, 'getRoleBase']);
     Route::resource('users', UserController::class);
     Route::get('edit-users/{id}', [UserController::Class, 'editUser']);
+    Route::put('reset-password/{id}', [UserController::Class, 'password']);
+
+    
 
     //route under master 
     Route::resource('dzongkhags', DzongkhagController::class);

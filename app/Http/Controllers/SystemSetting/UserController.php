@@ -18,6 +18,7 @@ class UserController extends Controller
         $this->middleware('permission:users.view')->only('index', 'show');
         $this->middleware('permission:users.store')->only('store');
         $this->middleware('permission:users.update')->only('update');       
+        $this->middleware('permission:users.reset-password')->only('password');       
         $this->middleware('permission:users.edit-users')->only('editUser');             
     }
     /**
@@ -192,6 +193,33 @@ class UserController extends Controller
             return response()->json([                           
                 'message' => 'User cannot be delete. Already used by other records.'
             ], 202);
+        }
+    }
+
+    public function password($id,Request $request){
+        try {
+
+            $user = User::find($id);
+          
+            if (!$user) {
+                return response([
+                    'message' => 'User does not exist'                   
+                ], 200);
+            }
+            else{           
+                $user->password = Hash::make($request->password);          
+                $user->save();
+
+                return response([
+                    'message' => 'Password updated successfully'
+                ], 200);
+
+            }
+        
+        } catch (Exception $e) {
+            return response([
+                'message' => $e->getMessage()
+            ], 400);
         }
     }
 }
