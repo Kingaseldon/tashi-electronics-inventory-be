@@ -52,7 +52,7 @@ class RegionStoreSaleController extends Controller
                 }
             }
             if ($isSuperUser) {
-                $saleVouchers = SaleVoucher::with('saleVoucherDetails.discount')->orderBy('id')->where('regional_id', '!=', null)->get();
+                $saleVouchers = SaleVoucher::with('saleVoucherDetails.discount','user')->orderBy('id')->where('regional_id', '!=', null)->get();
                 $customers = Customer::with('customerType')->orderBy('id')->get();
                 $products = ProductTransaction::with('product', 'region', 'extension')->orderBy('id')->where('region_store_quantity', '>', 0)->where('regional_id', '!=', null)->get();
 
@@ -66,7 +66,7 @@ class RegionStoreSaleController extends Controller
                     'customers' => $customers,
                 ], 200);
             } else {
-                $saleVouchers = SaleVoucher::with('saleVoucherDetails.discount')->orderBy('id')->loggedInAssignRegion()->get();
+                $saleVouchers = SaleVoucher::with('saleVoucherDetails.discount','user')->orderBy('id')->loggedInAssignRegion()->get();
                 $customers = Customer::with('customerType')->orderBy('id')->get();
                 $products = ProductTransaction::with('product', 'region', 'extension')->orderBy('id')->where('region_store_quantity', '>', 0)->orderBy('id')->loggedInAssignRegion()->get();
 
