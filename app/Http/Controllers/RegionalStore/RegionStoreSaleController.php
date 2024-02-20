@@ -545,7 +545,7 @@ class RegionStoreSaleController extends Controller
             $regionName = "";
             //for invoice name //super admin
             if ($isSuperUser) {
-                $regionName = $saleVoucher->region->name;
+                $regionName = $saleVoucher->user->assignAndEmployee->region->name;
             } else {
                 $regionName = auth()->user()->assignAndEmployee->region->name;
             }
