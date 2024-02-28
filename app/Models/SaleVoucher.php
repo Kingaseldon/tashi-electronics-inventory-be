@@ -34,6 +34,10 @@ class SaleVoucher extends Model implements Auditable
     {
         return $this->belongsTo(Extension::class, 'region_extension_id');
     }
+    public function region()
+    {
+        return $this->belongsTo(Region::class, 'regional_id');
+    }
     
     //for particular region assign
     public function scopeLoggedInAssignRegion($query)
