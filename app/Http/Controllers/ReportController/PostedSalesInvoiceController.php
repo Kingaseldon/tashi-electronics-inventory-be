@@ -65,6 +65,8 @@ class PostedSalesInvoiceController extends Controller
                 })
                 ->whereBetween(DB::raw('DATE_FORMAT(sv.invoice_date, "%Y-%m-%d")'), [$request->from_date, $request->to_date])
                 ->where('sv.status', 'closed')
+                ->orderBy('sv.invoice_date', 'DESC')
+
                 ->get();
 
             if ($sales->isEmpty()) {
