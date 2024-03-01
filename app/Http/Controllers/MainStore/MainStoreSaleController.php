@@ -38,7 +38,7 @@ class MainStoreSaleController extends Controller
     public function index()
     {
         try {
-            $saleVouchers = SaleVoucher::with('saleVoucherDetails.discount','user')->orderBy('invoice_date', 'DESC')->where('regional_id', null)->where('region_extension_id', null)->get();
+            $saleVouchers = SaleVoucher::with('saleVoucherDetails.discount','user')->orderBy('created_at', 'DESC')->where('regional_id', null)->where('region_extension_id', null)->get();
             $customers = Customer::with('customerType')->orderBy('id')->get();
             $products = Product::where('main_store_qty', '!=', 0)->with('unit', 'brand', 'store', 'category', 'subCategory', 'saleType')->orderBy('id')->get();
 

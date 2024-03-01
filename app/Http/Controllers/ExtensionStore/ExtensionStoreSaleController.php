@@ -49,7 +49,7 @@ class ExtensionStoreSaleController extends Controller
                 }
             }
             if ($isSuperUser) {
-                $saleVouchers = SaleVoucher::with('saleVoucherDetails.discount','user')->orderBy('invoice_date', 'DESC')->where('region_extension_id', '!=', null)->get();
+                $saleVouchers = SaleVoucher::with('saleVoucherDetails.discount','user')->orderBy('created_at', 'DESC')->where('region_extension_id', '!=', null)->get();
                 $customers = Customer::with('customerType')->orderBy('id')->get();
                 $products = ProductTransaction::with('product', 'region', 'extension')->orderBy('id')->where('store_quantity', '>', 0)->where('region_extension_id', '!=', null)->orderBy('id')->get();
 
@@ -64,7 +64,7 @@ class ExtensionStoreSaleController extends Controller
                 ], 200);
 
             } else {
-                $saleVouchers = SaleVoucher::with('saleVoucherDetails.discount','user')->orderBy('invoice_date', 'DESC')->LoggedInAssignExtension()->get();
+                $saleVouchers = SaleVoucher::with('saleVoucherDetails.discount','user')->orderBy('created_at', 'DESC')->LoggedInAssignExtension()->get();
                 $customers = Customer::with('customerType')->orderBy('id')->get();
                 $giveProducts = ProductTransaction::with('product', 'region', 'extension')->orderBy('id')->where('store_quantity', '!=', 0)->LoggedInAssignExtension()->get();
 
