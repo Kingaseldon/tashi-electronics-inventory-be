@@ -242,3 +242,5 @@ Route::group(['middleware' => ['jwt.auth']], function () {
 
 
 });
+
+Route::get('check-products', [ProductController::class, 'checkStock']);

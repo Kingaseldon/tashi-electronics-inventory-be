@@ -379,4 +379,88 @@ class ProductController extends Controller
             ], 202);
         }
     }
+
+    public function checkStock(Request $request)
+    {
+        try {
+            $product = Product::select(
+                'sale_types.name as category',
+                'sub_categories.name as sub_category',
+                \DB::raw('CASE WHEN products.sale_type_id != 2 AND products.store_id = 1 THEN stores.store_name END AS store_name'),
+                \DB::raw('SUM(products.main_store_qty) AS total_quantity')
+            )
+                ->leftJoin('sale_types', 'sale_types.id', '=', 'products.sale_type_id')
+                ->leftJoin('sub_categories', 'sub_categories.id', '=', 'products.sub_category_id')
+                ->leftJoin('stores', 'stores.id', '=', 'products.store_id')
+                ->leftJoin('product_transactions', 'product_transactions.product_id', '=', 'products.id')
+                ->leftJoin('regions', 'regions.id', '=', 'product_transactions.regional_id')
+                ->leftJoin('extensions', 'extensions.id', '=', 'product_transactions.region_extension_id')
+                ->groupBy('sale_types.name', 'sub_categories.name', 'stores.store_name', 'products.sale_type_id', 'products.store_id')
+                ->whereNotNull(\DB::raw('CASE WHEN products.sale_type_id != 2 AND products.store_id = 1 THEN stores.store_name END'))
+                ->where('products.price', $request->price) // Filter by price
+                ->havingRaw('SUM(products.main_store_qty) != 0')
+                ->union(
+                    Product::select(
+                        'sale_types.name as category',
+                        'sub_categories.name as sub_category',
+                        \DB::raw("'main store' AS store_name"),
+                        \DB::raw('SUM(products.main_store_qty) AS total_quantity')
+                    )
+                        ->leftJoin('sale_types', 'sale_types.id', '=', 'products.sale_type_id')
+                        ->leftJoin('sub_categories', 'sub_categories.id', '=', 'products.sub_category_id')
+                        ->where('products.main_store_qty', '>', 0)
+                        ->where('products.price', $request->price) // Filter by price
+                        ->groupBy('sale_types.name', 'sub_categories.name', 'store_name')
+                )
+                ->union(
+                    Product::select(
+                        'sale_types.name as category',
+                        'sub_categories.name as sub_category',
+                        'regions.name as store_name',
+                        \DB::raw('SUM(product_transactions.region_store_quantity) AS total_quantity')
+                    )
+                        ->leftJoin('sale_types', 'sale_types.id', '=', 'products.sale_type_id')
+                        ->leftJoin('sub_categories', 'sub_categories.id', '=', 'products.sub_category_id')
+                        ->leftJoin('product_transactions', 'product_transactions.product_id', '=', 'products.id')
+                        ->leftJoin('regions', 'regions.id', '=', 'product_transactions.regional_id')
+                        ->whereNotNull('product_transactions.regional_id')
+                        ->where('product_transactions.region_store_quantity', '>', 0)
+                        ->where('products.price', $request->price) // Filter by price
+                        ->groupBy('sale_types.name', 'sub_categories.name', 'store_name')
+                )
+                ->union(
+                    Product::select(
+                        'sale_types.name as category',
+                        'sub_categories.name as sub_category',
+                        'extensions.name as store_name',
+                        \DB::raw('SUM(product_transactions.store_quantity) AS total_quantity')
+                    )
+                        ->leftJoin('sale_types', 'sale_types.id', '=', 'products.sale_type_id')
+                        ->leftJoin('sub_categories', 'sub_categories.id', '=', 'products.sub_category_id')
+                        ->leftJoin('product_transactions', 'product_transactions.product_id', '=', 'products.id')
+                        ->leftJoin('extensions', 'extensions.id', '=', 'product_transactions.region_extension_id')
+                        ->whereNotNull('product_transactions.region_extension_id')
+                        ->where('product_transactions.store_quantity', '>', 0)
+                        ->where('products.price', $request->price) // Filter by price
+                        ->groupBy('sale_types.name', 'sub_categories.name', 'store_name')
+                )
+                ->get();
+
+
+            if (!$product) {
+                return response()->json([
+                    'message' => 'The Product you are trying to update doesn\'t exist.'
+                ], 404);
+            }
+            return response([
+                'message' => 'success',
+                'product' => $product,
+
+            ], 200);
+        } catch (Exception $e) {
+            return response([
+                'message' => $e->getMessage()
+            ], 400);
+        }
+    }
 }
