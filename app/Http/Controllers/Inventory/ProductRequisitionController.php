@@ -13,8 +13,10 @@ use App\Models\Region;
 use App\Models\User;
 use DB;
 
-class ProductRequisitionController extends Controller {
-    public function __construct() {
+class ProductRequisitionController extends Controller
+{
+    public function __construct()
+    {
         $this->middleware('permission:requisitions.view')->only('index', 'show');
         $this->middleware('permission:requisitions.store')->only('store');
         $this->middleware('permission:requisitions.update')->only('update');
@@ -25,16 +27,17 @@ class ProductRequisitionController extends Controller {
      *
      * @return \Illuminate\Http\Response
      */
-    public function index() {
+    public function index()
+    {
 
         try {
             $employees = User::where('id', auth()->user()->id)->with('assignAndEmployee.region', 'assignAndEmployee.extension')->first();
             $extensionProducts = " ";
             $products = " ";
             $assignType = " ";
-            if($employees->assignAndEmployee->regional_id) {
+            if ($employees->assignAndEmployee->regional_id) {
                 $assignType = "region";
-                $products = Product::with('saleType')->select('item_number', 'description', 'sale_type_id', \DB::raw('SUM(main_store_qty) as total_quantity'))
+                $products = Product::with('saleType')->select('item_number', 'description', 'sale_type_id', \DB::raw('SUM(main_store_qty) as total_quantity'))->where('main_store_qty', '>', 0)
                     ->groupBy('item_number', 'sale_type_id', 'description')
                     ->get();
             } else {
@@ -44,15 +47,17 @@ class ProductRequisitionController extends Controller {
                     ->join('products', 'product_transactions.product_id', '=', 'products.id')
                     ->groupBy('products.item_number', 'products.description', 'products.sale_type_id')
                     ->where('regional_id', $extension->regional_id)
+                    ->where('region_store_quantity', '>', 0)
                     ->get();
                 $products = Product::with('saleType')->select('item_number', 'description', 'sale_type_id', \DB::raw('SUM(main_store_qty) as total_quantity'))
+                    ->where('main_store_qty', '>', 0)
                     ->groupBy('item_number', 'sale_type_id', 'description')
                     ->get();
             }
             $requisitions = ProductRequisition::with('saleType', 'region', 'extension', 'createdBy')->where('regional_id', $employees->assignAndEmployee->regional_id)->where('status', 'requested')->where('region_extension_id', $employees->assignAndEmployee->extension_id)->where('requested_extension', null)->orderBy('id')->get();
             $regions = Region::with('dzongkhag')->orderBy('id')->get();
 
-            if($requisitions->isEmpty()) {
+            if ($requisitions->isEmpty()) {
                 $requisitions = [];
             }
             return response([
@@ -77,7 +82,8 @@ class ProductRequisitionController extends Controller {
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    public function store(Request $request, SerialNumberGenerator $serial) {
+    public function store(Request $request, SerialNumberGenerator $serial)
+    {
         $this->validate($request, [
 
         ]);
@@ -91,7 +97,7 @@ class ProductRequisitionController extends Controller {
             $requisition = [];
             $date = date('Y-m-d', strtotime($request->request_date));
             $requisitionTo = $request->requisition_to;
-            foreach($request->productDetails as $key => $value) {
+            foreach ($request->productDetails as $key => $value) {
                 $requisition[$key]['requisition_number'] = $requestedNo;
                 $requisition[$key]['product_item_number'] = $value['product_item_number'];
                 $requisition[$key]['sale_type_id'] = $value['sale_type'];
@@ -124,25 +130,25 @@ class ProductRequisitionController extends Controller {
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function editRequisition($id) {
+    public function editRequisition($id)
+    {
         try {
             $employees = User::where('id', auth()->user()->id)->with('assignAndEmployee.region', 'assignAndEmployee.extension')->first();
             $products = [];
-            if($employees->assignAndEmployee->regional_id) {
+            if ($employees->assignAndEmployee->regional_id) {
                 $products = Product::with('saleType')->select('item_number', 'description', 'sale_type_id', DB::raw('SUM(main_store_qty) as total_quantity'))
                     ->groupBy('item_number', 'sale_type_id', 'description')
                     ->get();
-            }
-            else{
+            } else {
                 $products = Product::with('saleType')->select('item_number', 'description', 'sale_type_id', DB::raw('SUM(region_store_qty) as total_quantity'))
                     ->groupBy('item_number', 'sale_type_id', 'description')
                     ->get();
             }
-           
+
 
             $requisition = ProductRequisition::where('regional_id', $employees->assignAndEmployee->regional_id)->where('status', '=', 'requested')->with('saleType', 'region', 'extension')->find($id);
 
-            if(!$requisition) {
+            if (!$requisition) {
                 return response()->json([
                     'message' => 'The Product Requisition you are trying to update doesn\'t exist.'
                 ], 404);
@@ -166,7 +172,8 @@ class ProductRequisitionController extends Controller {
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function update(Request $request, $id) {
+    public function update(Request $request, $id)
+    {
 
         $this->validate($request, [
         ]);
@@ -175,7 +182,7 @@ class ProductRequisitionController extends Controller {
             $requisition = ProductRequisition::find($id);
             $employees = User::where('id', auth()->user()->id)->with('assignAndEmployee.region', 'assignAndEmployee.extension')->first();
 
-            if(!$requisition) {
+            if (!$requisition) {
                 return response()->json([
                     'message' => 'The Product Requisition you are trying to update doesn\'t exist.'
                 ], 404);
@@ -209,7 +216,8 @@ class ProductRequisitionController extends Controller {
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function destroy($id) {
+    public function destroy($id)
+    {
         try {
 
             ProductRequisition::find($id)->delete();
