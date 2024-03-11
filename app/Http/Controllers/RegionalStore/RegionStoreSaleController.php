@@ -52,7 +52,9 @@ class RegionStoreSaleController extends Controller
                 }
             }
             if ($isSuperUser) {
-                $saleVouchers = SaleVoucher::with('saleVoucherDetails.discount','user')->orderBy('created_at', 'DESC')->where('regional_id', '!=', null)->get();
+                $saleVouchers = SaleVoucher::with('saleVoucherDetails.discount', 'user')->orderBy('created_at', 'DESC')->where('regional_id', '!=', null)
+
+                    ->get();
                 $customers = Customer::with('customerType')->orderBy('id')->get();
                 $products = ProductTransaction::with('product', 'region', 'extension')->orderBy('id')->where('region_store_quantity', '>', 0)->where('regional_id', '!=', null)->get();
 
@@ -66,7 +68,7 @@ class RegionStoreSaleController extends Controller
                     'customers' => $customers,
                 ], 200);
             } else {
-                $saleVouchers = SaleVoucher::with('saleVoucherDetails.discount','user')->orderBy('created_at', 'DESC')->loggedInAssignRegion()->get();
+                $saleVouchers = SaleVoucher::with('saleVoucherDetails.discount', 'user')->orderBy('created_at', 'DESC')->loggedInAssignRegion()->get();
                 $customers = Customer::with('customerType')->orderBy('id')->get();
                 $products = ProductTransaction::with('product', 'region', 'extension')->orderBy('id')->where('region_store_quantity', '>', 0)->orderBy('id')->loggedInAssignRegion()->get();
 
@@ -104,7 +106,7 @@ class RegionStoreSaleController extends Controller
             }
 
             if ($isSuperUser) {
-                $product = ProductTransaction::with('product', 'region', 'product.category', 'product.subcategory', 'product.color', 'product.saleType')->where('product_id', $id)->where('region_store_quantity','>',0)->get();
+                $product = ProductTransaction::with('product', 'region', 'product.category', 'product.subcategory', 'product.color', 'product.saleType')->where('product_id', $id)->where('region_store_quantity', '>', 0)->get();
 
             } else {
                 $product = ProductTransaction::with('product', 'region', 'product.category', 'product.subcategory', 'product.color', 'product.saleType')->where('product_id', $id)->where('region_store_quantity', '>', 0)->loggedInAssignRegion()->get();
@@ -133,6 +135,7 @@ class RegionStoreSaleController extends Controller
      */
     public function store(Request $request, SerialNumberGenerator $invoice)
     {
+
         $regionId = '';
         $regionName = '';
         if ($request->region == null && $request->regionName == "") {
@@ -143,11 +146,15 @@ class RegionStoreSaleController extends Controller
             $regionName = $request->regionName;
         }
 
+
         $wordArray = explode(' ', $regionName);
+
+
         // The first element of the $wordArray will contain the first word
         $firstWord = $wordArray[0];
         //unique number generator
-        $invoiceNo = $invoice->invoiceNumber('SaleVoucher', 'invoice_date', $regionId, $firstWord);
+        $invoiceNo = $invoice->invoiceNumber('SaleVoucher', 'invoice_date', $regionId, $regionName);
+
 
         // return response()->json($request->all());
         DB::beginTransaction();
@@ -173,6 +180,7 @@ class RegionStoreSaleController extends Controller
                     if (($request->hasFile('attachment')) == true) {
                         $file = $request->file('attachment');
                         $nestedCollection = Excel::toCollection(new SaleProduct, $file);
+
                         // Flatten and transform the nested collection into a simple array
                         $flattenedArray = $nestedCollection->flatten(1)->toArray();
 
@@ -197,10 +205,10 @@ class RegionStoreSaleController extends Controller
 
                             $product = ProductTransaction::with('product')
                                 ->join('products as Tb1', 'Tb1.id', '=', 'product_transactions.product_id')
-                                ->where('regional_id',$request->region)
+                                ->where('regional_id', $request->region)
                                 ->where('Tb1.serial_no', $flattenedArray[$i][0])
                                 ->first();//serial number of exel
-                            
+
 
                             if ($product) { // serial number present
                                 if ($product->region_store_quantity < $flattenedArray[$i][2]) {
@@ -252,8 +260,8 @@ class RegionStoreSaleController extends Controller
 
                                 $product_table = Product::where('id', $product->product_id)->first();
                                 $product_table->update([
-                                    'region_store_qty'=>$storequantity - $flattenedArray[$i][2],
-                                    'region_store_sold_qty' => $regionStoreQuantity - $flattenedArray[$i][2],                                   
+                                    'region_store_qty' => $storequantity - $flattenedArray[$i][2],
+                                    'region_store_sold_qty' => $regionStoreQuantity - $flattenedArray[$i][2],
                                     'updated_by' => auth()->user()->id,
                                 ]);
 
@@ -323,7 +331,7 @@ class RegionStoreSaleController extends Controller
                         ]);
                         $product_table = Product::where('id', $regionTransfer->product_id)->first();
                         $product_table->update([
-                            'region_store_qty'=> $regionStoreQuantity - $value['quantity'],
+                            'region_store_qty' => $regionStoreQuantity - $value['quantity'],
                             'region_store_sold_qty' => $soldquantity + $value['quantity'],
                             'updated_by' => auth()->user()->id,
                         ]);
@@ -334,7 +342,9 @@ class RegionStoreSaleController extends Controller
                 }
 
             } else { //if not a super user
+
                 if ($request->customerType == 2) {
+
                     $request->validate([
                         'attachment' => 'required|mimes:xls,xlsx',
                     ]);
@@ -342,8 +352,19 @@ class RegionStoreSaleController extends Controller
                     if (($request->hasFile('attachment')) == true) {
                         $file = $request->file('attachment');
                         $nestedCollection = Excel::toCollection(new SaleProduct, $file);
+
                         // Flatten and transform the nested collection into a simple array
-                        $flattenedArray = $nestedCollection->flatten(1)->toArray();
+                        $flattenedArrays = $nestedCollection->flatten(1)->toArray();
+
+                        // Filter out rows with all null values
+                        $flattenedArray = array_filter($flattenedArrays, function ($row) {
+                            return !empty (array_filter($row, function ($value) {
+                                return !is_null($value);
+                            }));
+                        });
+
+
+                        // Now $filteredArray contains rows without all values being null
 
                         $saleVoucher = new SaleVoucher;
                         $saleVoucher->invoice_no = $invoiceNo;
@@ -362,19 +383,22 @@ class RegionStoreSaleController extends Controller
                         $errorMessage = "These serial numbers are not found";
                         $errorSerialNumbers = [];
                         for ($i = 1; $i < count($flattenedArray); $i++) {
-                           
+
                             $product = ProductTransaction::with('product')
                                 ->join('products as Tb1', 'Tb1.id', '=', 'product_transactions.product_id')
                                 ->loggedInAssignRegion()
                                 ->where('Tb1.serial_no', $flattenedArray[$i][0])
                                 ->first();
+
                             $saleOrderDetails = [];
                             if ($product) { // serial number present
 
-                                if ($product->region_store_quantity < $flattenedArray[$i][2]) {
+                                $region_store_quantity_int = intval($product->region_store_quantity);
+
+                                if ($region_store_quantity_int < $flattenedArray[$i][2]) {
                                     return response()->json([
                                         'success' => true,
-                                        'message' => 'Quantity cannot be greater that store quantity',
+                                        'message' => 'Quantity cannot be greater than store quantity',
                                     ], 203);
                                 }
                                 $saleOrderDetails[$i]['sale_voucher_id'] = $saleVoucher->id;
@@ -388,9 +412,9 @@ class RegionStoreSaleController extends Controller
                                 $discountName = DiscountType::where('discount_name', 'like', trim($flattenedArray[$i][1]))->first(); // search discount id based on name
 
                                 if ($discountName) {
-                                    if ($discountName->discount_type === 'Percentage'){
+                                    if ($discountName->discount_type === 'Percentage') {
                                         $netPay = $grossForEachItem - (($discountName->discount_value / 100) * $grossForEachItem);
-                                    }else { // lumpsum
+                                    } else { // lumpsum
                                         $netPay = $grossForEachItem - $discountName->discount_value;
                                     }
                                 } else { // discount is not defined
@@ -423,7 +447,7 @@ class RegionStoreSaleController extends Controller
                                     'region_store_qty' => $regionStoreQuantity - $flattenedArray[$i][2],
                                     'updated_by' => auth()->user()->id,
                                 ]);
-                                
+
 
 
                             } else {
@@ -537,7 +561,7 @@ class RegionStoreSaleController extends Controller
             }
 
 
-            $saleVoucher = SaleVoucher::with('saleVoucherDetails.product','saleVoucherDetails.discount', 'customer', 'user.assignAndEmployee.region')->find($id);
+            $saleVoucher = SaleVoucher::with('saleVoucherDetails.product', 'saleVoucherDetails.discount', 'customer', 'user.assignAndEmployee.region')->find($id);
             $paymentHistory = PaymentHistory::where('sale_voucher_id', $saleVoucher->id)->orderBy('receipt_no', 'desc')->get();
             $invoicePayment = $paymentHistory->sum('total_amount_paid');
             $bank = Bank::with('region', 'extension')->orderBy('id')->get();
