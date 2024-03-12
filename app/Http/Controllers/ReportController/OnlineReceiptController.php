@@ -16,64 +16,144 @@ class OnlineReceiptController extends Controller
      */
     public function __construct()
     {
-    
+
         $this->middleware('permission:onlinereceipt.view')->only('index');
 
     }
     public function index(Request $request)
     {
         try {
-            $categoryId = $request->category_id;
-            $regionalId = $request->regional_id;
-            $regionExtensionId = $request->region_extension_id;
-            $startDate = $request->from_date;
-            $endDate = $request->to_date;
+            $user = auth()->user();
+            $rolesId = $user->roles->first()->id;
+            if ($rolesId == 1 || $rolesId == 2 || $rolesId == 3 || $rolesId == 4 || $rolesId == 5 || $rolesId == 9 || $rolesId == 10) {
 
-            $query = DB::table('products AS pr')
-                ->leftJoin('product_transactions AS pt', 'pt.product_id', '=', 'pr.id')
-                ->leftJoin('sale_voucher_details AS svd', 'svd.product_id', '=', 'pr.id')
-                ->leftJoin('sale_vouchers AS sv', 'sv.id', '=', 'svd.sale_voucher_id')
-                ->leftJoin('payment_histories AS ph', 'ph.sale_voucher_id', '=', 'sv.id')
-                ->leftJoin('users AS u', 'ph.created_by', '=', 'u.id')
-                ->leftJoin('banks AS b', 'b.id', '=', 'ph.bank_id')
-                ->select(
-                    'ph.cash_amount_paid',
-                    'ph.online_amount_paid',
-                    'ph.total_amount_paid',
-                    'ph.payment_mode',
-                    'ph.receipt_no',
-                    'b.name AS bankName',
-                    'ph.reference_no',
-                    'sv.status',
-                    'sv.invoice_date',
-                    'u.name AS createdBy'
-                )
-                ->where(function ($query) use ($categoryId) {
-                    if ($categoryId != 'ALL') {
-                        $query->where('pr.category_id', $categoryId);
-                    }
-                })
-                ->where(function ($query) use ($regionalId) {
-                    if ($regionalId != 'ALL') {
-                        $query->where('sv.regional_id', $regionalId);
-                    }
-                })
-                ->where(function ($query) use ($regionExtensionId) {
-                    if ($regionExtensionId != 'ALL') {
-                        $query->where('sv.region_extension_id', $regionExtensionId);
-                    }
-                })
-                ->whereBetween(DB::raw('DATE_FORMAT(ph.paid_at, "%Y-%m-%d")'), [$startDate, $endDate])
-                ->where(function ($query) {
-                    $query->where('ph.payment_mode', 'online')
-                        ->orWhere('ph.payment_mode', 'both');
-                });
 
-            $online = $query->distinct()->get();
+                $categoryId = $request->category_id;
+                $regionalId = $request->regional_id;
+                $regionExtensionId = $request->region_extension_id;
+                $startDate = $request->from_date;
+                $endDate = $request->to_date;
 
-            // if ($online->isEmpty()) {
-            //     $online = [];
-            // }
+                $query = DB::table('products AS pr')
+                    ->leftJoin('product_transactions AS pt', 'pt.product_id', '=', 'pr.id')
+                    ->leftJoin('sale_voucher_details AS svd', 'svd.product_id', '=', 'pr.id')
+                    ->leftJoin('sale_vouchers AS sv', 'sv.id', '=', 'svd.sale_voucher_id')
+                    ->leftJoin('payment_histories AS ph', 'ph.sale_voucher_id', '=', 'sv.id')
+                    ->leftJoin('users AS u', 'ph.created_by', '=', 'u.id')
+                    ->leftJoin('banks AS b', 'b.id', '=', 'ph.bank_id')
+                    ->select(
+                        'ph.cash_amount_paid',
+                        'ph.online_amount_paid',
+                        'ph.total_amount_paid',
+                        'ph.payment_mode',
+                        'ph.receipt_no',
+                        'b.name AS bankName',
+                        'ph.reference_no',
+                        'sv.status',
+                        'sv.invoice_date',
+                        'u.name AS createdBy',
+                        'pr.description',
+                        'pr.price',
+                        'pr.serial_no'
+                    )
+                    ->where(function ($query) use ($categoryId) {
+                        if ($categoryId != 'ALL') {
+                            $query->where('pr.category_id', $categoryId);
+                        }
+                    })
+                    ->where(function ($query) use ($regionalId) {
+                        if ($regionalId != 'ALL') {
+                            $query->where('sv.regional_id', $regionalId);
+                        }
+                    })
+                    ->where(function ($query) use ($regionExtensionId) {
+                        if ($regionExtensionId != 'ALL') {
+                            $query->where('sv.region_extension_id', $regionExtensionId);
+                        }
+                    })
+                    ->whereBetween(DB::raw('DATE_FORMAT(ph.paid_at, "%Y-%m-%d")'), [$startDate, $endDate])
+                    ->where(function ($query) {
+                        $query->where('ph.payment_mode', 'online')
+                            ->orWhere('ph.payment_mode', 'both');
+                    });
+
+                $online = $query->distinct()->get();
+            } else {
+                if ($rolesId == 8 || $rolesId == 11) {
+
+
+                    $startDate = $request->from_date;
+                    $endDate = $request->to_date;
+
+                    $query = DB::table('products AS pr')
+                        ->leftJoin('product_transactions AS pt', 'pt.product_id', '=', 'pr.id')
+                        ->leftJoin('sale_voucher_details AS svd', 'svd.product_id', '=', 'pr.id')
+                        ->leftJoin('sale_vouchers AS sv', 'sv.id', '=', 'svd.sale_voucher_id')
+                        ->leftJoin('payment_histories AS ph', 'ph.sale_voucher_id', '=', 'sv.id')
+                        ->leftJoin('users AS u', 'ph.created_by', '=', 'u.id')
+                        ->leftJoin('banks AS b', 'b.id', '=', 'ph.bank_id')
+                        ->select(
+                            'ph.cash_amount_paid',
+                            'ph.online_amount_paid',
+                            'ph.total_amount_paid',
+                            'ph.payment_mode',
+                            'ph.receipt_no',
+                            'b.name AS bankName',
+                            'ph.reference_no',
+                            'sv.status',
+                            'sv.invoice_date',
+                            'u.name AS createdBy',
+                            'pr.description',
+                            'pr.price',
+                            'pr.serial_no'
+                        )
+                        ->where('pt.regional_id', auth()->user()->assignAndEmployee->regional_id)
+                        ->whereBetween(DB::raw('DATE_FORMAT(ph.paid_at, "%Y-%m-%d")'), [$startDate, $endDate])
+                        ->where(function ($query) {
+                            $query->where('ph.payment_mode', 'online')
+                                ->orWhere('ph.payment_mode', 'both');
+                        });
+
+                    $online = $query->distinct()->get();
+                } else {
+
+                    $startDate = $request->from_date;
+                    $endDate = $request->to_date;
+
+                    $query = DB::table('products AS pr')
+                        ->leftJoin('product_transactions AS pt', 'pt.product_id', '=', 'pr.id')
+                        ->leftJoin('sale_voucher_details AS svd', 'svd.product_id', '=', 'pr.id')
+                        ->leftJoin('sale_vouchers AS sv', 'sv.id', '=', 'svd.sale_voucher_id')
+                        ->leftJoin('payment_histories AS ph', 'ph.sale_voucher_id', '=', 'sv.id')
+                        ->leftJoin('users AS u', 'ph.created_by', '=', 'u.id')
+                        ->leftJoin('banks AS b', 'b.id', '=', 'ph.bank_id')
+                        ->select(
+                            'ph.cash_amount_paid',
+                            'ph.online_amount_paid',
+                            'ph.total_amount_paid',
+                            'ph.payment_mode',
+                            'ph.receipt_no',
+                            'b.name AS bankName',
+                            'ph.reference_no',
+                            'sv.status',
+                            'sv.invoice_date',
+                            'u.name AS createdBy',
+                            'pr.description',
+                            'pr.price',
+                            'pr.serial_no'
+                        )
+                        ->where('pt.region_extension_id', auth()->user()->assignAndEmployee->extension_id)
+                        ->whereBetween(DB::raw('DATE_FORMAT(ph.paid_at, "%Y-%m-%d")'), [$startDate, $endDate])
+                        ->where(function ($query) {
+                            $query->where('ph.payment_mode', 'online')
+                                ->orWhere('ph.payment_mode', 'both');
+                        });
+
+                    $online = $query->distinct()->get();
+                }
+
+            }
+
             return response([
                 'message' => 'success',
                 'online' => $online,
