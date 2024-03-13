@@ -132,11 +132,11 @@ class MainStoreSaleController extends Controller
                             // net payable
                             $saleOrderDetails[$i]['total'] = $netPay;
                             $netPayable += $netPay; // Accumulate the total in the grand total
-
+                            $netPayable = round($netPayable, 2);
                             // gross payable
                             $saleOrderDetails[$i]['price'] = $grossForEachItem;
                             $grossPayable += $grossForEachItem; // Accumulate the total in the grand total
-
+                             $grossPayable = round( $grossPayable, 2);
 
                             $saleOrderDetails[$i]['discount_type_id'] = $discountName->id ?? null;
 

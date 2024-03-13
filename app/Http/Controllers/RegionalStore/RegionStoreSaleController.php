@@ -240,11 +240,13 @@ class RegionStoreSaleController extends Controller
                                 $saleOrderDetails[$i]['total'] = $netPay;
                                 $netPayable += $netPay; // Accumulate the total in the grand total
 
+                               $netPayable=round(  $netPayable,2);
+
                                 // gross payable
                                 $saleOrderDetails[$i]['price'] = $grossForEachItem;
                                 $grossPayable += $grossForEachItem; // Accumulate the total in the grand total
 
-
+                                $grossPayable = round($grossPayable, 2);
                                 $saleOrderDetails[$i]['discount_type_id'] = $discountName->id ?? null;
 
                                 $regionTransfer = ProductTransaction::where('product_id', $product->id)->first();
@@ -412,8 +414,10 @@ class RegionStoreSaleController extends Controller
                                 $discountName = DiscountType::where('discount_name', 'like', trim($flattenedArray[$i][1]))->first(); // search discount id based on name
 
                                 if ($discountName) {
+
                                     if ($discountName->discount_type === 'Percentage') {
                                         $netPay = $grossForEachItem - (($discountName->discount_value / 100) * $grossForEachItem);
+
                                     } else { // lumpsum
                                         $netPay = $grossForEachItem - $discountName->discount_value;
                                     }
@@ -423,11 +427,13 @@ class RegionStoreSaleController extends Controller
                                 // net payable
                                 $saleOrderDetails[$i]['total'] = $netPay;
                                 $netPayable += $netPay; // Accumulate the total in the grand total
+                                $netPayable = round($netPayable, 2);
 
                                 // gross payable
                                 $saleOrderDetails[$i]['price'] = $grossForEachItem;
+                                // dd($grossForEachItem);
                                 $grossPayable += $grossForEachItem; // Accumulate the total in the grand total
-
+                                $grossPayable = round($grossPayable, 2);
 
                                 $saleOrderDetails[$i]['discount_type_id'] = $discountName->id ?? null;
 
@@ -465,7 +471,7 @@ class RegionStoreSaleController extends Controller
                             ], 203);
                         }
 
-
+                      
                         // update to sale voucher
                         SaleVoucher::where('id', $lastInsertedId)->update([
                             'net_payable' => $netPayable,
