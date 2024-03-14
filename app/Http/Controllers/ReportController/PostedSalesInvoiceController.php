@@ -22,13 +22,7 @@ class PostedSalesInvoiceController extends Controller
     public function index(Request $request)
     {
         try {
-            $user = auth()->user();
-            $rolesId = $user->roles->first()->id;
-
-
-
-            if ($rolesId == 1 || $rolesId == 2 || $rolesId == 3 || $rolesId == 4 || $rolesId == 5 || $rolesId == 9 || $rolesId == 10) {
-                $sales = DB::table('sale_vouchers as sv')
+        $sales = DB::table('sale_vouchers as sv')
                     ->select(
                         'sv.invoice_no',
                         'sv.invoice_date',
@@ -76,70 +70,8 @@ class PostedSalesInvoiceController extends Controller
                     ->where('sv.status', 'closed')
                     ->orderBy('sv.invoice_date', 'DESC')
                     ->get();
-            } else {
-                if ($rolesId == 8 || $rolesId == 11) {
-                    $sales = DB::table('sale_vouchers as sv')
-                        ->select(
-                            'sv.invoice_no',
-                            'sv.invoice_date',
-                            DB::raw('CASE WHEN sv.customer_id IS NOT NULL THEN c.customer_name ELSE sv.walk_in_customer END AS customerName'),
-                            DB::raw('CASE WHEN sv.customer_id IS NOT NULL THEN c.contact_no ELSE sv.contact_no END AS contactNo'),
-                            DB::raw('COALESCE(ph.payment_mode, "--") AS paymentMode'),
-                            DB::raw('COALESCE(ph.receipt_no, "--") AS receiptNo'),
-                            DB::raw('COALESCE(b.name, "--") AS bankName'),
-                            DB::raw('COALESCE(ph.reference_no, "--") AS referenceNo'),
-                            DB::raw('COALESCE(ph.paid_at, "--") AS paidAt'),
-                            'u.name',
-                            'sv.status',
-                            'p.description',
-                            'p.price',
-                            'p.serial_no'
-                        )
-                        ->leftJoin('customers as c', 'sv.customer_id', '=', 'c.id')
-                        ->leftJoin('payment_histories as ph', 'sv.id', '=', 'ph.sale_voucher_id')
-                        ->leftJoin('banks as b', 'ph.bank_id', '=', 'b.id')
-                        ->leftJoin('users as u', 'sv.created_by', '=', 'u.id')
-                        ->leftJoin('sale_voucher_details as svd', 'sv.id', '=', 'svd.sale_voucher_id')
-                        ->leftJoin('products as p', 'p.id', '=', 'svd.product_id')
-
-                        ->where('pt.regional_id', auth()->user()->assignAndEmployee->regional_id)
-                        ->whereBetween(DB::raw('DATE_FORMAT(sv.invoice_date, "%Y-%m-%d")'), [$request->from_date, $request->to_date])
-                        ->where('sv.status', 'closed')
-                        ->orderBy('sv.invoice_date', 'DESC')
-                        ->get();
-                }
-                 else {
-                    $sales = DB::table('sale_vouchers as sv')
-                        ->select(
-                            'sv.invoice_no',
-                            'sv.invoice_date',
-                            DB::raw('CASE WHEN sv.customer_id IS NOT NULL THEN c.customer_name ELSE sv.walk_in_customer END AS customerName'),
-                            DB::raw('CASE WHEN sv.customer_id IS NOT NULL THEN c.contact_no ELSE sv.contact_no END AS contactNo'),
-                            DB::raw('COALESCE(ph.payment_mode, "--") AS paymentMode'),
-                            DB::raw('COALESCE(ph.receipt_no, "--") AS receiptNo'),
-                            DB::raw('COALESCE(b.name, "--") AS bankName'),
-                            DB::raw('COALESCE(ph.reference_no, "--") AS referenceNo'),
-                            DB::raw('COALESCE(ph.paid_at, "--") AS paidAt'),
-                            'u.name',
-                            'sv.status',
-                            'p.description',
-                            'p.price',
-                            'p.serial_no'
-                        )
-                        ->leftJoin('customers as c', 'sv.customer_id', '=', 'c.id')
-                        ->leftJoin('payment_histories as ph', 'sv.id', '=', 'ph.sale_voucher_id')
-                        ->leftJoin('banks as b', 'ph.bank_id', '=', 'b.id')
-                        ->leftJoin('users as u', 'sv.created_by', '=', 'u.id')
-                        ->leftJoin('sale_voucher_details as svd', 'sv.id', '=', 'svd.sale_voucher_id')
-                        ->leftJoin('products as p', 'p.id', '=', 'svd.product_id')
-
-                        ->where('pt.region_extension_id', auth()->user()->assignAndEmployee->extension_id)
-                        ->whereBetween(DB::raw('DATE_FORMAT(sv.invoice_date, "%Y-%m-%d")'), [$request->from_date, $request->to_date])
-                        ->where('sv.status', 'closed')
-                        ->orderBy('sv.invoice_date', 'DESC')
-                        ->get();
-                 }
-            }
+            
+          
             if ($sales->isEmpty()) {
                 $sales = [];
             }
