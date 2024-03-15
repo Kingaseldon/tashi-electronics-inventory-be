@@ -258,7 +258,7 @@ class ExtensionStoreTransferController extends Controller {
             }
             $requisitions = [];
             if($isSuperUser) {
-                $requisitions = ProductRequisition::select('region_extension_id', 'requisition_number', DB::raw('SUM(request_quantity) as request_quantity'))
+                $requisitions = ProductRequisition::select('region_extension_id', 'requisition_number', DB::raw('SUM(request_quantity - transfer_quantity) as request_quantity'))
                     ->with('saleType', 'region', 'extension')
                     ->where('status', 'requested')
                     ->where('requested_extension', '!=', null)
@@ -267,7 +267,7 @@ class ExtensionStoreTransferController extends Controller {
 
 
             } else {
-                $requisitions = ProductRequisition::select('region_extension_id', 'requisition_number', DB::raw('SUM(request_quantity) as request_quantity'))
+                $requisitions = ProductRequisition::select('region_extension_id', 'requisition_number', DB::raw('SUM(request_quantity - transfer_quantity) as request_quantity'))
                     ->with('saleType', 'region', 'extension')
                     ->where('status', 'requested')
                     ->where('requested_extension', $user->assignAndEmployee->extension_id)
@@ -412,7 +412,11 @@ class ExtensionStoreTransferController extends Controller {
                 } else {
                     $requisition->transfer_quantity = $transferQuantity;
                 }
-                $requisition->status = 'supplied';
+                if ($requisition->request_quantity == $requisition->transfer_quantity) {
+                    $requisition->status = 'supplied';
+                } else {
+                    $requisition->status = 'requested';
+                }
                 $requisition->transfer_date = date('Y-m-d', strtotime(Carbon::now()));
                 $requisition->save();
 

@@ -48,7 +48,7 @@ class RegionProductTransferController extends Controller
             }
             if ($isSuperUser) {
                 $giveProducts = ProductTransaction::with('product', 'region', 'extension')->orderBy('id')->where('receive', '!=', 0)->where('regional_id', '!=',null)->get();
-                $requisitions = ProductRequisition::select('region_extension_id', 'requisition_number', DB::raw('SUM(request_quantity) as quantity'))
+                $requisitions = ProductRequisition::select('region_extension_id', 'requisition_number', DB::raw('SUM(request_quantity - transfer_quantity) as quantity'))
                     ->with('saleType', 'region', 'extension')
                     ->where('status', 'requested')
                     ->where('requisition_to', '=', 2)
@@ -58,7 +58,7 @@ class RegionProductTransferController extends Controller
                 // The user has a role with is_super_user set to 1
             } else {
                 $giveProducts = ProductTransaction::with('product', 'region', 'extension')->orderBy('id')->where('receive', '!=', 0)->loggedInAssignRegion()->get();
-                $requisitions = ProductRequisition::select('region_extension_id', 'requisition_number', DB::raw('SUM(request_quantity) as quantity'))
+                $requisitions = ProductRequisition::select('region_extension_id', 'requisition_number', DB::raw('SUM(request_quantity - transfer_quantity) as quantity'))
                     ->with('saleType', 'region', 'extension')
                     ->where('status', 'requested')
                     ->whereIn('region_extension_id', function ($query) use ($giveProducts) {
@@ -229,7 +229,11 @@ class RegionProductTransferController extends Controller
                 } else {
                     $requisition->transfer_quantity = $transferQuantity;
                 }
-                $requisition->status = 'supplied';
+                if ($requisition->request_quantity == $requisition->transfer_quantity) {
+                    $requisition->status = 'supplied';
+                } else {
+                    $requisition->status = 'requested';
+                }
                 $requisition->transfer_date = date('Y-m-d', strtotime(Carbon::now()));
                 $requisition->save();
 
