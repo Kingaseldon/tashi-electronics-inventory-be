@@ -35,7 +35,7 @@ class MainStoreTransferController extends Controller
         try {
             $products = Product::with('unit', 'brand', 'store', 'category', 'subCategory', 'saleType')->orderBy('id')->where('main_store_qty', '!=', 0)->get();
             $transactions = ProductMovement::where('status', 'process')->with('product', 'region', 'extension')->orderBy('status')->get();
-            $transferProducts = Product::with('saleType')->select('item_number', 'description', 'sale_type_id', \DB::raw('SUM(request_quantity - transfer_quantity)'))
+            $transferProducts = Product::with('saleType')->select('item_number', 'description', 'sale_type_id', \DB::raw('SUM(main_store_qty) as total_quantity'))
                 ->groupBy('item_number', 'sale_type_id', 'description')
                 ->get();
             $requisitions = ProductRequisition::select('regional_id', 'region_extension_id', 'requisition_number', DB::raw('SUM(request_quantity - transfer_quantity) as quantity'))
