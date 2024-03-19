@@ -82,8 +82,14 @@ class MainStoreSaleController extends Controller
                     $file = $request->file('attachment');
                     $nestedCollection = Excel::toCollection(new SaleProduct, $file);
                     // Flatten and transform the nested collection into a simple array
-                    $flattenedArray = $nestedCollection->flatten(1)->toArray();
+                    $flattenedArrays = $nestedCollection->flatten(1)->toArray();
 
+                    // Filter out rows with all null values
+                    $flattenedArray = array_filter($flattenedArrays, function ($row) {
+                        return !empty (array_filter($row, function ($value) {
+                            return !is_null($value);
+                        }));
+                    });
                     $saleVoucher = new SaleVoucher;
                     $saleVoucher->invoice_no = $invoiceNo;
                     $saleVoucher->invoice_date = date('Y-m-d', strtotime(Carbon::now()));
