@@ -23,7 +23,7 @@ class PostedSalesInvoiceController extends Controller
     {
         try {
 
-            if ($request->region_extension_id == 'ALL') {
+            if ($request->region_extension_id == 'ALL'|| $request->region_extension_id != 'ALL') {
 
                 $sales = DB::table('sale_vouchers as sv')
                     ->select(
@@ -40,7 +40,9 @@ class PostedSalesInvoiceController extends Controller
                         'sv.status',
                         'p.description',
                         'svd.total AS price',
-                        'p.serial_no'
+                        'p.serial_no',
+                        'ph.cash_amount_paid',
+                        'ph.online_amount_paid'
                     )
                     ->leftJoin('customers as c', 'sv.customer_id', '=', 'c.id')
                     ->leftJoin('payment_histories as ph', 'sv.id', '=', 'ph.sale_voucher_id')
@@ -88,8 +90,8 @@ class PostedSalesInvoiceController extends Controller
                         'u.name',
                         'sv.status',
                         'p.description',
+                        'p.serial_no',
                         'svd.total AS price',
-                        'p.serial_no'
                     )
                     ->leftJoin('customers as c', 'sv.customer_id', '=', 'c.id')
                     ->leftJoin('payment_histories as ph', 'sv.id', '=', 'ph.sale_voucher_id')
