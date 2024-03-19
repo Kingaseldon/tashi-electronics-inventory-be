@@ -39,7 +39,7 @@ class PostedSalesInvoiceController extends Controller
                         'u.name',
                         'sv.status',
                         'p.description',
-                        'p.price',
+                        'svd.total AS price',
                         'p.serial_no'
                     )
                     ->leftJoin('customers as c', 'sv.customer_id', '=', 'c.id')
@@ -88,7 +88,7 @@ class PostedSalesInvoiceController extends Controller
                         'u.name',
                         'sv.status',
                         'p.description',
-                        'p.price',
+                        'svd.total AS price',
                         'p.serial_no'
                     )
                     ->leftJoin('customers as c', 'sv.customer_id', '=', 'c.id')
