@@ -31,7 +31,10 @@ class CustomerEmi extends Model implements Auditable
     {
         return $this->belongsTo(User::class);
     }
-
+    public function creator()
+    {
+        return $this->belongsTo(User::class,'updated_by');
+    }
     public function saleVoucher()
     {
         return $this->belongsTo(SaleVoucher::class);
