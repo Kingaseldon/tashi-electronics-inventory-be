@@ -306,6 +306,7 @@ class RegionStoreSaleController extends Controller
                     // $saleVoucher->discount_type = $request->discount_type;
                     // $saleVoucher->discount_rate = $request->discount_rate;
                     $saleVoucher->net_payable = $request->net_payable;
+                    $saleVoucher->service_charge = $request->service_charge;
                     $saleVoucher->status = "open";
                     $saleVoucher->remarks = $request->remarks;
                     $saleVoucher->save();
@@ -375,6 +376,7 @@ class RegionStoreSaleController extends Controller
                         $saleVoucher->customer_id = $request->customer;
                         $saleVoucher->status = "open";
                         $saleVoucher->remarks = $request->remarks;
+                        $saleVoucher->service_charge = $request->service_charge;
                         $saleVoucher->save();
 
                         $lastInsertedId = $saleVoucher->id;

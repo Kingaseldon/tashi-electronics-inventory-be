@@ -12,7 +12,7 @@ class SaleVoucher extends Model implements Auditable
     use HasFactory, CreatedByTrait, \OwenIt\Auditing\Auditable;
 
     protected $fillable = [
-        'status',
+        'status','service_charge',
     ];
     
     public function customer()
@@ -34,11 +34,11 @@ class SaleVoucher extends Model implements Auditable
     {
         return $this->belongsTo(Extension::class, 'region_extension_id');
     }
+
     public function region()
     {
         return $this->belongsTo(Region::class, 'regional_id');
     }
-    
     //for particular region assign
     public function scopeLoggedInAssignRegion($query)
     {

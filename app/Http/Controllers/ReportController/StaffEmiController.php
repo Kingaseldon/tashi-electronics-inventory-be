@@ -23,7 +23,11 @@ class StaffEmiController extends Controller
     {
         try {
 
-            $emi = CustomerEmi::where('status','=','sold')->with('saleVoucher','saleVoucher.saleVoucherDetails','product','user')->get();
+            $emi = 
+            CustomerEmi::where('status','=','sold')
+            ->with('saleVoucher','saleVoucher.saleVoucherDetails','product','user','creator')
+
+            ->get();
          
             return response([
                 'message' => 'success',

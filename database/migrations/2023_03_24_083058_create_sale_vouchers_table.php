@@ -29,6 +29,7 @@ class CreateSaleVouchersTable extends Migration
             $table->string('discount_type')->nullable()->comment('none, lumpsum, percentage');
             $table->decimal('discount_rate', 10, 2)->nullable()->default(0);
             $table->decimal('net_payable', 20, 2)->nullable();            
+            $table->decimal('service_charge', 20, 2)->nullable();            
             $table->boolean('invoice_emailed')->default(0);
             $table->text('remarks')->nullable();
             $table->string('status')->nullable()->comment('invoice is closed or discarded');
