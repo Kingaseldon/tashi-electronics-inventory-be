@@ -49,7 +49,7 @@ class ExtensionStoreSaleController extends Controller
                 }
             }
             if ($isSuperUser) {
-                $saleVouchers = SaleVoucher::with('saleVoucherDetails.discount','user')->orderBy('created_at', 'DESC')->where('region_extension_id', '!=', null)->get();
+                $saleVouchers = SaleVoucher::with('saleVoucherDetails.discount', 'user')->orderBy('created_at', 'DESC')->where('region_extension_id', '!=', null)->get();
                 $customers = Customer::with('customerType')->orderBy('id')->get();
                 $products = ProductTransaction::with('product', 'region', 'extension')->orderBy('id')->where('store_quantity', '>', 0)->where('region_extension_id', '!=', null)->orderBy('id')->get();
 
@@ -64,7 +64,7 @@ class ExtensionStoreSaleController extends Controller
                 ], 200);
 
             } else {
-                $saleVouchers = SaleVoucher::with('saleVoucherDetails.discount','user')->orderBy('created_at', 'DESC')->LoggedInAssignExtension()->get();
+                $saleVouchers = SaleVoucher::with('saleVoucherDetails.discount', 'user')->orderBy('created_at', 'DESC')->LoggedInAssignExtension()->get();
                 $customers = Customer::with('customerType')->orderBy('id')->get();
                 $giveProducts = ProductTransaction::with('product', 'region', 'extension')->orderBy('id')->where('store_quantity', '!=', 0)->LoggedInAssignExtension()->get();
 
@@ -289,9 +289,9 @@ class ExtensionStoreSaleController extends Controller
                     $saleVoucher->walk_in_customer = $request->walk_in_customer;
                     $saleVoucher->contact_no = $request->contact_no;
                     $saleVoucher->gross_payable = $request->gross_payable;
-                    // $saleVoucher->discount_type = $request->discount_type;
-                    // $saleVoucher->discount_rate = $request->discount_rate;
+           
                     $saleVoucher->net_payable = $request->net_payable;
+                    $saleVoucher->service_charge = $request->service_charge;
                     $saleVoucher->status = "open";
                     $saleVoucher->remarks = $request->remarks;
                     $saleVoucher->save();
@@ -305,7 +305,7 @@ class ExtensionStoreSaleController extends Controller
                         $saleOrderDetails[$key]['price'] = $value['product_cost'];
                         $saleOrderDetails[$key]['total'] = $value['total_amount'];
 
-                        $saleOrderDetails[$key]['discount_type_id'] = isset($value['discount_type_id']) == true ? $value['discount_type_id'] : null;
+                        $saleOrderDetails[$key]['discount_type_id'] = isset ($value['discount_type_id']) == true ? $value['discount_type_id'] : null;
 
                         $regionTransfer = ProductTransaction::where('product_id', $value['product'])->where('region_extension_id', $extensionId)->first();
                         $storequantity = $regionTransfer->store_quantity;
@@ -338,6 +338,7 @@ class ExtensionStoreSaleController extends Controller
                         $file = $request->file('attachment');
                         $nestedCollection = Excel::toCollection(new SaleProduct, $file);
                         // Flatten and transform the nested collection into a simple array
+
                         $flattenedArrays = $nestedCollection->flatten(1)->toArray();
 
                         // Filter out rows with all null values
@@ -346,11 +347,14 @@ class ExtensionStoreSaleController extends Controller
                                 return !is_null($value);
                             }));
                         });
+
                         $saleVoucher = new SaleVoucher;
                         $saleVoucher->invoice_no = $invoiceNo;
                         $saleVoucher->invoice_date = date('Y-m-d', strtotime(Carbon::now()));
                         $saleVoucher->region_extension_id = $extensionId;
                         $saleVoucher->customer_id = $request->customer;
+                        $saleVoucher->service_charge = $request->service_charge;
+
                         $saleVoucher->status = "open";
                         $saleVoucher->remarks = $request->remarks;
                         $saleVoucher->save();
@@ -390,7 +394,7 @@ class ExtensionStoreSaleController extends Controller
 
                                 // $discountName = DiscountType::where('discount_name', 'like', '%' . $flattenedArray[$i][1] . '%')->first();
                                 $discountName = DiscountType::where('discount_name', 'like', trim($flattenedArray[$i][1]))->first(); // search discount id based on name
-                              
+
                                 if ($discountName) {
                                     if ($discountName->discount_type === 'Percentage') {
                                         $netPay = $grossForEachItem - (($discountName->discount_value / 100) * $grossForEachItem);
@@ -465,9 +469,10 @@ class ExtensionStoreSaleController extends Controller
                     $saleVoucher->walk_in_customer = $request->walk_in_customer;
                     $saleVoucher->contact_no = $request->contact_no;
                     $saleVoucher->gross_payable = $request->gross_payable;
-                    // $saleVoucher->discount_type = $request->discount_type;
-                    // $saleVoucher->discount_rate = $request->discount_rate;
+              
                     $saleVoucher->net_payable = $request->net_payable;
+                    $saleVoucher->service_charge = $request->service_charge;
+
                     $saleVoucher->status = "open";
                     $saleVoucher->remarks = $request->remarks;
                     $saleVoucher->save();
@@ -481,7 +486,7 @@ class ExtensionStoreSaleController extends Controller
                         $saleOrderDetails[$key]['price'] = $value['product_cost'];
                         $saleOrderDetails[$key]['total'] = $value['total_amount'];
 
-                        $saleOrderDetails[$key]['discount_type_id'] = isset($value['discount_type_id']) == true ? $value['discount_type_id'] : null;
+                        $saleOrderDetails[$key]['discount_type_id'] = isset ($value['discount_type_id']) == true ? $value['discount_type_id'] : null;
 
                         $regionTransfer = ProductTransaction::where('product_id', $value['product'])->LoggedInAssignExtension()->first();
                         $storequantity = $regionTransfer->store_quantity;
