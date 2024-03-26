@@ -147,7 +147,7 @@ class ExtensionStoreSaleController extends Controller
         // The first element of the $wordArray will contain the first word
         $firstWord = $wordArray[0];
         //unique number generator
-        $invoiceNo = $invoice->extensionInvoiceNumber('SaleVoucher', 'invoice_date', $extensionId, $firstWord);
+        $invoiceNo = $invoice->extensionInvoiceNumber('SaleVoucher', 'invoice_date', $extensionId, $extensionName);
 
         // return response()->json($request->all());
         DB::beginTransaction();
