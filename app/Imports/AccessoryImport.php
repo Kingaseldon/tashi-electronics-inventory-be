@@ -59,6 +59,9 @@ class AccessoryImport implements ToModel, WithHeadingRow
                     'main_store_qty' => $row['qty'],
                     'status' => 'new',
                     'sale_status' => 'stock',
+                    'sub_inventory' => $row['sub_inventory'] ?? null,
+                    'locator' => $row['locator'] ?? null,
+
                     'created_by' => auth()->user()->id,
                 ]);
             }
