@@ -32,6 +32,7 @@ class ProductController extends Controller
         $this->middleware('permission:products.update')->only('update');
         $this->middleware('permission:products.edit-products')->only('editProduct');
         $this->middleware('permission:products.uploads')->only('importProduct');
+
     }
     /**
      * Display a listing of the resource.
@@ -94,7 +95,7 @@ class ProductController extends Controller
             //creating products
             $itemProduct = new Product;
             $jsonData = $request->json()->all();
-   
+
             foreach ($jsonData as $item) {
 
                 if ($request->product_category_name == $itemProduct['product_type'] && $request->product_sub_category_name == $itemProduct['sub_category']) {
@@ -113,10 +114,10 @@ class ProductController extends Controller
                     $itemProduct->iccid = empty($item['iccid']) == 'true' ? null : $item['iccid'];
                     $itemProduct->status = "new";
                     $itemProduct->sale_status = "stock";
-                    $itemProduct->description= empty($item['description']) == 'true' ? null : $item['description'];
+                    $itemProduct->description = empty($item['description']) == 'true' ? null : $item['description'];
                     $itemProduct->main_store_qty = $item['quantity'];
-                    $itemProduct->total_quantity= $item['quantity'];
-                    $itemProduct->created_date= date('Y-m-d', strtotime(Carbon::now()));
+                    $itemProduct->total_quantity = $item['quantity'];
+                    $itemProduct->created_date = date('Y-m-d', strtotime(Carbon::now()));
                     // $itemProduct['store_id'] = empty($item['store']) != true ? null : $item['store']; 
                     $itemProduct->created_by = auth()->user()->id;
                     $itemProduct->save();
@@ -149,7 +150,7 @@ class ProductController extends Controller
     public function importProduct(Request $request, SerialNumberGenerator $invoice)
     {
         try {
-         
+
             //unique number generator
             $batchNo = $invoice->batchNumber('Product', 'created_date');
 
@@ -161,11 +162,9 @@ class ProductController extends Controller
                     Excel::import($import, $filePath);
                     $rowCount = $import->getRowCount();
 
-
                     // Retrieve validation errors from the import class
                     $validationErrors = $import->getValidationErrors();
                     $serialNoValidationError = $import->serialNovalidation();
-             
 
 
                     if (!empty($validationErrors)) {
@@ -175,29 +174,28 @@ class ProductController extends Controller
                             'errors' => $validationErrors
                         ], 201);
 
-                       } elseif(!empty($serialNoValidationError)) {
+                    } elseif (!empty($serialNoValidationError)) {
                         $serialNumbersString = implode(', ', $serialNoValidationError);
 
 
                         // Return error messages if any rows failed validation.
-                            return response()->json([
-                                // 'message' => 'FAILED! Please check Product Type and Sub Category',
-                                'message' => 'Some Serial Numbers already exists '. $serialNumbersString
+                        return response()->json([
+                            // 'message' => 'FAILED! Please check Product Type and Sub Category',
+                            'message' => 'Some Serial Numbers already exists ' . $serialNumbersString
                         ], 201);
-                        }
-                     else {
+                    } else {
                         return response()->json([
                             'message' => 'You have Successfully uploaded ' . $rowCount . ' number of products',
 
                         ], 200);
                     }
                 } elseif ($request->product_category == '2') {
-            
+
                     // When the product category is 'accessory'
                     $filePath = $request->file('attachment')->store('temporary');
-                
+
                     $import = new AccessoryImport($request, $filePath, $batchNo);
-                             
+
 
                     // Import data
                     Excel::import($import, storage_path("app/{$filePath}")); // Use storage_path to get the full path
@@ -208,18 +206,26 @@ class ProductController extends Controller
                     Storage::delete($filePath);
 
                     $validationErrors = $import->getValidationErrors();
+                    $addedQuantity = $import->getQuantity();
 
                     if (!empty($validationErrors)) {
                         // Return error messages if any rows failed validation.
                         return response()->json([
-                            'message' => 'Category and sub-category doesnot match',
+                            'message' => 'Category and sub-category do not match',
                             'errors' => $validationErrors
                         ], 201);
+                    } elseif (!empty($addedQuantity)) {
+                        // Convert the array to a string
+                        $addedQuantityMessage = implode(', ', $addedQuantity);
+                        // Return message for added quantity
+                        $message = 'You have successfully uploaded ' . $totalQuantity . ' new products. ' . $addedQuantityMessage ;
                     } else {
-                        return response()->json([
-                            'message' => 'You have Successfully uploaded ' . $totalQuantity . ' number of products',
-                        ], 200);
+                        // Return success message with total quantity
+                        $message = 'You have successfully uploaded ' . $totalQuantity . ' new products' ;
                     }
+                    return response()->json([
+                        'message' => $message,
+                    ], 200);
                 } else {
                     // When the product category is 'sim'
                     $filePath = $request->file('attachment');
@@ -228,7 +234,7 @@ class ProductController extends Controller
                     $rowCount = $import->getRowCount();
 
                     $validationErrors = $import->getValidationErrors();
-                    $validation= $import->getValidation();
+                    $validation = $import->getValidation();
 
                     if (!empty($validationErrors)) {
                         // Return error messages if any rows failed validation.
@@ -236,16 +242,14 @@ class ProductController extends Controller
                             'message' => 'Category and sub category doesnot match',
                             'errors' => $validationErrors
                         ], 201);
-                    }
-                    elseif(!empty($validation)){
+                    } elseif (!empty($validation)) {
                         $serialNumbersString = implode(', ', $validation);
 
                         return response()->json([
                             // 'message' => 'serial number already exists',
-                            'message' => 'Some Serial Numbers already exists '. $serialNumbersString
+                            'message' => 'Some Serial Numbers already exists ' . $serialNumbersString
                         ], 201);
-                    }
-                     else {
+                    } else {
                         return response()->json([
                             'message' => 'You have Successfully uploaded ' . $rowCount . ' number of products',
                         ], 200);
@@ -275,6 +279,90 @@ class ProductController extends Controller
     public function show($id)
     {
         //
+    }
+
+    public function checkStock(Request $request)
+    {
+        try {
+            $product = Product::select(
+                'sale_types.name as category',
+                'sub_categories.name as sub_category',
+                \DB::raw('CASE WHEN products.sale_type_id != 2 AND products.store_id = 1 THEN stores.store_name END AS store_name'),
+                \DB::raw('SUM(products.main_store_qty) AS total_quantity')
+            )
+                ->leftJoin('sale_types', 'sale_types.id', '=', 'products.sale_type_id')
+                ->leftJoin('sub_categories', 'sub_categories.id', '=', 'products.sub_category_id')
+                ->leftJoin('stores', 'stores.id', '=', 'products.store_id')
+                ->leftJoin('product_transactions', 'product_transactions.product_id', '=', 'products.id')
+                ->leftJoin('regions', 'regions.id', '=', 'product_transactions.regional_id')
+                ->leftJoin('extensions', 'extensions.id', '=', 'product_transactions.region_extension_id')
+                ->groupBy('sale_types.name', 'sub_categories.name', 'stores.store_name', 'products.sale_type_id', 'products.store_id')
+                ->whereNotNull(\DB::raw('CASE WHEN products.sale_type_id != 2 AND products.store_id = 1 THEN stores.store_name END'))
+                ->where('products.price', $request->price) // Filter by price
+                ->havingRaw('SUM(products.main_store_qty) != 0')
+                ->union(
+                    Product::select(
+                        'sale_types.name as category',
+                        'sub_categories.name as sub_category',
+                        \DB::raw("'main store' AS store_name"),
+                        \DB::raw('SUM(products.main_store_qty) AS total_quantity')
+                    )
+                        ->leftJoin('sale_types', 'sale_types.id', '=', 'products.sale_type_id')
+                        ->leftJoin('sub_categories', 'sub_categories.id', '=', 'products.sub_category_id')
+                        ->where('products.main_store_qty', '>', 0)
+                        ->where('products.price', $request->price) // Filter by price
+                        ->groupBy('sale_types.name', 'sub_categories.name', 'store_name')
+                )
+                ->union(
+                    Product::select(
+                        'sale_types.name as category',
+                        'sub_categories.name as sub_category',
+                        'regions.name as store_name',
+                        \DB::raw('SUM(product_transactions.region_store_quantity) AS total_quantity')
+                    )
+                        ->leftJoin('sale_types', 'sale_types.id', '=', 'products.sale_type_id')
+                        ->leftJoin('sub_categories', 'sub_categories.id', '=', 'products.sub_category_id')
+                        ->leftJoin('product_transactions', 'product_transactions.product_id', '=', 'products.id')
+                        ->leftJoin('regions', 'regions.id', '=', 'product_transactions.regional_id')
+                        ->whereNotNull('product_transactions.regional_id')
+                        ->where('product_transactions.region_store_quantity', '>', 0)
+                        ->where('products.price', $request->price) // Filter by price
+                        ->groupBy('sale_types.name', 'sub_categories.name', 'store_name')
+                )
+                ->union(
+                    Product::select(
+                        'sale_types.name as category',
+                        'sub_categories.name as sub_category',
+                        'extensions.name as store_name',
+                        \DB::raw('SUM(product_transactions.store_quantity) AS total_quantity')
+                    )
+                        ->leftJoin('sale_types', 'sale_types.id', '=', 'products.sale_type_id')
+                        ->leftJoin('sub_categories', 'sub_categories.id', '=', 'products.sub_category_id')
+                        ->leftJoin('product_transactions', 'product_transactions.product_id', '=', 'products.id')
+                        ->leftJoin('extensions', 'extensions.id', '=', 'product_transactions.region_extension_id')
+                        ->whereNotNull('product_transactions.region_extension_id')
+                        ->where('product_transactions.store_quantity', '>', 0)
+                        ->where('products.price', $request->price) // Filter by price
+                        ->groupBy('sale_types.name', 'sub_categories.name', 'store_name')
+                )
+                ->get();
+
+
+            if (!$product) {
+                return response()->json([
+                    'message' => 'The Product you are trying to update doesn\'t exist.'
+                ], 404);
+            }
+            return response([
+                'message' => 'success',
+                'product' => $product,
+
+            ], 200);
+        } catch (Exception $e) {
+            return response([
+                'message' => $e->getMessage()
+            ], 400);
+        }
     }
 
     /**
@@ -377,90 +465,6 @@ class ProductController extends Controller
             return response()->json([
                 'message' => 'Product cannot be delete. Already used by other records.'
             ], 202);
-        }
-    }
-
-    public function checkStock(Request $request)
-    {
-        try {
-            $product = Product::select(
-                'sale_types.name as category',
-                'sub_categories.name as sub_category',
-                \DB::raw('CASE WHEN products.sale_type_id != 2 AND products.store_id = 1 THEN stores.store_name END AS store_name'),
-                \DB::raw('SUM(products.main_store_qty) AS total_quantity')
-            )
-                ->leftJoin('sale_types', 'sale_types.id', '=', 'products.sale_type_id')
-                ->leftJoin('sub_categories', 'sub_categories.id', '=', 'products.sub_category_id')
-                ->leftJoin('stores', 'stores.id', '=', 'products.store_id')
-                ->leftJoin('product_transactions', 'product_transactions.product_id', '=', 'products.id')
-                ->leftJoin('regions', 'regions.id', '=', 'product_transactions.regional_id')
-                ->leftJoin('extensions', 'extensions.id', '=', 'product_transactions.region_extension_id')
-                ->groupBy('sale_types.name', 'sub_categories.name', 'stores.store_name', 'products.sale_type_id', 'products.store_id')
-                ->whereNotNull(\DB::raw('CASE WHEN products.sale_type_id != 2 AND products.store_id = 1 THEN stores.store_name END'))
-                ->where('products.price', $request->price) // Filter by price
-                ->havingRaw('SUM(products.main_store_qty) != 0')
-                ->union(
-                    Product::select(
-                        'sale_types.name as category',
-                        'sub_categories.name as sub_category',
-                        \DB::raw("'main store' AS store_name"),
-                        \DB::raw('SUM(products.main_store_qty) AS total_quantity')
-                    )
-                        ->leftJoin('sale_types', 'sale_types.id', '=', 'products.sale_type_id')
-                        ->leftJoin('sub_categories', 'sub_categories.id', '=', 'products.sub_category_id')
-                        ->where('products.main_store_qty', '>', 0)
-                        ->where('products.price', $request->price) // Filter by price
-                        ->groupBy('sale_types.name', 'sub_categories.name', 'store_name')
-                )
-                ->union(
-                    Product::select(
-                        'sale_types.name as category',
-                        'sub_categories.name as sub_category',
-                        'regions.name as store_name',
-                        \DB::raw('SUM(product_transactions.region_store_quantity) AS total_quantity')
-                    )
-                        ->leftJoin('sale_types', 'sale_types.id', '=', 'products.sale_type_id')
-                        ->leftJoin('sub_categories', 'sub_categories.id', '=', 'products.sub_category_id')
-                        ->leftJoin('product_transactions', 'product_transactions.product_id', '=', 'products.id')
-                        ->leftJoin('regions', 'regions.id', '=', 'product_transactions.regional_id')
-                        ->whereNotNull('product_transactions.regional_id')
-                        ->where('product_transactions.region_store_quantity', '>', 0)
-                        ->where('products.price', $request->price) // Filter by price
-                        ->groupBy('sale_types.name', 'sub_categories.name', 'store_name')
-                )
-                ->union(
-                    Product::select(
-                        'sale_types.name as category',
-                        'sub_categories.name as sub_category',
-                        'extensions.name as store_name',
-                        \DB::raw('SUM(product_transactions.store_quantity) AS total_quantity')
-                    )
-                        ->leftJoin('sale_types', 'sale_types.id', '=', 'products.sale_type_id')
-                        ->leftJoin('sub_categories', 'sub_categories.id', '=', 'products.sub_category_id')
-                        ->leftJoin('product_transactions', 'product_transactions.product_id', '=', 'products.id')
-                        ->leftJoin('extensions', 'extensions.id', '=', 'product_transactions.region_extension_id')
-                        ->whereNotNull('product_transactions.region_extension_id')
-                        ->where('product_transactions.store_quantity', '>', 0)
-                        ->where('products.price', $request->price) // Filter by price
-                        ->groupBy('sale_types.name', 'sub_categories.name', 'store_name')
-                )
-                ->get();
-
-
-            if (!$product) {
-                return response()->json([
-                    'message' => 'The Product you are trying to update doesn\'t exist.'
-                ], 404);
-            }
-            return response([
-                'message' => 'success',
-                'product' => $product,
-
-            ], 200);
-        } catch (Exception $e) {
-            return response([
-                'message' => $e->getMessage()
-            ], 400);
         }
     }
 }

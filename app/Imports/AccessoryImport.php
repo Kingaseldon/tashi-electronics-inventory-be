@@ -15,7 +15,10 @@ class AccessoryImport implements ToModel, WithHeadingRow
     private $filePath;
     private $batchNo;
     private $validationErrors = [];
-    public $totalQuantity =0;
+    private $addedQuantity = [];
+    private $processedSerialNumbers = [];
+
+    public $totalQuantity = 0;
 
     public function __construct(Request $request, $filePath, $batchNo)
     {
@@ -43,33 +46,44 @@ class AccessoryImport implements ToModel, WithHeadingRow
 
             if (!empty($row['item_number'])) {
                 $this->totalQuantity += $row['qty'];
+                $existingProduct = Product::where('serial_no', $row['item_number'])->first();
 
-                return new Product([
-                    'item_number' => $row['item_number'],
-                    'serial_no' => $row['item_number'],
-                    'description' => $row['description'],
-                    'price' => $row['price_per_unit'],
-                    'sale_type_id' => $this->request->input('product_category'),
-                    'category_id' => $this->request->input('product_category'),
-                    'sub_category_id' => $this->request->input('product_sub_category'),
-                    'color_id' => $this->request->input('color'),
-                    'total_quantity' => $row['qty'],
-                    'batch_no' => $this->batchNo,
-                    'created_date' => date('Y-m-d', strtotime(Carbon::now())),
-                    'main_store_qty' => $row['qty'],
-                    'status' => 'new',
-                    'sale_status' => 'stock',
-                    'sub_inventory' => $row['sub_inventory'] ?? null,
-                    'locator' => $row['locator'] ?? null,
+                if ($existingProduct) {
+                    // Product with the same serial number already exists, update the quantity
+                    $existingProduct->total_quantity += $row['qty'];
+                    $existingProduct->main_store_qty += $row['qty'];
+                    $existingProduct->save();
 
-                    'created_by' => auth()->user()->id,
-                ]);
+                    $this->addedQuantity[] = $row['qty'].' Quantity added to existing product with serial number: ' . $row['item_number'];
+
+                } else {
+
+                    return new Product([
+                        'item_number' => $row['item_number'],
+                        'serial_no' => $row['item_number'],
+                        'description' => $row['description'],
+                        'price' => $row['price_per_unit'],
+                        'sale_type_id' => $this->request->input('product_category'),
+                        'category_id' => $this->request->input('product_category'),
+                        'sub_category_id' => $this->request->input('product_sub_category'),
+                        'color_id' => $this->request->input('color'),
+                        'total_quantity' => $row['qty'],
+                        'batch_no' => $this->batchNo,
+                        'created_date' => date('Y-m-d', strtotime(Carbon::now())),
+                        'main_store_qty' => $row['qty'],
+                        'status' => 'new',
+                        'sale_status' => 'stock',
+                        'sub_inventory' => $row['sub_inventory'] ?? null,
+                        'locator' => $row['locator'] ?? null,
+                        'created_by' => auth()->user()->id,
+                    ]);
+                }
             }
-            
-           
+
+
 
         }
-        
+
 
     }
     public function getValidationErrors()
@@ -79,6 +93,10 @@ class AccessoryImport implements ToModel, WithHeadingRow
     public function getTotalQuantity()
     {
         return $this->totalQuantity;
+    }
+    public function getQuantity()
+    {
+        return $this->addedQuantity;
     }
 }
 
