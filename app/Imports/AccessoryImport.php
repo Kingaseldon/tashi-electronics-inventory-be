@@ -52,6 +52,7 @@ class AccessoryImport implements ToModel, WithHeadingRow
                     // Product with the same serial number already exists, update the quantity
                     $existingProduct->total_quantity += $row['qty'];
                     $existingProduct->main_store_qty += $row['qty'];
+                    $existingProduct->price = $row['price_per_unit'];
                     $existingProduct->save();
 
                     $this->addedQuantity[] = $row['qty'].' Quantity added to existing product with serial number: ' . $row['item_number'];
