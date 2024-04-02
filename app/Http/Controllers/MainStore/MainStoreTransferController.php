@@ -75,7 +75,7 @@ class MainStoreTransferController extends Controller
                 ], 404);
             }
             $requisitions = ProductRequisition::with('region', 'extension', 'saleType')->where('requisition_number', $reqNo)->where('status', 'requested')->where('requisition_to', '=', 1)->get();
-            $products = Product::with('saleType')->where('main_store_qty', '>', 0)->get();
+            $products = Product::with('saleType')->get();
             $regions = Region::with('extensions:id,regional_id,name')->orderBy('name')->get(['id', 'name']);
 
             return response([
