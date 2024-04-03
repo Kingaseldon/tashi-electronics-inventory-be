@@ -585,7 +585,7 @@ class RegionStoreSaleController extends Controller
             $wordArray = explode(' ', $regionName);
             // The first element of the $wordArray will contain the first word
             $firstWord = $wordArray[0];
-            $receiptNo = $receipt->receiptNumber('PaymentHistory', 'paid_at', $firstWord);
+            $receiptNo = $receipt->receiptNumber('PaymentHistory', 'paid_at', $regionName);
 
             // return response()->json($receiptNo);
 

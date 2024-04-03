@@ -560,7 +560,7 @@ class ExtensionStoreSaleController extends Controller
             $wordArray = explode(' ', $extensionName);
             // The first element of the $wordArray will contain the first word
             $firstWord = $wordArray[0];
-            $receiptNo = $receipt->extensionReceiptNumber('PaymentHistory', 'paid_at', $firstWord);
+            $receiptNo = $receipt->extensionReceiptNumber('PaymentHistory', 'paid_at', $extensionName);
 
             // return response()->json($receiptNo);
             $bank = Bank::orderBy('id')->get();
