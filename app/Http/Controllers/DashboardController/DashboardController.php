@@ -89,19 +89,19 @@ class DashboardController extends Controller
             }
             $invoice = [];
             if ($isSuperUser) {
-                $invoice = SaleVoucher::with('saleVoucherDetails', 'customer','user')->orderBy('id', 'desc')->get();
+                $invoice = SaleVoucher::with('saleVoucherDetails', 'customer','user')->orderBy('invoice_date', 'desc')->get();
             } elseif ($employee->assignAndEmployee == null) {
-                $invoice = SaleVoucher::with('saleVoucherDetails', 'customer','user')->orderBy('id', 'desc')
+                $invoice = SaleVoucher::with('saleVoucherDetails', 'customer','user')->orderBy('invoice_date', 'desc')
                     ->where('regional_id', null)
                     ->where('region_extension_id', null)
                     ->get();
 
             } elseif ($employee->assignAndEmployee->regional_id != null) {
-                $invoice = SaleVoucher::with('saleVoucherDetails', 'customer','user')->orderBy('id', 'desc')->LoggedInAssignRegion()->get();
+                $invoice = SaleVoucher::with('saleVoucherDetails', 'customer','user')->orderBy('invoice_date', 'desc')->LoggedInAssignRegion()->get();
 
             } else {
 
-                $invoice = SaleVoucher::with('saleVoucherDetails', 'customer','user')->orderBy('id', 'desc')->LoggedInAssignExtension()->get();
+                $invoice = SaleVoucher::with('saleVoucherDetails', 'customer','user')->orderBy('invoice_date', 'desc')->LoggedInAssignExtension()->get();
 
             }
 
