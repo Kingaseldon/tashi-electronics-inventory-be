@@ -373,7 +373,7 @@ class ExtensionStoreTransferController extends Controller {
 
 
                 // $quantityafterDistribute = $product->receive;
-                $extensionStoreQty = $productTable->extension_store_qty;
+                $extensionStoreQty = $product->store_quantity;
 
                 //check when transfer quantity should not be greater than the stock quantity in
                 if($transferQuantity > $extensionStoreQty) {
