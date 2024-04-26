@@ -144,10 +144,8 @@ class ExtensionStoreTransferController extends Controller {
             $jsonData = $request->json()->all();
             foreach($jsonData as $item) {
                 $item_id = $item['id'];
-
                 $received_date = date('Y-m-d', strtotime($item['received_date']));
                 $description = $item['transfer_description'];
-
                 $itemProduct = ProductMovement::with('product')->findOrFail($item_id);
 
                 $itemProduct->received_date = $received_date;
@@ -372,8 +370,7 @@ class ExtensionStoreTransferController extends Controller {
                 $transaction = ProductTransaction::where('product_id', $product->product_id)->where('region_extension_id', $requisition->requested_extension)->first();
 
 
-                // $quantityafterDistribute = $product->receive;
-
+        
                 $extensionStoreQty = $productTable->extension_store_qty;
 
                 //check when transfer quantity should not be greater than the stock quantity in
