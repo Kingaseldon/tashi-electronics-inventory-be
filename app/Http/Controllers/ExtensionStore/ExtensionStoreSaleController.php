@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Imports\SaleProduct;
 use App\Models\DiscountType;
 use App\Models\Product;
+use App\Models\SaleVoucherDetail;
 use App\Services\SerialNumberGenerator;
 use Illuminate\Http\Request;
 use App\Models\PaymentHistory;
@@ -334,67 +335,62 @@ class ExtensionStoreSaleController extends Controller
                         'attachment' => 'required|mimes:xls,xlsx',
                     ]);
 
-                    if (($request->hasFile('attachment')) == true) {
+                    if ($request->hasFile('attachment')) {
                         $file = $request->file('attachment');
                         $nestedCollection = Excel::toCollection(new SaleProduct, $file);
-                        // Flatten and transform the nested collection into a simple array
-
                         $flattenedArrays = $nestedCollection->flatten(1)->toArray();
-
-                        // Filter out rows with all null values
-                        $flattenedArray = array_filter($flattenedArrays, function ($row) {
+                        
+                        $flattenedArrays = array_filter($flattenedArrays, function ($row) {
                             return !empty (array_filter($row, function ($value) {
                                 return !is_null($value);
                             }));
                         });
 
+                        // Remove the first row (header row) from the flattened array
+                        array_shift($flattenedArrays);
+              
+                      
+                        $saleVoucher = new SaleVoucher;
                         $saleVoucher = new SaleVoucher;
                         $saleVoucher->invoice_no = $invoiceNo;
-                        $saleVoucher->invoice_date = date('Y-m-d', strtotime(Carbon::now()));
+                        $saleVoucher->invoice_date = now();
                         $saleVoucher->region_extension_id = $extensionId;
                         $saleVoucher->customer_id = $request->customer;
                         $saleVoucher->service_charge = $request->service_charge;
-
                         $saleVoucher->status = "open";
                         $saleVoucher->remarks = $request->remarks;
                         $saleVoucher->save();
-
-                        $lastInsertedId = $saleVoucher->id;
 
                         $netPayable = 0;
                         $grossPayable = 0;
 
                         $errorMessage = "These serial numbers are not found";
                         $errorSerialNumbers = [];
-                        for ($i = 1; $i < count($flattenedArray); $i++) {
 
+                        foreach ($flattenedArrays as $data) {
+                            // Assuming $data is in the format [0 => ..., 'discount_name' => ..., 'quantity' => ...]
                             $product = ProductTransaction::with('product')
                                 ->join('products as Tb1', 'Tb1.id', '=', 'product_transactions.product_id')
                                 ->LoggedInAssignExtension()
-                                ->where('Tb1.serial_no', $flattenedArray[$i][0])
+                                ->where('Tb1.serial_no', $data[0])
                                 ->first();
 
-
-                            $saleOrderDetails = [];
                             if ($product) {
-
-                                if ($product->store_quantity < $flattenedArray[$i][2]) {
+                                if ($product->store_quantity < $data[2]) {
                                     return response()->json([
-                                        'success' => true,
-                                        'message' => 'Quantity cannot be greater that store quantity',
+                                        'success' => false,
+                                        'message' => 'Quantity cannot be greater than store quantity',
                                     ], 406);
                                 }
-                                // serial number present
-                                $saleOrderDetails[$i]['sale_voucher_id'] = $saleVoucher->id;
-                                $saleOrderDetails[$i]['product_id'] = $product->id;
-                                $saleOrderDetails[$i]['quantity'] = $flattenedArray[$i][2]; //get the quantity data in exel file
-                                $saleOrderDetails[$i]['price'] = $product->price;
 
-                                $grossForEachItem = $flattenedArray[$i][2] * $product->price;
+                                // Calculate the price
+                                $price = $data[3] ?? $product->price; // Use price from Excel if present, otherwise from product
 
-                                // $discountName = DiscountType::where('discount_name', 'like', '%' . $flattenedArray[$i][1] . '%')->first();
-                                $discountName = DiscountType::where('discount_name', 'like', trim($flattenedArray[$i][1]))->first(); // search discount id based on name
+                                // Calculate gross for each item
+                                $grossForEachItem = $data[2] * $price;
 
+                                // Find discount
+                                $discountName = DiscountType::where('discount_name', 'like', trim($data[1]))->first();
                                 if ($discountName) {
                                     if ($discountName->discount_type === 'Percentage') {
                                         $netPay = $grossForEachItem - (($discountName->discount_value / 100) * $grossForEachItem);
@@ -404,45 +400,45 @@ class ExtensionStoreSaleController extends Controller
                                 } else { // discount is not defined
                                     $netPay = $grossForEachItem;
                                 }
+
                                 // net payable
-                                $saleOrderDetails[$i]['total'] = $netPay;
-                                $netPayable += $netPay; // Accumulate the total in the grand total
-                                $netPayable = round($netPayable, 2);
-
+                                $netPayable += $netPay;
                                 // gross payable
-                                $saleOrderDetails[$i]['price'] = $grossForEachItem;
-                                $grossPayable += $grossForEachItem; // Accumulate the total in the grand total
-                                $grossPayable = round($grossPayable, 2);
-
-
-                                $saleOrderDetails[$i]['discount_type_id'] = $discountName->id ?? null;
+                                $grossPayable += $grossForEachItem;
 
                                 $regionTransfer = ProductTransaction::where('product_id', $product->id)->LoggedInAssignExtension()->first();
                                 $storequantity = $regionTransfer->store_quantity;
                                 $soldquantity = $regionTransfer->sold_quantity;
 
-
                                 $regionTransfer->update([
-                                    'store_quantity' => $storequantity - $flattenedArray[$i][2],
-                                    'sold_quantity' => $soldquantity + $flattenedArray[$i][2],
-                                    // 'region_store_quantity' => 0,
+                                    'store_quantity' => $storequantity - $data[2],
+                                    'sold_quantity' => $soldquantity + $data[2],
                                 ]);
+
                                 $product_table = Product::where('id', $regionTransfer->product_id)->first();
                                 $product_table->update([
-                                    'extension_store_qty' => $storequantity - $flattenedArray[$i][2],
-                                    'extension_store_sold_qty' => $soldquantity + $flattenedArray[$i][2],
+                                    'extension_store_qty' => $storequantity - $data[2],
+                                    'extension_store_sold_qty' => $soldquantity + $data[2],
                                     'updated_by' => auth()->user()->id,
                                 ]);
 
-
-
+                                // Create SaleVoucherDetail linked to SaleVoucher
+                                $saleOrderDetails[] = [
+                                    'sale_voucher_id' => $saleVoucher->id,
+                                    'product_id' => $product->id,
+                                    'quantity' => $data[2],
+                                    'price' => $price,
+                                    'total' => $netPay,
+                                    'discount_type_id' => null, // To be filled later
+                                ];
                             } else {
-                                $errorSerialNumbers[] = $flattenedArray[$i][0];
+                                $errorSerialNumbers[] = $data[0];
                             }
+                        }
 
-                            $saleVoucher->saleVoucherDetails()->insert($saleOrderDetails);
+                        // Insert sale order details outside the loop
+                        SaleVoucherDetail::insert($saleOrderDetails);
 
-                        } // foreach ends
                         if (count($errorSerialNumbers) > 0) {
                             return response()->json([
                                 'success' => false,
@@ -452,15 +448,22 @@ class ExtensionStoreSaleController extends Controller
                         }
 
 
+                        if (count($errorSerialNumbers) > 0) {
+                            return response()->json([
+                                'success' => false,
+                                'message' => $errorMessage,
+                                'serialNumbers' => $errorSerialNumbers
+                            ], 203);
+                        }
+
                         // update to sale voucher
-                        SaleVoucher::where('id', $lastInsertedId)->update([
+                        SaleVoucher::where('id', $saleVoucher->id)->update([
                             'net_payable' => $netPayable,
                             'gross_payable' => $grossPayable
                         ]);
 
                     }
-
-                } else { //if no attachment uploaded
+                }else { //if no attachment uploaded
                     $saleVoucher = new SaleVoucher;
                     $saleVoucher->invoice_no = $invoiceNo;
                     $saleVoucher->invoice_date = date('Y-m-d', strtotime(Carbon::now()));
@@ -560,7 +563,7 @@ class ExtensionStoreSaleController extends Controller
             $wordArray = explode(' ', $extensionName);
             // The first element of the $wordArray will contain the first word
             $firstWord = $wordArray[0];
-            $receiptNo = $receipt->extensionReceiptNumber('PaymentHistory', 'paid_at', $extensionName);
+            $receiptNo = $receipt->extensionReceiptNumber('PaymentHistory', 'paid_at', $firstWord);
 
             // return response()->json($receiptNo);
             $bank = Bank::orderBy('id')->get();
