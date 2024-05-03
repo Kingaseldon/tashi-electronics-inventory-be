@@ -429,7 +429,7 @@ class ExtensionStoreSaleController extends Controller
                                     'quantity' => $data[2],
                                     'price' => $price,
                                     'total' => $netPay,
-                                    'discount_type_id' => null, // To be filled later
+                                    'discount_type_id' => $discountName->id ?? null  // To be filled later
                                 ];
                             } else {
                                 $errorSerialNumbers[] = $data[0];
