@@ -101,18 +101,34 @@ class SerialNumberGenerator
     {
         $model = 'App\Models\\' . $modelClass;
         $totalRows = $model::with('extension')->where('region_extension_id', $extensionId)->orderBy('id', 'desc')->first();
-        if ($totalRows) {
-            if ($totalRows->invoice_no != "") {
-                $strToBeRemoved = substr($totalRows->invoice_no, -4);
-                // $InvoiceNo = explode($strToBeRemoved, $totalRows->invoice_no)[1];
-                $invoiceNo = (int) $strToBeRemoved + 1;
-            } else {
-                $invoiceNo = '0001';
-            }
-        } else {
-            $invoiceNo = 1;
+        $invoice = mt_rand(900, 9999);
+
+        // Check if the invoice number already exists
+        if ($model::where('invoice_no', $invoice)->exists()) {
+            // If it exists, generate a new one recursively
+            return $this->extensionInvoiceNumber($modelClass, $dateColumn, $extensionId, $firstWord);
         }
-        return $invoiceNo = 'Inv-' . $firstWord . '-' . str_pad($invoiceNo, 4, '0', STR_PAD_LEFT);
+
+        // If the invoice number doesn't exist, return it
+        return 'Inv-' . $firstWord . '-' . str_pad($invoice, 4, '0', STR_PAD_LEFT);
+
+
+
+
+        // if ($totalRows) {
+        //     if ($totalRows->invoice_no != "") {
+        //         $strToBeRemoved = substr($totalRows->invoice_no, -4);
+        //         // $InvoiceNo = explode($strToBeRemoved, $totalRows->invoice_no)[1];
+        //         $invoiceNo = (int) $strToBeRemoved + 1;
+        //     } else {
+        //         $invoiceNo = '0001';
+        //     }
+        // } else {
+        //     $invoiceNo = 1;
+        // }
+
+
+
     }
 
     //receipt for main store sale

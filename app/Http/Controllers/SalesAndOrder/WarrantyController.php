@@ -143,7 +143,7 @@ class WarrantyController extends Controller
                 // The first element of the $wordArray will contain the first word
                 $firstWord = $wordArray[0];
                 $extensionID = $extensionName->id;
-                $invoiceNo = $invoice->extensionInvoiceNumber('SaleVoucher', 'invoice_date', $extensionID, $extensionName->name);
+                $  = $invoice->extensionInvoiceNumber('SaleVoucher', 'invoice_date', $extensionID, $extensionName->name);
                 $store = Store::where('extension_id', '=', $extension)->first();
                 $storeID = $store->id;
 
