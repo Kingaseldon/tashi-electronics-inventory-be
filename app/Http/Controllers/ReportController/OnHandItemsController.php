@@ -47,11 +47,13 @@ class OnHandItemsController extends Controller
                         'products.id',
                         'products.item_number',
                         'products.serial_no',
+                          'products.created_date',
                         DB::raw('COALESCE(products.sub_inventory, "--") AS sub_inventory'),
                         DB::raw('COALESCE(products.locator, "--") AS locator'),
                         DB::raw('COALESCE(products.iccid, "--") AS iccid'),
                         'products.main_store_qty AS store_qty',
                         'products.description',
+                      
                     ])->union(
                     DB::table('product_transactions')->leftJoin('products', function ($join) {
                         $join->on('product_transactions.product_id', '=', 'products.id');
@@ -78,11 +80,13 @@ class OnHandItemsController extends Controller
                             'product_transactions.id',
                             'products.item_number',
                             'products.serial_no',
+                            'products.created_date',
                             DB::raw('COALESCE(products.sub_inventory, "--") AS sub_inventory'),
                             DB::raw('COALESCE(products.locator, "--") AS locator'),
                             DB::raw('COALESCE(products.iccid, "--") AS iccid'),
                             DB::raw('CASE WHEN product_transactions.regional_id IS NOT NULL THEN product_transactions.region_store_quantity ELSE product_transactions.store_quantity END AS store_qty'),
                             'products.description',
+                            
                         ])
                         ->where(DB::raw('CASE WHEN product_transactions.regional_id IS NOT NULL THEN product_transactions.region_store_quantity ELSE product_transactions.store_quantity END'), '>', 0)
                 )
