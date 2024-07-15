@@ -134,6 +134,7 @@ class ExtensionStoreSaleController extends Controller
     }
     public function store(Request $request, SerialNumberGenerator $invoice)
     {
+      
         $extensionId = '';
         $extensionName = '';
         if ($request->extension == null && $request->extensionName == "") {
@@ -282,6 +283,7 @@ class ExtensionStoreSaleController extends Controller
                     }
 
                 } else { //if no attachment uploaded
+                 
                     $saleVoucher = new SaleVoucher;
                     $saleVoucher->invoice_no = $invoiceNo;
                     $saleVoucher->invoice_date = date('Y-m-d', strtotime(Carbon::now()));
@@ -290,7 +292,7 @@ class ExtensionStoreSaleController extends Controller
                     $saleVoucher->walk_in_customer = $request->walk_in_customer;
                     $saleVoucher->contact_no = $request->contact_no;
                     $saleVoucher->gross_payable = $request->gross_payable;
-           
+
                     $saleVoucher->net_payable = $request->net_payable;
                     $saleVoucher->service_charge = $request->service_charge;
                     $saleVoucher->status = "open";
@@ -306,7 +308,7 @@ class ExtensionStoreSaleController extends Controller
                         $saleOrderDetails[$key]['price'] = $value['product_cost'];
                         $saleOrderDetails[$key]['total'] = $value['total_amount'];
 
-                        $saleOrderDetails[$key]['discount_type_id'] = isset ($value['discount_type_id']) == true ? $value['discount_type_id'] : null;
+                        $saleOrderDetails[$key]['discount_type_id'] = isset($value['discount_type_id']) == true ? $value['discount_type_id'] : null;
 
                         $regionTransfer = ProductTransaction::where('product_id', $value['product'])->where('region_extension_id', $extensionId)->first();
                         $storequantity = $regionTransfer->store_quantity;
@@ -339,7 +341,7 @@ class ExtensionStoreSaleController extends Controller
                         $file = $request->file('attachment');
                         $nestedCollection = Excel::toCollection(new SaleProduct, $file);
                         $flattenedArrays = $nestedCollection->flatten(1)->toArray();
-                        
+
                         $flattenedArrays = array_filter($flattenedArrays, function ($row) {
                             return !empty (array_filter($row, function ($value) {
                                 return !is_null($value);
@@ -348,9 +350,7 @@ class ExtensionStoreSaleController extends Controller
 
                         // Remove the first row (header row) from the flattened array
                         array_shift($flattenedArrays);
-              
-                      
-                        $saleVoucher = new SaleVoucher;
+
                         $saleVoucher = new SaleVoucher;
                         $saleVoucher->invoice_no = $invoiceNo;
                         $saleVoucher->invoice_date = now();
@@ -429,7 +429,7 @@ class ExtensionStoreSaleController extends Controller
                                     'quantity' => $data[2],
                                     'price' => $price,
                                     'total' => $netPay,
-                                    'discount_type_id' => $discountName->id ?? null  // To be filled later
+                                    'discount_type_id' => $discountName->id ?? null // To be filled later
                                 ];
                             } else {
                                 $errorSerialNumbers[] = $data[0];
@@ -463,7 +463,8 @@ class ExtensionStoreSaleController extends Controller
                         ]);
 
                     }
-                }else { //if no attachment uploaded
+                } else { //if no attachment uploaded
+             
                     $saleVoucher = new SaleVoucher;
                     $saleVoucher->invoice_no = $invoiceNo;
                     $saleVoucher->invoice_date = date('Y-m-d', strtotime(Carbon::now()));
@@ -472,7 +473,7 @@ class ExtensionStoreSaleController extends Controller
                     $saleVoucher->walk_in_customer = $request->walk_in_customer;
                     $saleVoucher->contact_no = $request->contact_no;
                     $saleVoucher->gross_payable = $request->gross_payable;
-              
+
                     $saleVoucher->net_payable = $request->net_payable;
                     $saleVoucher->service_charge = $request->service_charge;
 
@@ -489,7 +490,7 @@ class ExtensionStoreSaleController extends Controller
                         $saleOrderDetails[$key]['price'] = $value['product_cost'];
                         $saleOrderDetails[$key]['total'] = $value['total_amount'];
 
-                        $saleOrderDetails[$key]['discount_type_id'] = isset ($value['discount_type_id']) == true ? $value['discount_type_id'] : null;
+                        $saleOrderDetails[$key]['discount_type_id'] = isset($value['discount_type_id']) == true ? $value['discount_type_id'] : null;
 
                         $regionTransfer = ProductTransaction::where('product_id', $value['product'])->LoggedInAssignExtension()->first();
                         $storequantity = $regionTransfer->store_quantity;
@@ -521,7 +522,8 @@ class ExtensionStoreSaleController extends Controller
 
         DB::commit();
         return response()->json([
-            'message' => 'Sale Voucher created Successfully'
+            'message' => 'Sale Voucher created Successfully',
+            'invoice'=> $invoiceNo
         ], 200);
     }
 
