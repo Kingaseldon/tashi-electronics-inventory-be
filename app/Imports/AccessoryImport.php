@@ -81,10 +81,7 @@ class AccessoryImport implements ToModel, WithHeadingRow
                 }
             }
 
-
-
         }
-
 
     }
     public function getValidationErrors()
