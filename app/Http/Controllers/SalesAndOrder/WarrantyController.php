@@ -143,7 +143,7 @@ class WarrantyController extends Controller
                 // The first element of the $wordArray will contain the first word
                 $firstWord = $wordArray[0];
                 $extensionID = $extensionName->id;
-                $  = $invoice->extensionInvoiceNumber('SaleVoucher', 'invoice_date', $extensionID, $extensionName->name);
+                $invoiceNo = $invoice->extensionInvoiceNumber('SaleVoucher', 'invoice_date', $extensionID, $extensionName->name);
                 $store = Store::where('extension_id', '=', $extension)->first();
                 $storeID = $store->id;
 
@@ -368,7 +368,6 @@ class WarrantyController extends Controller
             $saleVoucher->remarks = $description;
             $saleVoucher->save();
 
-
             // $saleOrderDetails = [];
             // $jsonData = $newDetails->json()->all();
 
@@ -383,7 +382,6 @@ class WarrantyController extends Controller
                 }
 
                 $saleOrderDetails = "";
-
 
                 $saleOrderDetails = [
                     'sale_voucher_id' => $saleVoucher->id,
@@ -482,9 +480,6 @@ class WarrantyController extends Controller
                 }
             }
             // $saleVoucher->saleVoucherDetails()->insert($saleOrderDetails);
-
-
-
         } catch (\Exception $e) {
             DB::rollback();
             return response()->json([
@@ -513,7 +508,6 @@ class WarrantyController extends Controller
 
         try {
             // $product = Product::where('serial_no', $id)->get();
-
             $product = DB::table('products as p')
                 ->select(
                     'p.id as id',
