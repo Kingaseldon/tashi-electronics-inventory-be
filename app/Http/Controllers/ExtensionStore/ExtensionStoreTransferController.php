@@ -18,9 +18,11 @@ use DB;
 use App\Models\Notification;
 use Spatie\Permission\Models\Role;
 
-class ExtensionStoreTransferController extends Controller {
+class ExtensionStoreTransferController extends Controller
+{
 
-    public function __construct() {
+    public function __construct()
+    {
         $this->middleware('permission:extension-stores.view')->only('index', 'show');
         $this->middleware('permission:extension-stores.update')->only('update');
         $this->middleware('permission:extension-stores.view-extension-requisitions')->only('viewExtensionRequisition');
@@ -35,26 +37,27 @@ class ExtensionStoreTransferController extends Controller {
      */
 
     //extension store history
-    public function index() {
+    public function index()
+    {
         try {
             $user = auth()->user();
             $roles = $user->roles;
 
             $isSuperUser = false;
-            foreach($roles as $role) {
-                if($role->is_super_user == 1) {
+            foreach ($roles as $role) {
+                if ($role->is_super_user == 1) {
                     $isSuperUser = true;
                     break;
                 }
             }
-            if($isSuperUser) {
+            if ($isSuperUser) {
                 // $transactions = ProductMovement::with('product', 'region', 'extension')->orderBy('status')->where('region_extension_id',!null)->get();
                 $receiveProducts =
                     ProductTransaction::join('product_movements as Tb1', 'Tb1.id', 'product_transactions.product_movement_id')
-                        ->with('product', 'product.saleType', 'region', 'extension')
-                        ->select('Tb1.regional_transfer_id', 'product_transactions.*')
-                        ->orderBy('product_transactions.id')->where('product_transactions.receive', '!=', 0)
-                        ->where('product_transactions.region_extension_id', '!=', null)->get();
+                    ->with('product', 'product.saleType', 'region', 'extension')
+                    ->select('Tb1.regional_transfer_id', 'product_transactions.*')
+                    ->orderBy('product_transactions.id')->where('product_transactions.receive', '!=', 0)
+                    ->where('product_transactions.region_extension_id', '!=', null)->get();
 
                 $transactions = ProductMovement::query()
                     ->select('product_movements.requisition_number', 'product_movements.regional_transfer_id', DB::raw('SUM(product_movements.receive) as total_qty'), 'product_movements.status')
@@ -63,8 +66,7 @@ class ExtensionStoreTransferController extends Controller {
                     ->where('region_extension_id', '!=', null)
                     ->groupBy('product_movements.requisition_number', 'product_movements.regional_transfer_id', 'product_movements.status')
                     ->get();
-            } 
-            else {
+            } else {
                 $transactions = ProductMovement::query()
                     ->select('product_movements.requisition_number', 'product_movements.regional_transfer_id', DB::raw('SUM(product_movements.receive) as total_qty'), 'product_movements.status')
                     ->join('products', 'products.id', 'product_movements.product_id')
@@ -78,10 +80,9 @@ class ExtensionStoreTransferController extends Controller {
                     ->orderBy('product_transactions.id')->where('product_transactions.receive', '!=', 0)
                     ->LoggedInAssignExtension()->get();
 
-                if($transactions->isEmpty()) {
+                if ($transactions->isEmpty()) {
                     $transactions = [];
                 }
-
             }
             return response([
                 'message' => 'success',
@@ -104,12 +105,13 @@ class ExtensionStoreTransferController extends Controller {
 
     //get details of requested product for acknowledging
 
-    public function show($id) {
+    public function show($id)
+    {
         try {
             $receiveProduct = ProductMovement::with('product', 'region', 'extension', 'product.SaleType', 'product.color', 'product.subCategory')->where('status', 'process')->where('requisition_number', $id)->get();
             $regions = Region::with('extensions:id,regional_id,name')->orderBy('name')->get(['id', 'name']);
 
-            if(!$receiveProduct) {
+            if (!$receiveProduct) {
                 return response()->json([
                     'message' => 'The product you are trying to acknowledge doesn\'t exist.'
                 ], 404);
@@ -133,7 +135,8 @@ class ExtensionStoreTransferController extends Controller {
      * @return \Illuminate\Http\Response
      */
     //acknowledging product requisition
-    public function update(Request $request, $id) {
+    public function update(Request $request, $id)
+    {
         // $this->validate($request, [
         //     'received_date' => 'required',
         // ]);
@@ -142,7 +145,7 @@ class ExtensionStoreTransferController extends Controller {
 
             $receiveProduct = ProductMovement::with('product')->where('requisition_number', $id)->get();
             $jsonData = $request->json()->all();
-            foreach($jsonData as $item) {
+            foreach ($jsonData as $item) {
                 $item_id = $item['id'];
                 $received_date = date('Y-m-d', strtotime($item['received_date']));
                 $description = $item['transfer_description'];
@@ -152,7 +155,7 @@ class ExtensionStoreTransferController extends Controller {
                 $itemProduct->status = 'receive';
                 $itemProduct->save();
 
-                if($itemProduct->$item_id != null) {
+                if ($itemProduct->$item_id != null) {
                     $requisition = ProductRequisition::find($receiveProduct->$item_id);
 
                     $requisition->update([
@@ -163,7 +166,7 @@ class ExtensionStoreTransferController extends Controller {
                 //check if there is  product in that particular regional
                 $transaction = ProductTransaction::where('product_id', $itemProduct->product_id)->where('region_extension_id', $itemProduct->region_extension_id)->first();
 
-                if($transaction) {
+                if ($transaction) {
 
                     //total receive product so far
                     $totalReceive = $transaction->receive;
@@ -171,7 +174,7 @@ class ExtensionStoreTransferController extends Controller {
 
                     $product = Product::where('id', '=', $itemProduct->product_id)->first();
                     //updating the total product
-                    if($product->sale_type_id == 2) {
+                    if ($product->sale_type_id == 2) {
                         $transaction->update([
                             'receive' => $totalReceive + $itemProduct->receive,
                             'store_quantity' => $StoreQuatity + $itemProduct->receive,
@@ -184,8 +187,6 @@ class ExtensionStoreTransferController extends Controller {
                             'updated_by' => auth()->user()->id,
                         ]);
                     }
-
-
                 } else { //if there is no transaction in that particular extension then create new transaction
 
 
@@ -213,15 +214,22 @@ class ExtensionStoreTransferController extends Controller {
                     $store = Store::where('extension_id', $itemProduct->region_extension_id)->first();
 
                     $extensionStoreQty = $product_table->extension_store_qty;
-                    $product_table->update([
-                        'store_id' => $store->id,
-                        'updated_by' => auth()->user()->id,
-                    ]);
+                    if ($product_table->sale_type_id == 2) {
+                        $product_table->update([
+
+                            'updated_by' => auth()->user()->id,
+                        ]);
+                    } else {
+                        $product_table->update([
+                            'store_id' => $store->id,
+                            'updated_by' => auth()->user()->id,
+                        ]);
+                    }
+
 
                     $product_requisition->requested_extension == null ? $product_table->update([
                         'extension_store_qty' => $extensionStoreQty + $itemProduct->receive,
                     ]) : null;
-
                 }
                 $notification = Notification::where('requisition_number', '=', $id);
                 $notification->update([
@@ -242,28 +250,27 @@ class ExtensionStoreTransferController extends Controller {
         }
     }
     //view extension requisitions
-    public function getExtensionRequisition() {
+    public function getExtensionRequisition()
+    {
         try {
             $user = auth()->user();
             $roles = $user->roles;
 
             $isSuperUser = false;
-            foreach($roles as $role) {
-                if($role->is_super_user == 1) {
+            foreach ($roles as $role) {
+                if ($role->is_super_user == 1) {
                     $isSuperUser = true;
                     break;
                 }
             }
             $requisitions = [];
-            if($isSuperUser) {
+            if ($isSuperUser) {
                 $requisitions = ProductRequisition::select('region_extension_id', 'requisition_number', DB::raw('SUM(request_quantity - transfer_quantity) as request_quantity'))
                     ->with('saleType', 'region', 'extension')
                     ->where('status', 'requested')
                     ->where('requested_extension', '!=', null)
                     ->groupBy('region_extension_id', 'requisition_number')
                     ->get();
-
-
             } else {
                 $requisitions = ProductRequisition::select('region_extension_id', 'requisition_number', DB::raw('SUM(request_quantity - transfer_quantity) as request_quantity'))
                     ->with('saleType', 'region', 'extension')
@@ -271,12 +278,11 @@ class ExtensionStoreTransferController extends Controller {
                     ->where('requested_extension', $user->assignAndEmployee->extension_id)
                     ->groupBy('region_extension_id', 'requisition_number')
                     ->get();
-
             }
 
 
             //check that paricular reqNo number
-            if(!$requisitions) {
+            if (!$requisitions) {
                 return response()->json([
                     'message' => 'No requisitions found'
                 ], 404);
@@ -295,25 +301,25 @@ class ExtensionStoreTransferController extends Controller {
     }
 
     //get extension requisition details using requisition ID
-    public function viewExtensionRequisition($reqNo) {
+    public function viewExtensionRequisition($reqNo)
+    {
         try {
             $user = auth()->user();
             $roles = $user->roles;
 
             $isSuperUser = false;
-            foreach($roles as $role) {
-                if($role->is_super_user == 1) {
+            foreach ($roles as $role) {
+                if ($role->is_super_user == 1) {
                     $isSuperUser = true;
                     break;
                 }
             }
             $requisitions = [];
-            if($isSuperUser) {
+            if ($isSuperUser) {
                 $requisitions = ProductRequisition::with('region', 'extension', 'saleType')->where('requisition_number', $reqNo)->where('status', 'requested')->get();
                 $products = ProductTransaction::with('product', 'region', 'extension', 'product.saleType')->orderBy('id')->where('store_quantity', '!=', 0)->where('region_extension_id', '!=', null)->get();
 
                 $regions = Region::with('extensions:id,regional_id,name')->orderBy('name')->get(['id', 'name']);
-
             } else {
                 $requisitions = ProductRequisition::with('region', 'extension', 'saleType')->where('requisition_number', $reqNo)->where('status', 'requested')->get();
 
@@ -324,7 +330,7 @@ class ExtensionStoreTransferController extends Controller {
 
 
             //check that paricular reqNo number
-            if(!$requisitions) {
+            if (!$requisitions) {
                 return response()->json([
                     'message' => 'The Requisition Number you are trying to find doesn\'t exist.'
                 ], 404);
@@ -347,7 +353,8 @@ class ExtensionStoreTransferController extends Controller {
 
 
     //transfering from extension to extension
-    public function extensionTransfer(Request $request, SerialNumberGenerator $serial) {
+    public function extensionTransfer(Request $request, SerialNumberGenerator $serial)
+    {
         $this->validate($request, []);
 
         DB::beginTransaction();
@@ -358,7 +365,7 @@ class ExtensionStoreTransferController extends Controller {
             $extensionId = $request->extension;
             $requisitionId = $request->product_requisition;
 
-            foreach($request->productDetails as $key => $value) {
+            foreach ($request->productDetails as $key => $value) {
                 $transferQuantity = $value['transfer_quantity'];
                 $product = Product::where('serial_no', $value['serial_no'])
                     ->join('product_transactions as Tb1', 'Tb1.product_id', '=', 'products.id')
@@ -370,18 +377,18 @@ class ExtensionStoreTransferController extends Controller {
                 $transaction = ProductTransaction::where('product_id', $product->product_id)->where('region_extension_id', $requisition->requested_extension)->first();
 
 
-        
+
                 $extensionStoreQty = $productTable->extension_store_qty;
 
                 //check when transfer quantity should not be greater than the stock quantity in
-                if($transferQuantity > $extensionStoreQty) {
+                if ($transferQuantity > $extensionStoreQty) {
                     return response()->json([
                         'message' => 'Transfer Quantity should not be greater than the quantity in stock'
                     ], 422);
                 }
 
                 //if stock quantity is greater than transfer quantity tha saleStatus should be stock and if zero then transfer 
-                if($extensionStoreQty > $transferQuantity) {
+                if ($extensionStoreQty > $transferQuantity) {
                     $saleStatus = "stock";
                 } else {
                     $saleStatus = "transfer";
@@ -405,7 +412,7 @@ class ExtensionStoreTransferController extends Controller {
                 //update
                 //increment the count only if the sale type is of either phone or sim
                 //if it is not one of them then update transfer_quantity value with the value send via the request
-                if($product->sale_type_id == 1 || $product->sale_type_id == 3) {
+                if ($product->sale_type_id == 1 || $product->sale_type_id == 3) {
                     $requisition->increment('transfer_quantity');
                 } else {
                     $requisition->transfer_quantity = $transferQuantity;
@@ -440,7 +447,7 @@ class ExtensionStoreTransferController extends Controller {
                 $superUsers = User::role($superUsersRole)->get();
 
                 // Iterate over each user and perform actions and create notification when transfering
-                foreach($superUsers as $user) {
+                foreach ($superUsers as $user) {
                     $notification = new Notification;
                     $notification->user_id = $user->id;
                     $notification->extension_from = $requisition->requested_extension;
