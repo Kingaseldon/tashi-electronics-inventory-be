@@ -32,7 +32,6 @@ class ProductController extends Controller
         $this->middleware('permission:products.update')->only('update');
         $this->middleware('permission:products.edit-products')->only('editProduct');
         $this->middleware('permission:products.uploads')->only('importProduct');
-
     }
     /**
      * Display a listing of the resource.
@@ -126,11 +125,7 @@ class ProductController extends Controller
                         'message' => 'Category and sub-category doesnot match',
                     ], 500);
                 }
-
             }
-
-
-
         } catch (\Exception $e) {
             DB::rollback();
             return response()->json([
@@ -173,7 +168,6 @@ class ProductController extends Controller
                             'message' => 'Category and sub-category doesnot match',
                             'errors' => $validationErrors
                         ], 201);
-
                     } elseif (!empty($serialNoValidationError)) {
                         $serialNumbersString = implode(', ', $serialNoValidationError);
 
@@ -218,10 +212,10 @@ class ProductController extends Controller
                         // Convert the array to a string
                         $addedQuantityMessage = implode(', ', $addedQuantity);
                         // Return message for added quantity
-                        $message = 'You have successfully uploaded ' . $totalQuantity . ' new products. ' . $addedQuantityMessage ;
+                        $message = 'You have successfully uploaded ' . $totalQuantity . ' new products. ' . $addedQuantityMessage;
                     } else {
                         // Return success message with total quantity
-                        $message = 'You have successfully uploaded ' . $totalQuantity . ' new products' ;
+                        $message = 'You have successfully uploaded ' . $totalQuantity . ' new products';
                     }
                     return response()->json([
                         'message' => $message,
@@ -255,8 +249,6 @@ class ProductController extends Controller
                         ], 200);
                     }
                 }
-
-
             } else {
                 return response()->json([
                     'message' => 'Please attach the file'
@@ -298,6 +290,7 @@ class ProductController extends Controller
                 ->leftJoin('extensions', 'extensions.id', '=', 'product_transactions.region_extension_id')
                 ->groupBy('sale_types.name', 'sub_categories.name', 'stores.store_name', 'products.sale_type_id', 'products.store_id')
                 ->whereNotNull(\DB::raw('CASE WHEN products.sale_type_id != 2 AND products.store_id = 1 THEN stores.store_name END'))
+                ->where('products.sale_type_id', '=', 1)
                 ->where('products.price', $request->price) // Filter by price
                 ->havingRaw('SUM(products.main_store_qty) != 0')
                 ->union(
@@ -310,6 +303,7 @@ class ProductController extends Controller
                         ->leftJoin('sale_types', 'sale_types.id', '=', 'products.sale_type_id')
                         ->leftJoin('sub_categories', 'sub_categories.id', '=', 'products.sub_category_id')
                         ->where('products.main_store_qty', '>', 0)
+                        ->where('products.sale_type_id', '=', 1)
                         ->where('products.price', $request->price) // Filter by price
                         ->groupBy('sale_types.name', 'sub_categories.name', 'store_name')
                 )
@@ -326,6 +320,7 @@ class ProductController extends Controller
                         ->leftJoin('regions', 'regions.id', '=', 'product_transactions.regional_id')
                         ->whereNotNull('product_transactions.regional_id')
                         ->where('product_transactions.region_store_quantity', '>', 0)
+                        ->where('products.sale_type_id', '=', 1)
                         ->where('products.price', $request->price) // Filter by price
                         ->groupBy('sale_types.name', 'sub_categories.name', 'store_name')
                 )
@@ -342,6 +337,7 @@ class ProductController extends Controller
                         ->leftJoin('extensions', 'extensions.id', '=', 'product_transactions.region_extension_id')
                         ->whereNotNull('product_transactions.region_extension_id')
                         ->where('product_transactions.store_quantity', '>', 0)
+                        ->where('products.sale_type_id', '=', 1)
                         ->where('products.price', $request->price) // Filter by price
                         ->groupBy('sale_types.name', 'sub_categories.name', 'store_name')
                 )
@@ -432,7 +428,6 @@ class ProductController extends Controller
             $prize->product_item_number = $id;
             $prize->change_date = date('Y-m-d', strtotime(Carbon::now()));
             $prize->save();
-
         } catch (\Exception $e) {
             DB::rollback();
             return response()->json([
