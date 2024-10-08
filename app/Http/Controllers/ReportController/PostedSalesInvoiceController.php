@@ -17,7 +17,6 @@ class PostedSalesInvoiceController extends Controller
     public function __construct()
     {
         $this->middleware('permission:postedsalesinvoice.view')->only('index');
-
     }
     public function index(Request $request)
     {
@@ -41,6 +40,7 @@ class PostedSalesInvoiceController extends Controller
                         'p.description',
                         'svd.total AS netpay',
                         'svd.price as price',
+                        'svd.quantity',
                         'p.serial_no',
                         'ph.cash_amount_paid',
                         'ph.online_amount_paid',
@@ -91,16 +91,17 @@ class PostedSalesInvoiceController extends Controller
                         'u.name',
                         'sv.status',
                         'p.description',
-                        'price', 
-                        'total',// 'price' is an alias and can be used directly in the groupBy clause
+                        'price',
+                        'total', // 'price' is an alias and can be used directly in the groupBy clause
                         'p.serial_no',
                         'ph.cash_amount_paid',
                         'ph.online_amount_paid',
                         'sv.net_payable',
-                        'sv.gross_payable'
+                        'sv.gross_payable',
+                        'svd.quantity',
                     )
                     ->get();
-            
+
                 $salesGrouped = $sales->groupBy(['invoice_no']);
 
 
@@ -114,16 +115,16 @@ class PostedSalesInvoiceController extends Controller
                         'invoice_date' => $sales[0]->invoice_date,
                         'receipt_no' => $sales[0]->receiptNo,
                         'customer_name' => $sales[0]->customerName,
-                        'payment_mode' => $sales[0]->paymentMode, 
-                        'online_amount' => $sales[0]->online_amount_paid,  
-                        'cash_amount' => $sales[0]->cash_amount_paid,  
-                        'bank_name' => $sales[0]->bankName,  
-                        'reference_no' => $sales[0]->referenceNo,                        
-                        'customer_contact_no' => $sales[0]->contactNo,  
-                        'paid_date' => $sales[0]->paidAt,  
-                        'total_net_payable' => $sales[0]->net_payable,  
-                        'total_gross_payable' => $sales[0]->gross_payable,  
-                     
+                        'payment_mode' => $sales[0]->paymentMode,
+                        'online_amount' => $sales[0]->online_amount_paid,
+                        'cash_amount' => $sales[0]->cash_amount_paid,
+                        'bank_name' => $sales[0]->bankName,
+                        'reference_no' => $sales[0]->referenceNo,
+                        'customer_contact_no' => $sales[0]->contactNo,
+                        'paid_date' => $sales[0]->paidAt,
+                        'total_net_payable' => $sales[0]->net_payable,
+                        'total_gross_payable' => $sales[0]->gross_payable,
+
                     ];
 
                     // Loop through each sale within the group
@@ -134,13 +135,13 @@ class PostedSalesInvoiceController extends Controller
                             'net_payable' => $sale->netpay,
                             'description' => $sale->description,
                             'status' => $sale->status,
+                            'quantity' => $sale->quantity,
                             // Add other fields as needed
                         ];
                     }
 
                     $responseData[] = $invoiceData;
                 }
-
             } else {
 
                 $sales = DB::table('sale_vouchers as sv')
@@ -157,6 +158,7 @@ class PostedSalesInvoiceController extends Controller
                         'u.name',
                         'sv.status',
                         'p.description',
+                        'svd.quantity',
                         'svd.total AS netpay',
                         'svd.price as price',
                         'p.serial_no',
@@ -210,12 +212,13 @@ class PostedSalesInvoiceController extends Controller
                         'sv.status',
                         'p.description',
                         'price',
-                        'total',// 'price' is an alias and can be used directly in the groupBy clause
+                        'total', // 'price' is an alias and can be used directly in the groupBy clause
                         'p.serial_no',
                         'ph.cash_amount_paid',
                         'ph.online_amount_paid',
                         'sv.net_payable',
-                        'sv.gross_payable'
+                        'sv.gross_payable',
+                        'svd.quantity',
                     )
                     ->get();
 
@@ -236,7 +239,7 @@ class PostedSalesInvoiceController extends Controller
                         'online_amount' => $sales[0]->online_amount_paid,
                         'cash_amount' => $sales[0]->cash_amount_paid,
                         'bank_name' => $sales[0]->bankName,
-                        'reference_no' => $sales[0]->referenceNo,                       
+                        'reference_no' => $sales[0]->referenceNo,
                         'customer_contact_no' => $sales[0]->contactNo,
                         'paid_date' => $sales[0]->paidAt,
                         'total_net_payable' => $sales[0]->net_payable,
@@ -252,14 +255,13 @@ class PostedSalesInvoiceController extends Controller
                             'net_payable' => $sale->netpay,
                             'description' => $sale->description,
                             'status' => $sale->status,
+                            'quantity' => $sale->quantity,
                             // Add other fields as needed
                         ];
                     }
 
                     $responseData[] = $invoiceData;
                 }
-
-               
             }
 
 

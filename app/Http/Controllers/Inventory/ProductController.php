@@ -175,8 +175,7 @@ class ProductController extends Controller
                         // Return error messages if any rows failed validation.
                         return response()->json([
                             // 'message' => 'FAILED! Please check Product Type and Sub Category',
-                            'message' => 'Some Serial Numbers already exists ' . $serialNumbersString
-                        ], 201);
+m                         ], 201);
                     } else {
                         return response()->json([
                             'message' => 'You have Successfully uploaded ' . $rowCount . ' number of products',
