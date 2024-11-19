@@ -16,6 +16,7 @@ use App\Models\Customer;
 use App\Models\Bank;
 use Carbon\Carbon;
 use DB;
+use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 
 class ExtensionStoreSaleController extends Controller
@@ -63,7 +64,6 @@ class ExtensionStoreSaleController extends Controller
                     'products' => $products,
                     'customers' => $customers,
                 ], 200);
-
             } else {
                 $saleVouchers = SaleVoucher::with('saleVoucherDetails.discount', 'user')->orderBy('created_at', 'DESC')->LoggedInAssignExtension()->get();
                 $customers = Customer::with('customerType')->orderBy('id')->get();
@@ -79,7 +79,6 @@ class ExtensionStoreSaleController extends Controller
                     'customers' => $customers,
                 ], 200);
             }
-
         } catch (Execption $e) {
             return response([
                 'message' => $e->getMessage()
@@ -111,7 +110,6 @@ class ExtensionStoreSaleController extends Controller
 
             if ($isSuperUser) {
                 $product = ProductTransaction::with('product', 'region', 'product.category', 'product.subcategory', 'product.color', 'product.saleType')->where('product_id', $id)->where('region_extension_id', '!=', null)->where('store_quantity', '>', 0)->get();
-
             } else {
                 $extensionId = auth()->user()->assignAndEmployee->extension_id;
                 $product = ProductTransaction::with('product', 'region', 'product.category', 'product.subcategory', 'product.color', 'product.saleType')->where('product_id', $id)->where('store_quantity', '>', 0)->LoggedInAssignExtension()->get();
@@ -134,7 +132,8 @@ class ExtensionStoreSaleController extends Controller
     }
     public function store(Request $request, SerialNumberGenerator $invoice)
     {
-      
+
+
         $extensionId = '';
         $extensionName = '';
         if ($request->extension == null && $request->extensionName == "") {
@@ -257,13 +256,11 @@ class ExtensionStoreSaleController extends Controller
                                     'extension_store_sold_qty' => $soldquantity + $flattenedArray[$i][2],
                                     'updated_by' => auth()->user()->id,
                                 ]);
-
                             } else {
                                 $errorSerialNumbers[] = $flattenedArray[$i][0];
                             }
 
                             $saleVoucher->saleVoucherDetails()->insert($saleOrderDetails);
-
                         } // foreach ends
                         if (count($errorSerialNumbers) > 0) {
                             return response()->json([
@@ -279,11 +276,9 @@ class ExtensionStoreSaleController extends Controller
                             'net_payable' => $netPayable,
                             'gross_payable' => $grossPayable
                         ]);
-
                     }
-
                 } else { //if no attachment uploaded
-                 
+
                     $saleVoucher = new SaleVoucher;
                     $saleVoucher->invoice_no = $invoiceNo;
                     $saleVoucher->invoice_date = date('Y-m-d', strtotime(Carbon::now()));
@@ -328,11 +323,10 @@ class ExtensionStoreSaleController extends Controller
                         // $saleOrderDetails[$key]['created_by'] = $request->user()->id;
                     }
                     $saleVoucher->saleVoucherDetails()->insert($saleOrderDetails);
-
                 }
-
             } else { //if not a super user
                 if ($request->customerType == 2) {
+                    set_time_limit(0);
                     $request->validate([
                         'attachment' => 'required|mimes:xls,xlsx',
                     ]);
@@ -342,14 +336,16 @@ class ExtensionStoreSaleController extends Controller
                         $nestedCollection = Excel::toCollection(new SaleProduct, $file);
                         $flattenedArrays = $nestedCollection->flatten(1)->toArray();
 
+
                         $flattenedArrays = array_filter($flattenedArrays, function ($row) {
-                            return !empty (array_filter($row, function ($value) {
+                            return !empty(array_filter($row, function ($value) {
                                 return !is_null($value);
                             }));
                         });
 
                         // Remove the first row (header row) from the flattened array
                         array_shift($flattenedArrays);
+
 
                         $saleVoucher = new SaleVoucher;
                         $saleVoucher->invoice_no = $invoiceNo;
@@ -367,6 +363,8 @@ class ExtensionStoreSaleController extends Controller
                         $errorMessage = "These serial numbers are not found";
                         $errorSerialNumbers = [];
 
+              
+
                         foreach ($flattenedArrays as $data) {
                             // Assuming $data is in the format [0 => ..., 'discount_name' => ..., 'quantity' => ...]
                             $product = ProductTransaction::with('product')
@@ -375,11 +373,33 @@ class ExtensionStoreSaleController extends Controller
                                 ->where('Tb1.serial_no', $data[0])
                                 ->first();
 
+
                             if ($product) {
-                                if ($product->store_quantity < $data[2]) {
+                                // if ((int) $product->store_quantity < (int) $data[2]) {
+                                //     dd('here');
+
+                                //     return response()->json([
+                                //         'success' => false,
+                                //         'message' => 'Quantity cannot be greater than store quantity',
+                                //     ], 406);
+                                // }
+                                if ((int) $product->store_quantity < (int) $data[2]) {
+                                    // Log product details and requested quantity
+                                    Log::error(
+                                        "Insufficient quantity",
+                                        [
+                                            'serial_no' => $data[0],
+                                            'requested_quantity' => $data[2],
+                                            'store_quantity' => $product->store_quantity,
+                                            'product' => $product->toArray() // Log product data for debugging
+                                        ]
+                                    );
+
+                                    // You can also include product details in the response
                                     return response()->json([
                                         'success' => false,
-                                        'message' => 'Quantity cannot be greater than store quantity',
+                                        'message' => 'Quantity cannot be greater than store quantity' . $data[0],
+
                                     ], 406);
                                 }
 
@@ -435,9 +455,14 @@ class ExtensionStoreSaleController extends Controller
                                 $errorSerialNumbers[] = $data[0];
                             }
                         }
+                   
+                       
 
                         // Insert sale order details outside the loop
                         SaleVoucherDetail::insert($saleOrderDetails);
+                        Log::info('datas:', $saleOrderDetails, $errorMessage);
+
+
 
                         if (count($errorSerialNumbers) > 0) {
                             return response()->json([
@@ -461,10 +486,9 @@ class ExtensionStoreSaleController extends Controller
                             'net_payable' => $netPayable,
                             'gross_payable' => $grossPayable
                         ]);
-
                     }
                 } else { //if no attachment uploaded
-             
+
                     $saleVoucher = new SaleVoucher;
                     $saleVoucher->invoice_no = $invoiceNo;
                     $saleVoucher->invoice_date = date('Y-m-d', strtotime(Carbon::now()));
@@ -512,7 +536,6 @@ class ExtensionStoreSaleController extends Controller
                     $saleVoucher->saleVoucherDetails()->insert($saleOrderDetails);
                 }
             }
-
         } catch (\Exception $e) {
             DB::rollback();
             return response()->json([
@@ -523,7 +546,7 @@ class ExtensionStoreSaleController extends Controller
         DB::commit();
         return response()->json([
             'message' => 'Sale Voucher created Successfully',
-            'invoice'=> $invoiceNo
+            'invoice' => $invoiceNo
         ], 200);
     }
 
@@ -588,7 +611,6 @@ class ExtensionStoreSaleController extends Controller
                 'message' => $e->getMessage()
             ], 400);
         }
-
     }
 
 
@@ -619,7 +641,6 @@ class ExtensionStoreSaleController extends Controller
                     'status' => 'closed'
                 ]);
             }
-
         } catch (Exception $e) {
             DB::rollback();
             return response()->json([
