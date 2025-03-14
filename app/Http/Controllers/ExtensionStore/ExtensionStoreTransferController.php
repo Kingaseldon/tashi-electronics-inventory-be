@@ -452,7 +452,7 @@ class ExtensionStoreTransferController extends Controller
                         if ($product->sale_type_id == 1 || $product->sale_type_id == 3) {
                             $requisition->increment('transfer_quantity');
                         } else {
-                            $requisition->transfer_quantity = $transferQuantity;
+                            $requisition->transfer_quantity = $requisition->transfer_quantity + $transferQuantity;
                         }
                         if ($requisition->request_quantity == $requisition->transfer_quantity) {
                             $requisition->status = 'supplied';
@@ -574,7 +574,7 @@ class ExtensionStoreTransferController extends Controller
                     if ($product->sale_type_id == 1 || $product->sale_type_id == 3) {
                         $requisition->increment('transfer_quantity');
                     } else {
-                        $requisition->transfer_quantity = $transferQuantity;
+                        $requisition->transfer_quantity = $requisition->transfer_quantity + $transferQuantity;
                     }
                     if ($requisition->request_quantity == $requisition->transfer_quantity) {
                         $requisition->status = 'supplied';

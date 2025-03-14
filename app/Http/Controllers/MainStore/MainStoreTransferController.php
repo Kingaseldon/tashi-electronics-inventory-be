@@ -217,7 +217,7 @@ class MainStoreTransferController extends Controller
                         if ($product->sale_type_id == 1 || $product->sale_type_id == 3) {
                             $requisition->increment('transfer_quantity');
                         } else {
-                            $requisition->transfer_quantity = $transferQuantity;
+                            $requisition->transfer_quantity = $requisition->transfer_quantity + $transferQuantity;
                         }
                         if ($requisition->request_quantity == $requisition->transfer_quantity) {
                             $requisition->status = 'supplied';
@@ -272,7 +272,9 @@ class MainStoreTransferController extends Controller
 
                 foreach ($request->productDetails as $key => $value) {
 
+
                     $transferQuantity = $value['transfer_quantity'];
+                    dd($transferQuantity);
                     $product = Product::where('serial_no', $value['serial_no'])->where('main_store_qty', '!=', 0)->first();
 
                     $quantityafterDistribute = $product->main_store_qty;
@@ -308,7 +310,7 @@ class MainStoreTransferController extends Controller
                     if ($product->sale_type_id == 1 || $product->sale_type_id == 3) {
                         $requisition->increment('transfer_quantity');
                     } else {
-                        $requisition->transfer_quantity = $transferQuantity;
+                        $requisition->transfer_quantity = $requisition->transfer_quantity + $transferQuantity;
                     }
                     if ($requisition->request_quantity == $requisition->transfer_quantity) {
                         $requisition->status = 'supplied';
