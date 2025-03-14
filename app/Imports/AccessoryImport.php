@@ -49,12 +49,28 @@ class AccessoryImport implements ToModel, WithHeadingRow
                 $this->totalQuantity += $row['qty'];
                 $existingProduct = Product::where('serial_no', $row['item_number'])->first();
 
+
+
                 if ($existingProduct) {
                     // Product with the same serial number already exists, update the quantity
                     $existingProduct->total_quantity += $row['qty'];
                     $existingProduct->main_store_qty += $row['qty'];
                     $existingProduct->price = $row['price_per_unit'];
                     $existingProduct->save();
+
+                    DB::table('transaction_audits')->insert([
+                        'store_id' => 1,
+                        'sales_type_id' =>  $existingProduct->sale_type_id, // Corrected variable name
+                        'product_id' =>  $existingProduct->id,
+                        'item_number' =>  $existingProduct->item_number,
+                        'description' =>  $existingProduct->description,
+                        'received' =>   $row['qty'],
+                        'stock' =>   $row['qty'],
+                        'created_date' => now(),
+                        'status' => 'upload',
+                        'created_at' => now(),
+                        'created_by' => auth()->user()->id,
+                    ]);
 
                     $this->addedQuantity[] = $row['qty'] . ' Quantity added to existing product with serial number: ' . $row['item_number'];
                 } else {
