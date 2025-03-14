@@ -101,10 +101,7 @@ class SerialNumberGenerator
     // {
     //     $model = 'App\Models\\' . $modelClass;
     //     $totalRows = $model::with('extension')->where('region_extension_id', $extensionId)->orderBy('id', 'desc')->first();
-    //     $randomNumber = mt_rand(900, 9999);
-
-    //     // Format the invoice number
-    //     $invoice = 'Inv-' . $firstWord . '-' . str_pad($randomNumber, 4, '0', STR_PAD_LEFT);
+    //     $invoice = mt_rand(900, 9999);
 
     //     // Check if the invoice number already exists
     //     if ($model::where('invoice_no', $invoice)->exists()) {
@@ -114,8 +111,6 @@ class SerialNumberGenerator
 
     //     // If the invoice number doesn't exist, return it
     //     return 'Inv-' . $firstWord . '-' . str_pad($invoice, 4, '0', STR_PAD_LEFT);
-
-
 
 
     //     // if ($totalRows) {
@@ -133,7 +128,6 @@ class SerialNumberGenerator
 
 
     // }
-
     public function extensionInvoiceNumber($modelClass, $dateColumn, $extensionId, $firstWord)
     {
         $model = 'App\Models\\' . $modelClass;
@@ -141,14 +135,12 @@ class SerialNumberGenerator
         do {
             // Generate a random invoice number
             $randomNumber = mt_rand(900, 9999);
-         
+
             // Format the invoice number
             $invoice = 'Inv-' . $firstWord . '-' . str_pad($randomNumber, 4, '0', STR_PAD_LEFT);
 
             // Check if the invoice number already exists in the database
             $exists = $model::where('invoice_no', $invoice)->exists();
-          
-           
         } while ($exists);
 
         // If the invoice number doesn't exist, return it

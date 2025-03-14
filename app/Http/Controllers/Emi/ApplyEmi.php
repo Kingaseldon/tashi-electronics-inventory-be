@@ -234,7 +234,6 @@ class ApplyEmi extends Controller
 
             if ($isSuperUser) {
                 $phone = Product::where('item_number', '=', $request->item_no)->get();
-
             }
 
             if ($employee->assignAndEmployee == null) {

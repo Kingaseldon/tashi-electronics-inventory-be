@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\ExtensionStore;
 
 use App\Http\Controllers\Controller;
+use App\Imports\TransferProduct;
 use App\Models\Product;
 use App\Models\Store;
 use App\Models\User;
@@ -16,6 +17,8 @@ use App\Models\Extension;
 use App\Models\Region;
 use DB;
 use App\Models\Notification;
+use Illuminate\Support\Facades\DB as FacadesDB;
+use Maatwebsite\Excel\Facades\Excel;
 use Spatie\Permission\Models\Role;
 
 class ExtensionStoreTransferController extends Controller
@@ -165,14 +168,13 @@ class ExtensionStoreTransferController extends Controller
 
                 //check if there is  product in that particular regional
                 $transaction = ProductTransaction::where('product_id', $itemProduct->product_id)->where('region_extension_id', $itemProduct->region_extension_id)->first();
-
+                $product = Product::where('id', '=', $itemProduct->product_id)->first();
                 if ($transaction) {
-
                     //total receive product so far
                     $totalReceive = $transaction->receive;
                     $StoreQuatity = $transaction->store_quantity;
 
-                    $product = Product::where('id', '=', $itemProduct->product_id)->first();
+
                     //updating the total product
                     if ($product->sale_type_id == 2) {
                         $transaction->update([
@@ -214,23 +216,30 @@ class ExtensionStoreTransferController extends Controller
                     $store = Store::where('extension_id', $itemProduct->region_extension_id)->first();
 
                     $extensionStoreQty = $product_table->extension_store_qty;
-                    if ($product_table->sale_type_id == 2) {
-                        $product_table->update([
-
-                            'updated_by' => auth()->user()->id,
-                        ]);
-                    } else {
-                        $product_table->update([
-                            'store_id' => $store->id,
-                            'updated_by' => auth()->user()->id,
-                        ]);
-                    }
-
+                    $product_table->update([
+                        'store_id' => $store->id,
+                        'updated_by' => auth()->user()->id,
+                    ]);
 
                     $product_requisition->requested_extension == null ? $product_table->update([
                         'extension_store_qty' => $extensionStoreQty + $itemProduct->receive,
                     ]) : null;
                 }
+                $store = Store::where('extension_id', $itemProduct->region_extension_id)->first();
+
+
+                FacadesDB::table('transaction_audits')->insert([
+                    'store_id' => $store->id,
+                    'sales_type_id' => $product->sale_type_id, // Corrected variable name
+                    'product_id' =>  $itemProduct->product_id,
+                    'item_number' => $product->item_number,
+                    'description' =>  $product->description,
+                    'received' =>  $itemProduct->receive,
+                    'created_date' => now(),
+                    'status' => 'receive',
+                    'created_at' => now(),
+                    'created_by' => auth()->user()->id,
+                ]);
                 $notification = Notification::where('requisition_number', '=', $id);
                 $notification->update([
                     'status' => 'acknowledged'
@@ -360,106 +369,273 @@ class ExtensionStoreTransferController extends Controller
         DB::beginTransaction();
         try {
 
+            // $date = date('Y-m-d', strtotime($request->transfer_date));
+            // $regionId = $request->region;
+            // $extensionId = $request->extension;
+            // $requisitionId = $request->product_requisition;
+
             $date = date('Y-m-d', strtotime($request->transfer_date));
             $regionId = $request->region;
             $extensionId = $request->extension;
             $requisitionId = $request->product_requisition;
-
-            foreach ($request->productDetails as $key => $value) {
-                $transferQuantity = $value['transfer_quantity'];
-                $product = Product::where('serial_no', $value['serial_no'])
-                    ->join('product_transactions as Tb1', 'Tb1.product_id', '=', 'products.id')
-                    ->first();
-                //here we should update the status of requisition after  it is transfer 
-                //first search for the requisition using its id                        
-                $requisition = ProductRequisition::findOrFail($value['requisition_id']);
-                $productTable = Product::where('serial_no', $value['serial_no'])->first();
-                $transaction = ProductTransaction::where('product_id', $product->product_id)->where('region_extension_id', $requisition->requested_extension)->first();
+            $movementNo = $serial->movementNumber('ProductMovement', 'movement_date');
 
 
+            if (($request->hasFile('attachment')) == true) {
+                $file = $request->file('attachment');
 
-                $extensionStoreQty = $productTable->extension_store_qty;
+                $nestedCollection = Excel::toCollection(new TransferProduct, $file);
 
-                //check when transfer quantity should not be greater than the stock quantity in
-                if ($transferQuantity > $extensionStoreQty) {
+                // Flatten and transform the nested collection into a simple array
+                $flattenedArray = $nestedCollection->flatten(1)->toArray();
+
+
+                $errorMessage = "These serial numbers are not found";
+                $errorSerialNumbers = [];
+
+                for ($i = 1; $i < count($flattenedArray); $i++) {
+                    $product = $product = Product::where('serial_no', $flattenedArray[$i][0])
+                        ->join('product_transactions as Tb1', 'Tb1.product_id', '=', 'products.id')
+                        ->select('products.*', 'Tb1.*', 'products.description as product_description') // Ensures all product columns are retrieved
+                        ->first();
+
+                    if ($product) { // serial number present
+                        $transferQuantity = $flattenedArray[$i][1];
+
+
+                        $requisition = ProductRequisition::where('description', $product->product_description)
+                            ->where('sale_type_id', $product->sale_type_id)
+                            ->where('requisition_number', $requisitionId)
+                            ->first();
+
+
+
+                        $productTable = Product::where('serial_no',  $flattenedArray[$i][0])->first();
+                        $transaction = ProductTransaction::where('product_id', $product->product_id)->where('region_extension_id', $requisition->requested_extension)->first();
+
+
+
+                        $extensionStoreQty = $productTable->extension_store_qty;
+
+                        //check when transfer quantity should not be greater than the stock quantity in
+                        if ($transferQuantity > $extensionStoreQty) {
+                            return response()->json([
+                                'message' => 'Transfer Quantity should not be greater than the quantity in stock'
+                            ], 422);
+                        }
+
+                        //if stock quantity is greater than transfer quantity tha saleStatus should be stock and if zero then transfer
+                        if ($extensionStoreQty > $transferQuantity) {
+                            $saleStatus = "stock";
+                        } else {
+                            $saleStatus = "transfer";
+                        }
+                        $totalDistribute = $productTable->extension_distributed_qty;
+                        //product table should be updated after transfer of the product
+                        $productTable->update([
+                            'extension_distributed_qty' => $totalDistribute + $transferQuantity,
+                            'sale_status' => $saleStatus,
+                        ]);
+                        $storeQty = $transaction->store_quantity;
+
+                        $extensionTransferQty = $transaction->extension_transfer_quantity;
+
+                        $transaction->update([
+                            'store_quantity' => $storeQty - $transferQuantity,
+                            'extension_transfer_quantity' => $extensionTransferQty + $transferQuantity
+                        ]);
+
+
+                        //update
+                        //increment the count only if the sale type is of either phone or sim
+                        //if it is not one of them then update transfer_quantity value with the value send via the request
+                        if ($product->sale_type_id == 1 || $product->sale_type_id == 3) {
+                            $requisition->increment('transfer_quantity');
+                        } else {
+                            $requisition->transfer_quantity = $transferQuantity;
+                        }
+                        if ($requisition->request_quantity == $requisition->transfer_quantity) {
+                            $requisition->status = 'supplied';
+                        } else {
+                            $requisition->status = 'requested';
+                        }
+                        $requisition->transfer_date = date('Y-m-d', strtotime(Carbon::now()));
+                        $requisition->save();
+
+                        //store all the stock movement details in the product_movements table
+                        ProductMovement::create([
+                            'product_id' => $product->product_id,
+                            'regional_transfer_id' => $request->from,
+                            'regional_id' => $regionId,
+                            'region_extension_id' => $extensionId,
+                            'requisition_number' => $requisitionId,
+                            'movement_date' => $date,
+                            'status' => 'process',
+                            'receive' => $transferQuantity,
+                            'description' => $product->product_description, //product description
+                            'created_by' => auth()->user()->id,
+                        ]);
+
+                        DB::table('transaction_audits')->insert([
+                            'store_id' => 1,
+                            'sales_type_id' =>   $productTable->sale_type_id, // Corrected variable name
+                            'product_id' =>    $productTable->id,
+                            'item_number' =>   $productTable->item_number,
+                            'description' =>    $productTable->description,
+                            'stock' =>  - ($transferQuantity),
+                            'transfer' =>  $transferQuantity,
+                            'created_date' => now(),
+                            'status' => 'transfer',
+                            'created_at' => now(),
+                            'created_by' => auth()->user()->id,
+                        ]);
+
+                        // Get the 'admin' role instance
+                        $superUsersRole = Role::where('is_super_user', 1)->get();
+
+
+                        // Get all users with the 'admin' role
+                        $superUsers = User::role($superUsersRole)->get();
+
+                        // Iterate over each user and perform actions and create notification when transfering
+                        foreach ($superUsers as $user) {
+                            $notification = new Notification;
+                            $notification->user_id = $user->id;
+                            $notification->extension_from = $requisition->requested_extension;
+                            $notification->extension_to = $request->extension;
+                            $notification->requisition_number = $request->product_requisition;
+                            $notification->created_date = $date;
+                            $notification->product_id = $productTable->id;
+                            $notification->quantity =  $transferQuantity;
+                            $notification->created_by = auth()->user()->id;
+                            $notification->status = 'process';
+                            $notification->read = false;
+                            $notification->save();
+                        }
+                    } else {
+                        $errorSerialNumbers[] = $flattenedArray[$i][0];
+                    }
+                } // foreach ends
+                if (count($errorSerialNumbers) > 0) {
                     return response()->json([
-                        'message' => 'Transfer Quantity should not be greater than the quantity in stock'
-                    ], 422);
+                        'success' => false,
+                        'message' => $errorMessage,
+                        'serialNumbers' => $errorSerialNumbers
+                    ], 203);
                 }
-
-                //if stock quantity is greater than transfer quantity tha saleStatus should be stock and if zero then transfer 
-                if ($extensionStoreQty > $transferQuantity) {
-                    $saleStatus = "stock";
-                } else {
-                    $saleStatus = "transfer";
-                }
-                $totalDistribute = $productTable->extension_distributed_qty;
-                //product table should be updated after transfer of the product
-                $productTable->update([
-                    'extension_distributed_qty' => $totalDistribute + $transferQuantity,
-                    'sale_status' => $saleStatus,
-                ]);
-                $storeQty = $transaction->store_quantity;
-
-                $extensionTransferQty = $transaction->extension_transfer_quantity;
-
-                $transaction->update([
-                    'store_quantity' => $storeQty - $transferQuantity,
-                    'extension_transfer_quantity' => $extensionTransferQty + $transferQuantity
-                ]);
+            } else {
+                foreach ($request->productDetails as $key => $value) {
+                    $transferQuantity = $value['transfer_quantity'];
+                    $product = Product::where('serial_no', $value['serial_no'])
+                        ->join('product_transactions as Tb1', 'Tb1.product_id', '=', 'products.id')
+                        ->first();
+                    //here we should update the status of requisition after  it is transfer
+                    //first search for the requisition using its id
+                    $requisition = ProductRequisition::findOrFail($value['requisition_id']);
+                    $productTable = Product::where('serial_no', $value['serial_no'])->first();
+                    $transaction = ProductTransaction::where('product_id', $product->product_id)->where('region_extension_id', $requisition->requested_extension)->first();
 
 
-                //update
-                //increment the count only if the sale type is of either phone or sim
-                //if it is not one of them then update transfer_quantity value with the value send via the request
-                if ($product->sale_type_id == 1 || $product->sale_type_id == 3) {
-                    $requisition->increment('transfer_quantity');
-                } else {
-                    $requisition->transfer_quantity = $transferQuantity;
-                }
-                if ($requisition->request_quantity == $requisition->transfer_quantity) {
-                    $requisition->status = 'supplied';
-                } else {
-                    $requisition->status = 'requested';
-                }
-                $requisition->transfer_date = date('Y-m-d', strtotime(Carbon::now()));
-                $requisition->save();
 
-                //store all the stock movement details in the product_movements table
-                ProductMovement::create([
-                    'product_id' => $product->product_id,
-                    'regional_transfer_id' => $request->from,
-                    'regional_id' => $regionId,
-                    'region_extension_id' => $extensionId,
-                    'requisition_number' => $requisitionId,
-                    'movement_date' => $date,
-                    'status' => 'process',
-                    'receive' => $transferQuantity,
-                    'description' => $value['description'],
-                    'created_by' => auth()->user()->id,
-                ]);
+                    $extensionStoreQty = $productTable->extension_store_qty;
 
-                // Get the 'admin' role instance
-                $superUsersRole = Role::where('is_super_user', 1)->get();
+                    //check when transfer quantity should not be greater than the stock quantity in
+                    if ($transferQuantity > $extensionStoreQty) {
+                        return response()->json([
+                            'message' => 'Transfer Quantity should not be greater than the quantity in stock'
+                        ], 422);
+                    }
+
+                    //if stock quantity is greater than transfer quantity tha saleStatus should be stock and if zero then transfer
+                    if ($extensionStoreQty > $transferQuantity) {
+                        $saleStatus = "stock";
+                    } else {
+                        $saleStatus = "transfer";
+                    }
+                    $totalDistribute = $productTable->extension_distributed_qty;
+                    //product table should be updated after transfer of the product
+                    $productTable->update([
+                        'extension_distributed_qty' => $totalDistribute + $transferQuantity,
+                        'sale_status' => $saleStatus,
+                    ]);
+                    $storeQty = $transaction->store_quantity;
+
+                    $extensionTransferQty = $transaction->extension_transfer_quantity;
+
+                    $transaction->update([
+                        'store_quantity' => $storeQty - $transferQuantity,
+                        'extension_transfer_quantity' => $extensionTransferQty + $transferQuantity
+                    ]);
 
 
-                // Get all users with the 'admin' role
-                $superUsers = User::role($superUsersRole)->get();
+                    //update
+                    //increment the count only if the sale type is of either phone or sim
+                    //if it is not one of them then update transfer_quantity value with the value send via the request
+                    if ($product->sale_type_id == 1 || $product->sale_type_id == 3) {
+                        $requisition->increment('transfer_quantity');
+                    } else {
+                        $requisition->transfer_quantity = $transferQuantity;
+                    }
+                    if ($requisition->request_quantity == $requisition->transfer_quantity) {
+                        $requisition->status = 'supplied';
+                    } else {
+                        $requisition->status = 'requested';
+                    }
+                    $requisition->transfer_date = date('Y-m-d', strtotime(Carbon::now()));
+                    $requisition->save();
 
-                // Iterate over each user and perform actions and create notification when transfering
-                foreach ($superUsers as $user) {
-                    $notification = new Notification;
-                    $notification->user_id = $user->id;
-                    $notification->extension_from = $requisition->requested_extension;
-                    $notification->extension_to = $request->extension;
-                    $notification->requisition_number = $request->product_requisition;
-                    $notification->created_date = $date;
-                    $notification->product_id = $productTable->id;
-                    $notification->quantity = $value['transfer_quantity'];
-                    $notification->created_by = auth()->user()->id;
-                    $notification->status = 'process';
-                    $notification->read = false;
-                    $notification->save();
+                    //store all the stock movement details in the product_movements table
+                    ProductMovement::create([
+                        'product_id' => $product->product_id,
+                        'regional_transfer_id' => $request->from,
+                        'regional_id' => $regionId,
+                        'region_extension_id' => $extensionId,
+                        'requisition_number' => $requisitionId,
+                        'movement_date' => $date,
+                        'status' => 'process',
+                        'receive' => $transferQuantity,
+                        'description' => $value['description'],
+                        'created_by' => auth()->user()->id,
+                    ]);
+                    $store = Store::where('extension_id', $extensionId->region_extension_id)->first();
+
+
+                    DB::table('transaction_audits')->insert([
+                        'store_id' => $store->id,
+                        'sales_type_id' =>   $productTable->sale_type_id, // Corrected variable name
+                        'product_id' =>    $productTable->id,
+                        'item_number' =>   $productTable->item_number,
+                        'description' =>    $productTable->description,
+                        'stock' =>  - ($transferQuantity),
+                        'transfer' =>  $transferQuantity,
+                        'created_date' => now(),
+                        'status' => 'transfer',
+                        'created_at' => now(),
+                        'created_by' => auth()->user()->id,
+                    ]);
+
+                    // Get the 'admin' role instance
+                    $superUsersRole = Role::where('is_super_user', 1)->get();
+
+
+                    // Get all users with the 'admin' role
+                    $superUsers = User::role($superUsersRole)->get();
+
+                    // Iterate over each user and perform actions and create notification when transfering
+                    foreach ($superUsers as $user) {
+                        $notification = new Notification;
+                        $notification->user_id = $user->id;
+                        $notification->extension_from = $requisition->requested_extension;
+                        $notification->extension_to = $request->extension;
+                        $notification->requisition_number = $request->product_requisition;
+                        $notification->created_date = $date;
+                        $notification->product_id = $productTable->id;
+                        $notification->quantity = $value['transfer_quantity'];
+                        $notification->created_by = auth()->user()->id;
+                        $notification->status = 'process';
+                        $notification->read = false;
+                        $notification->save();
+                    }
                 }
             }
         } catch (\Exception $e) {

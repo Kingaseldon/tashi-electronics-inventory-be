@@ -14,9 +14,9 @@ use App\Models\ProductTransaction;
 use App\Models\SaleVoucher;
 use App\Models\Customer;
 use App\Models\Bank;
+use App\Models\Store;
 use Carbon\Carbon;
 use DB;
-use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 
 class ExtensionStoreSaleController extends Controller
@@ -133,7 +133,6 @@ class ExtensionStoreSaleController extends Controller
     public function store(Request $request, SerialNumberGenerator $invoice)
     {
 
-
         $extensionId = '';
         $extensionName = '';
         if ($request->extension == null && $request->extensionName == "") {
@@ -179,7 +178,7 @@ class ExtensionStoreSaleController extends Controller
 
                         $saleVoucher = new SaleVoucher;
                         $saleVoucher->invoice_no = $invoiceNo;
-                        $saleVoucher->invoice_date = date('Y-m-d', strtotime(Carbon::now()));
+                        $saleVoucher->invoice_date = $request->invoice_date ?? date('Y-m-d', strtotime(Carbon::now()));
                         $saleVoucher->region_extension_id = $request->region;
                         $saleVoucher->customer_id = $request->customer;
                         $saleVoucher->status = "open";
@@ -259,6 +258,23 @@ class ExtensionStoreSaleController extends Controller
                             } else {
                                 $errorSerialNumbers[] = $flattenedArray[$i][0];
                             }
+                            $store = Store::where('extension_id', $extensionId)->first();
+
+                            $productDetail =  Product::where('serial_no', $flattenedArray[$i][0])->first();
+
+                            DB::table('transaction_audits')->insert([
+                                'store_id' => $store->id,
+                                'sales_type_id' =>   $productDetail->sale_type_id, // Corrected variable name
+                                'product_id' =>    $productDetail->id,
+                                'item_number' =>   $productDetail->item_number,
+                                'description' =>    $productDetail->description,
+                                'stock' =>  - ($regionTransfer->sold_quantity),
+                                'sales' =>   $regionTransfer->sold_quantity,
+                                'created_date' => $request->invoice_date ?? now(),
+                                'status' => 'sale',
+                                'created_at' => now(),
+                                'created_by' => auth()->user()->id,
+                            ]);
 
                             $saleVoucher->saleVoucherDetails()->insert($saleOrderDetails);
                         } // foreach ends
@@ -281,7 +297,7 @@ class ExtensionStoreSaleController extends Controller
 
                     $saleVoucher = new SaleVoucher;
                     $saleVoucher->invoice_no = $invoiceNo;
-                    $saleVoucher->invoice_date = date('Y-m-d', strtotime(Carbon::now()));
+                    $saleVoucher->invoice_date = $request->invoice_date ?? date('Y-m-d', strtotime(Carbon::now()));
                     $saleVoucher->customer_id = $request->customer;
                     $saleVoucher->region_extension_id = $extensionId;
                     $saleVoucher->walk_in_customer = $request->walk_in_customer;
@@ -321,21 +337,36 @@ class ExtensionStoreSaleController extends Controller
                             'updated_by' => auth()->user()->id,
                         ]);
                         // $saleOrderDetails[$key]['created_by'] = $request->user()->id;
+
+                        $store = Store::where('extension_id', $extensionId)->first();
+
+                        DB::table('transaction_audits')->insert([
+                            'store_id' => $store->id,
+                            'sales_type_id' =>   $product_table->sale_type_id, // Corrected variable name
+                            'product_id' =>    $product_table->id,
+                            'item_number' =>   $product_table->item_number,
+                            'description' =>    $product_table->description,
+                            'stock' =>  - ($regionTransfer->sold_quantity),
+                            'sales' =>   $regionTransfer->sold_quantity,
+                            'created_date' => $request->invoice_date ?? now(),
+                            'status' => 'sale',
+                            'created_at' => now(),
+                            'created_by' => auth()->user()->id,
+                        ]);
                     }
                     $saleVoucher->saleVoucherDetails()->insert($saleOrderDetails);
                 }
             } else { //if not a super user
                 if ($request->customerType == 2) {
-                    set_time_limit(0);
                     $request->validate([
                         'attachment' => 'required|mimes:xls,xlsx',
                     ]);
 
                     if ($request->hasFile('attachment')) {
+
                         $file = $request->file('attachment');
                         $nestedCollection = Excel::toCollection(new SaleProduct, $file);
                         $flattenedArrays = $nestedCollection->flatten(1)->toArray();
-
 
                         $flattenedArrays = array_filter($flattenedArrays, function ($row) {
                             return !empty(array_filter($row, function ($value) {
@@ -346,10 +377,9 @@ class ExtensionStoreSaleController extends Controller
                         // Remove the first row (header row) from the flattened array
                         array_shift($flattenedArrays);
 
-
                         $saleVoucher = new SaleVoucher;
                         $saleVoucher->invoice_no = $invoiceNo;
-                        $saleVoucher->invoice_date = now();
+                        $saleVoucher->invoice_date = $request->invoice_date ?? date('Y-m-d', strtotime(Carbon::now()));
                         $saleVoucher->region_extension_id = $extensionId;
                         $saleVoucher->customer_id = $request->customer;
                         $saleVoucher->service_charge = $request->service_charge;
@@ -363,8 +393,6 @@ class ExtensionStoreSaleController extends Controller
                         $errorMessage = "These serial numbers are not found";
                         $errorSerialNumbers = [];
 
-              
-
                         foreach ($flattenedArrays as $data) {
                             // Assuming $data is in the format [0 => ..., 'discount_name' => ..., 'quantity' => ...]
                             $product = ProductTransaction::with('product')
@@ -373,33 +401,11 @@ class ExtensionStoreSaleController extends Controller
                                 ->where('Tb1.serial_no', $data[0])
                                 ->first();
 
-
                             if ($product) {
-                                // if ((int) $product->store_quantity < (int) $data[2]) {
-                                //     dd('here');
-
-                                //     return response()->json([
-                                //         'success' => false,
-                                //         'message' => 'Quantity cannot be greater than store quantity',
-                                //     ], 406);
-                                // }
-                                if ((int) $product->store_quantity < (int) $data[2]) {
-                                    // Log product details and requested quantity
-                                    Log::error(
-                                        "Insufficient quantity",
-                                        [
-                                            'serial_no' => $data[0],
-                                            'requested_quantity' => $data[2],
-                                            'store_quantity' => $product->store_quantity,
-                                            'product' => $product->toArray() // Log product data for debugging
-                                        ]
-                                    );
-
-                                    // You can also include product details in the response
+                                if ($product->store_quantity < $data[2]) {
                                     return response()->json([
                                         'success' => false,
-                                        'message' => 'Quantity cannot be greater than store quantity' . $data[0],
-
+                                        'message' => 'Quantity cannot be greater than store quantity',
                                     ], 406);
                                 }
 
@@ -451,18 +457,31 @@ class ExtensionStoreSaleController extends Controller
                                     'total' => $netPay,
                                     'discount_type_id' => $discountName->id ?? null // To be filled later
                                 ];
+                                $store = Store::where('extension_id', $extensionId)->first();
+
+                                $productDetail =  Product::where('serial_no',  $data[0])->first();
+
+
+                                DB::table('transaction_audits')->insert([
+                                    'store_id' => $store->id,
+                                    'sales_type_id' =>   $productDetail->sale_type_id, // Corrected variable name
+                                    'product_id' =>    $productDetail->id,
+                                    'item_number' =>   $productDetail->item_number,
+                                    'description' =>    $productDetail->description,
+                                    'stock' =>  - ($regionTransfer->sold_quantity),
+                                    'sales' =>   $regionTransfer->sold_quantity,
+                                    'created_date' => $request->invoice_date ?? now(),
+                                    'status' => 'sale',
+                                    'created_at' => now(),
+                                    'created_by' => auth()->user()->id,
+                                ]);
                             } else {
                                 $errorSerialNumbers[] = $data[0];
                             }
                         }
-                   
-                       
 
                         // Insert sale order details outside the loop
                         SaleVoucherDetail::insert($saleOrderDetails);
-                        Log::info('datas:', $saleOrderDetails, $errorMessage);
-
-
 
                         if (count($errorSerialNumbers) > 0) {
                             return response()->json([
@@ -491,7 +510,7 @@ class ExtensionStoreSaleController extends Controller
 
                     $saleVoucher = new SaleVoucher;
                     $saleVoucher->invoice_no = $invoiceNo;
-                    $saleVoucher->invoice_date = date('Y-m-d', strtotime(Carbon::now()));
+                    $saleVoucher->invoice_date = $request->invoice_date ?? date('Y-m-d', strtotime(Carbon::now()));
                     $saleVoucher->customer_id = $request->customer;
                     $saleVoucher->region_extension_id = $extensionId;
                     $saleVoucher->walk_in_customer = $request->walk_in_customer;
@@ -532,6 +551,23 @@ class ExtensionStoreSaleController extends Controller
                             'updated_by' => auth()->user()->id,
                         ]);
                         // $saleOrderDetails[$key]['created_by'] = $request->user()->id;
+
+                        $store = Store::where('extension_id', $extensionId)->first();
+
+
+                        DB::table('transaction_audits')->insert([
+                            'store_id' => $store->id,
+                            'sales_type_id' =>   $product_table->sale_type_id, // Corrected variable name
+                            'product_id' =>    $product_table->id,
+                            'item_number' =>   $product_table->item_number,
+                            'description' =>    $product_table->description,
+                            'stock' =>  - ($regionTransfer->sold_quantity),
+                            'sales' =>   $regionTransfer->sold_quantity,
+                            'created_date' => $request->invoice_date ?? now(),
+                            'status' => 'sale',
+                            'created_at' => now(),
+                            'created_by' => auth()->user()->id,
+                        ]);
                     }
                     $saleVoucher->saleVoucherDetails()->insert($saleOrderDetails);
                 }

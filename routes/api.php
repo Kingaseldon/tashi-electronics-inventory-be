@@ -15,6 +15,7 @@ use App\Http\Controllers\ReportController\ReportController;
 use App\Http\Controllers\ReportController\SalesAndStockController;
 use App\Http\Controllers\ReportController\SalesOrderListController;
 use App\Http\Controllers\ReportController\StaffEmiController;
+use App\Http\Controllers\ReportController\TransferController;
 use App\Http\Controllers\SalesAndOrder\Warranty;
 use App\Http\Controllers\SalesAndOrder\WarrantyController;
 use App\Models\Notification;
@@ -59,7 +60,6 @@ use App\Http\Controllers\ExtensionStore\ExtensionStoreSaleController;
 use App\Http\Controllers\ExtensionStore\ExtensionProductTransferController;
 use App\Http\Controllers\ExtensionStore\ExtensionProductReceiveController;
 use App\Http\Controllers\Master\EmployeeController;
-use App\Http\Controllers\ReportController\TransferController;
 
 /*
 |--------------------------------------------------------------------------
@@ -71,11 +71,10 @@ use App\Http\Controllers\ReportController\TransferController;
 | is assigned the "api" middleware group. Enjoy building your API!
 |
 */
-
 Route::post('login', [AuthController::Class, 'Login']);
 
 Route::group(['middleware' => ['jwt.auth']], function () {
-
+    
     //route under system setting
     Route::get('activity-logs', [AuditsController::class, 'index']);
     Route::get('permission', [PermissionController::class, 'index']);
@@ -87,7 +86,7 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     Route::get('edit-users/{id}', [UserController::Class, 'editUser']);
     Route::put('reset-password/{id}', [UserController::Class, 'password']);
 
-
+    
 
     //route under master 
     Route::resource('dzongkhags', DzongkhagController::class);
@@ -143,9 +142,11 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     Route::get('edit-products/{id}', [ProductController::Class, 'editProduct']);
 
 
+
     Route::post('uploads', [ProductController::Class, 'importProduct']);
     Route::resource('product-movements', ProductMovementController::class);
     Route::get('edit-product-movements/{id}', [ProductMovementController::Class, 'editBank']);
+ 
     // Route::resource('product-requisitions', ProductRequisitionController::class);  
     // Route::get('edit-product-requisitions/{id}', [ProductRequisitionController::Class, 'editBank']); 
 
@@ -160,8 +161,8 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     Route::resource('main-store-sales', MainStoreSaleController::class);
     Route::post('make-payments', [MainStoreSaleController::class, 'makePayment']);
     // Route::resource('phone-emis', PhoneEmiController::class);
-
-
+ 
+    
     //route for regional office
     Route::resource('regional-stores', RegionalStoreTransferController::class);
     Route::get('regional-transfer/{id}', [RegionalStoreTransferController::Class, 'requestedRegionalTransfer']);
@@ -215,13 +216,12 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     //ReportController
     Route::resource('postedsalesinvoice', PostedSalesInvoiceController::class);
     Route::resource('onhanditems', OnHandItemsController::class);
-    Route::resource('salesandstocks', SalesAndStockController::class);
-    Route::resource('salesorderlist', SalesOrderListController::class);
-    Route::resource('cashreceipt', CashReceiptController::class);
-    Route::resource('onlinereceipt', OnlineReceiptController::class);
-    Route::resource('staff-emi', StaffEmiController::class);
-    Route::resource('transfer-reports', TransferController::class);
-
+    Route::resource('salesandstocks',SalesAndStockController::class);
+    Route::resource('salesorderlist',SalesOrderListController::class);
+    Route::resource('cashreceipt',CashReceiptController::class);
+    Route::resource('onlinereceipt',OnlineReceiptController::class);
+    Route::resource('staff-emi',StaffEmiController::class);
+    Route::resource('transfer-reports',TransferController::class);
 
     //warrantyCOntroller
     Route::resource('warranties', WarrantyController::class);
@@ -231,7 +231,7 @@ Route::group(['middleware' => ['jwt.auth']], function () {
 
 
     //Notification
-    Route::resource('notifications', NotificationController::class);
+    Route::resource('notifications',NotificationController::class);
     Route::get('get-notifications/{id}', [NotificationController::class, 'getNotificationsforUser']);
 
     //EMI
@@ -242,6 +242,9 @@ Route::group(['middleware' => ['jwt.auth']], function () {
 
     Route::resource('approve-emi', ApproveEmi::class);
     Route::put('update-product/{id}', [ApplyEmi::class, 'updateProduct']);
+
+
+
 });
 
 Route::get('_CHprd', [ProductController::class, 'checkStock']);

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\MainStore;
 
 use App\Http\Controllers\Controller;
+use App\Imports\TransferProduct;
 use Illuminate\Http\Request;
 use App\Services\SerialNumberGenerator;
 use App\Models\ProductMovement;
@@ -11,6 +12,7 @@ use App\Models\Product;
 use App\Models\Region;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Maatwebsite\Excel\Facades\Excel;
 
 class MainStoreTransferController extends Controller
 {
@@ -22,7 +24,7 @@ class MainStoreTransferController extends Controller
         $this->middleware('permission:main-stores.update')->only('update');
         $this->middleware('permission:main-stores.main-transfers')->only('mainStoreTransfer');
         $this->middleware('permission:main-stores.request-transfers')->only('requestedTransfer');
-        // $this->middleware('permission:main-stores.verify-products')->only('physicalVerification');     
+        // $this->middleware('permission:main-stores.verify-products')->only('physicalVerification');
     }
 
     /**
@@ -36,7 +38,7 @@ class MainStoreTransferController extends Controller
             $products = Product::with('unit', 'brand', 'store', 'category', 'subCategory', 'saleType')->orderBy('id')->where('main_store_qty', '!=', 0)->get();
             $transactions = ProductMovement::where('status', 'process')->with('product', 'region', 'extension')->orderBy('status')->get();
             $transferProducts = Product::with('saleType')->select('item_number', 'description', 'sale_type_id', \DB::raw('SUM(main_store_qty) as total_quantity',))
-               
+
                 ->groupBy('item_number', 'sale_type_id', 'description')
                 ->get();
             $requisitions = ProductRequisition::select('regional_id', 'region_extension_id', 'requisition_number', DB::raw('SUM(request_quantity - transfer_quantity) as quantity'))
@@ -63,7 +65,7 @@ class MainStoreTransferController extends Controller
         }
     }
 
-    //get requisition details 
+    //get requisition details
     public function requestedTransfer($reqNo)
     {
         try {
@@ -84,7 +86,6 @@ class MainStoreTransferController extends Controller
                 'products' => $products,
                 'regions' => $regions,
             ], 200);
-
         } catch (Exception $e) {
             return response([
                 'message' => $e->getMessage()
@@ -93,7 +94,7 @@ class MainStoreTransferController extends Controller
     }
 
 
-    //get 
+    //get
     //tranfer to stores(regional and extension) not in use now
     public function mainStoreTransfer($id)
     {
@@ -114,8 +115,6 @@ class MainStoreTransferController extends Controller
                 'region' => $regions,
                 'requisitions' => $requisitions,
             ], 200);
-
-
         } catch (Exception $e) {
             return response([
                 'message' => $e->getMessage(),
@@ -143,84 +142,213 @@ class MainStoreTransferController extends Controller
     //trasfer from main store
     public function store(Request $request, SerialNumberGenerator $serial)
     {
-        $this->validate($request, [
-        ]);
+        $this->validate($request, []);
 
         DB::beginTransaction();
         try {
 
+
             $date = date('Y-m-d', strtotime($request->transfer_date));
-            $regionId = $request->region;
+
+            $regionId = $request->region === 'null' ? null : $request->region;
             $extensionId = $request->extension;
             $requisitionId = $request->product_requisition;
             $movementNo = $serial->movementNumber('ProductMovement', 'movement_date');
 
 
-            foreach ($request->productDetails as $key => $value) {
-                
-                $transferQuantity = $value['transfer_quantity'];
-                $product = Product::where('serial_no', $value['serial_no'])->where('main_store_qty','!=',0)->first();
 
-                $quantityafterDistribute = $product->main_store_qty;
-                $totalDistribute = $product->main_store_distributed_qty;
+            if (($request->hasFile('attachment')) == true) {
 
-                //check when transfer quantity should not be greater than the stock quantity in
-                if ($transferQuantity > $quantityafterDistribute) {
+                $file = $request->file('attachment');
+
+                $nestedCollection = Excel::toCollection(new TransferProduct, $file);
+
+                // Flatten and transform the nested collection into a simple array
+                $flattenedArray = $nestedCollection->flatten(1)->toArray();
+
+                $errorMessage = "These serial numbers are not found";
+                $errorSerialNumbers = [];
+
+                for ($i = 1; $i < count($flattenedArray); $i++) {
+                    $product = Product::where('serial_no', $flattenedArray[$i][0])->where('main_store_qty', '!=', 0)->first();
+
+
+                    if ($product) { // serial number present
+                        $transferQuantity = $flattenedArray[$i][1];
+                        // $product = Product::where('serial_no', $value['serial_no'])->where('main_store_qty', '!=', 0)->first();
+                        $quantityafterDistribute = $product->main_store_qty;
+
+                        $totalDistribute = $product->main_store_distributed_qty;
+
+
+                        //check when transfer quantity should not be greater than the stock quantity in
+                        if ($transferQuantity > $quantityafterDistribute) {
+                            return response()->json([
+                                'message' => 'Transfer Quantity should not be greater than the quantity in stock'
+                            ], 422);
+                        }
+
+                        //if stock quantity is greater than transfer quantity tha saleStatus should be stock and if zero then transfer
+                        if ($quantityafterDistribute > $transferQuantity) {
+                            $saleStatus = "stock";
+                        } else {
+                            $saleStatus = "transfer";
+                        }
+                        //product table should be update after transfer of the product
+
+                        $product->update([
+                            'main_store_qty' => $quantityafterDistribute - $transferQuantity,
+                            'main_store_distributed_qty' => $totalDistribute + $transferQuantity,
+                            'sale_status' => $saleStatus,
+                        ]);
+
+                        //here we should update the status of requisition after  it is transfer
+                        //first search for the requisition using its id
+
+                        // $requisition = ProductRequisition::findOrFail($value['requisition_id']);
+                        $requisition = ProductRequisition::where('description', $product->description)
+                            ->where('sale_type_id', $product->sale_type_id)
+                            ->where('requisition_number', $requisitionId)
+                            ->first();
+
+                        //update
+                        //increment the count only if the sale type is of either phone or sim
+                        //if it is not one of them then update transfer_quantity value with the value send via the request
+                        if ($product->sale_type_id == 1 || $product->sale_type_id == 3) {
+                            $requisition->increment('transfer_quantity');
+                        } else {
+                            $requisition->transfer_quantity = $transferQuantity;
+                        }
+                        if ($requisition->request_quantity == $requisition->transfer_quantity) {
+                            $requisition->status = 'supplied';
+                        } else {
+                            $requisition->status = 'requested';
+                        }
+
+                        $requisition->transfer_date = date('Y-m-d', strtotime(Carbon::now()));
+                        $requisition->save();
+
+
+                        //store all the stock movement details in the product_movements table
+                        ProductMovement::create([
+                            'product_id' => $product->id,
+                            'regional_transfer_id' => $request->from,
+                            'product_movement_no' => $movementNo,
+                            'regional_id' => $regionId,
+                            'region_extension_id' => $extensionId,
+                            'requisition_number' => $requisitionId,
+                            'movement_date' => $date,
+                            'status' => 'process',
+                            'receive' => $transferQuantity,
+                            'description' => $product->description,
+                            'created_by' => auth()->user()->id,
+                        ]);
+
+                        DB::table('transaction_audits')->insert([
+                            'store_id' => 1,
+                            'sales_type_id' => $product->sale_type_id, // Corrected variable name
+                            'product_id' =>  $product->id,
+                            'item_number' => $product->item_number,
+                            'description' =>  $product->description,
+                            'stock' =>  - ($transferQuantity),
+                            'transfer' =>  $transferQuantity,
+                            'created_date' => now(),
+                            'status' => 'transfer',
+                            'created_at' => now(),
+                            'created_by' => auth()->user()->id,
+                        ]);
+                    } else {
+                        $errorSerialNumbers[] = $flattenedArray[$i][0];
+                    }
+                } // foreach ends
+                if (count($errorSerialNumbers) > 0) {
                     return response()->json([
-                        'message' => 'Transfer Quantity should not be greater than the quantity in stock'
-                    ], 422);
+                        'success' => false,
+                        'message' => $errorMessage,
+                        'serialNumbers' => $errorSerialNumbers
+                    ], 203);
                 }
+            } else {
 
-                //if stock quantity is greater than transfer quantity tha saleStatus should be stock and if zero then transfer 
-                if ($quantityafterDistribute > $transferQuantity) {
-                    $saleStatus = "stock";
-                } else {
-                    $saleStatus = "transfer";
-                }
-                //product table should be update after transfer of the product
-                $product->update([
-                    'main_store_qty' => $quantityafterDistribute - $transferQuantity,
-                    'main_store_distributed_qty' => $totalDistribute + $transferQuantity,
-                    'sale_status' => $saleStatus,
-                ]);
+                foreach ($request->productDetails as $key => $value) {
 
-                //here we should update the status of requisition after  it is transfer 
-                //first search for the requisition using its id                        
-                $requisition = ProductRequisition::findOrFail($value['requisition_id']);
-                //update
-                //increment the count only if the sale type is of either phone or sim
-                //if it is not one of them then update transfer_quantity value with the value send via the request
-                if ($product->sale_type_id == 1 || $product->sale_type_id == 3) {
-                    $requisition->increment('transfer_quantity');
-                } else {
-                    $requisition->transfer_quantity = $transferQuantity;
-                }
-                if($requisition->request_quantity == $requisition->transfer_quantity){
-                    $requisition->status = 'supplied';
-                }
-                else{
-                    $requisition->status = 'requested';
-                }
-              
-                $requisition->transfer_date = date('Y-m-d', strtotime(Carbon::now()));
-                $requisition->save();
+                    $transferQuantity = $value['transfer_quantity'];
+                    $product = Product::where('serial_no', $value['serial_no'])->where('main_store_qty', '!=', 0)->first();
 
-                //store all the stock movement details in the product_movements table
-                ProductMovement::create([
-                    'product_id' => $product->id,
-                    'regional_transfer_id' => $request->from,
-                    'product_movement_no' => $movementNo,
-                    'regional_id' => $regionId,
-                    'region_extension_id' => $extensionId,
-                    'requisition_number' => $requisitionId,
-                    'movement_date' => $date,
-                    'status' => 'process',
-                    'receive' => $transferQuantity,
-                    'description' => $value['description'],
-                    'created_by' => auth()->user()->id,
-                ]);
+                    $quantityafterDistribute = $product->main_store_qty;
+                    $totalDistribute = $product->main_store_distributed_qty;
+
+                    //check when transfer quantity should not be greater than the stock quantity in
+                    if ($transferQuantity > $quantityafterDistribute) {
+                        return response()->json([
+                            'message' => 'Transfer Quantity should not be greater than the quantity in stock'
+                        ], 422);
+                    }
+
+                    //if stock quantity is greater than transfer quantity tha saleStatus should be stock and if zero then transfer
+                    if ($quantityafterDistribute > $transferQuantity) {
+                        $saleStatus = "stock";
+                    } else {
+                        $saleStatus = "transfer";
+                    }
+                    //product table should be update after transfer of the product
+                    $product->update([
+                        'main_store_qty' => $quantityafterDistribute - $transferQuantity,
+                        'main_store_distributed_qty' => $totalDistribute + $transferQuantity,
+                        'sale_status' => $saleStatus,
+                    ]);
+
+
+                    //here we should update the status of requisition after  it is transfer
+                    //first search for the requisition using its id
+                    $requisition = ProductRequisition::findOrFail($value['requisition_id']);
+                    //update
+                    //increment the count only if the sale type is of either phone or sim
+                    //if it is not one of them then update transfer_quantity value with the value send via the request
+                    if ($product->sale_type_id == 1 || $product->sale_type_id == 3) {
+                        $requisition->increment('transfer_quantity');
+                    } else {
+                        $requisition->transfer_quantity = $transferQuantity;
+                    }
+                    if ($requisition->request_quantity == $requisition->transfer_quantity) {
+                        $requisition->status = 'supplied';
+                    } else {
+                        $requisition->status = 'requested';
+                    }
+
+                    $requisition->transfer_date = date('Y-m-d', strtotime(Carbon::now()));
+                    $requisition->save();
+
+                    //store all the stock movement details in the product_movements table
+                    ProductMovement::create([
+                        'product_id' => $product->id,
+                        'regional_transfer_id' => $request->from,
+                        'product_movement_no' => $movementNo,
+                        'regional_id' => $regionId,
+                        'region_extension_id' => $extensionId,
+                        'requisition_number' => $requisitionId,
+                        'movement_date' => $date,
+                        'status' => 'process',
+                        'receive' => $transferQuantity,
+                        'description' => $value['description'],
+                        'created_by' => auth()->user()->id,
+                    ]);
+
+                    DB::table('transaction_audits')->insert([
+                        'store_id' => 1,
+                        'sales_type_id' => $product->sale_type_id, // Corrected variable name
+                        'product_id' =>  $product->id,
+                        'item_number' => $product->item_number,
+                        'description' =>  $product->description,
+                        'stock' =>  - ($transferQuantity),
+                        'transfer' =>  $transferQuantity,
+                        'created_date' => now(),
+                        'status' => 'transfer',
+                        'created_at' => now(),
+                        'created_by' => auth()->user()->id,
+                    ]);
+                }
             }
-
         } catch (\Exception $e) {
             DB::rollback();
             return response()->json([
@@ -328,7 +456,6 @@ class MainStoreTransferController extends Controller
         return response()->json([
             'message' => 'Product has been transfered Successfully'
         ], 200);
-
     }
 
     /**
@@ -337,10 +464,7 @@ class MainStoreTransferController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function destroy($id)
-    {
-
-    }
+    public function destroy($id) {}
 
     //product verification with physical product
     public function physicalVerification(Request $request)
@@ -366,7 +490,5 @@ class MainStoreTransferController extends Controller
         return response()->json([
             'message' => 'Product has been verified Successfully'
         ], 200);
-
-
     }
 }

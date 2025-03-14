@@ -7,7 +7,7 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Illuminate\Http\Request;
 use App\Models\Product;
 use Carbon\Carbon;
-
+use Illuminate\Support\Facades\DB;
 
 class SimImport implements ToModel, WithHeadingRow
 {
@@ -39,7 +39,7 @@ class SimImport implements ToModel, WithHeadingRow
         if ($row['product_type'] !== request()->input('product_category_name ') && $row['sub_category'] !== request()->input('product_sub_category_name')) {
             // Handle the case where sub_category does not match the product_sub_category_name.
 
-            // Log the error for debugging or record-keeping. 
+            // Log the error for debugging or record-keeping.
             // Log::error('Validation failed for a row: ' . json_encode($row));
             $this->validationErrors[] = 'Validation failed for this row. The product type or sub category does not match the expected values.';
             return null;
@@ -48,7 +48,7 @@ class SimImport implements ToModel, WithHeadingRow
             if (!empty($row['mobile_number'])) {
                 $this->rowCount++;
                 // Create a new Product instance with the retrieved values
-                return new Product([
+                $product = Product::create([
                     'item_number' => 'Sim',
                     'description' => 'Subscriber Identity Module',
                     'sale_type_id' => $this->request->input('product_category'),
@@ -65,6 +65,22 @@ class SimImport implements ToModel, WithHeadingRow
                     'sale_status' => 'stock',
                     'created_by' => auth()->user()->id,
                 ]);
+
+                DB::table('transaction_audits')->insert([
+                    'store_id' => 1,
+                    'sales_type_id' => $product->sale_type_id, // Corrected variable name
+                    'product_id' => $product->id,
+                    'item_number' => $product->item_number,
+                    'description' => $product->description,
+                    'received' =>  $product->main_store_qty,
+                    'stock' =>  $product->main_store_qty,
+                    'created_date' => now(),
+                    'status' => 'upload',
+                    'created_at' => now(),
+                    'created_by' => auth()->user()->id,
+                ]);
+
+                return $product;
             }
         }
     }

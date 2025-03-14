@@ -42,6 +42,14 @@ class ProductMovement extends Model implements Auditable
     {
         return $this->belongsTo(Extension::class, 'region_extension_id');
     }
+    public function createdby()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+    public function updatedby()
+    {
+        return $this->belongsTo(User::class, 'updated_by');
+    }
 
     //for particular region assign
     public function scopeLoggedInAssignRegion($query)

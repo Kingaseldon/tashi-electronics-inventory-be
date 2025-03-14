@@ -14,6 +14,7 @@ use App\Models\Customer;
 use App\Models\Bank;
 use Carbon\Carbon;
 use DB;
+use Illuminate\Support\Facades\DB as FacadesDB;
 use Storage;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -27,7 +28,6 @@ class MainStoreSaleController extends Controller
         $this->middleware('permission:main-store-sales.store')->only('store');
         $this->middleware('permission:main-store-sales.update')->only('update');
         $this->middleware('permission:main-store-sales.make-payments')->only('makePayment');
-
     }
 
     /**
@@ -38,7 +38,7 @@ class MainStoreSaleController extends Controller
     public function index()
     {
         try {
-            $saleVouchers = SaleVoucher::with('saleVoucherDetails.discount','user')->orderBy('created_at', 'DESC')->where('regional_id', null)->where('region_extension_id', null)->get();
+            $saleVouchers = SaleVoucher::with('saleVoucherDetails.discount', 'user')->orderBy('created_at', 'DESC')->where('regional_id', null)->where('region_extension_id', null)->get();
             $customers = Customer::with('customerType')->orderBy('id')->get();
             $products = Product::where('main_store_qty', '!=', 0)->with('unit', 'brand', 'store', 'category', 'subCategory', 'saleType')->orderBy('id')->get();
 
@@ -86,13 +86,13 @@ class MainStoreSaleController extends Controller
 
                     // Filter out rows with all null values
                     $flattenedArray = array_filter($flattenedArrays, function ($row) {
-                        return !empty (array_filter($row, function ($value) {
+                        return !empty(array_filter($row, function ($value) {
                             return !is_null($value);
                         }));
                     });
                     $saleVoucher = new SaleVoucher;
                     $saleVoucher->invoice_no = $invoiceNo;
-                    $saleVoucher->invoice_date = date('Y-m-d', strtotime(Carbon::now()));
+                    $saleVoucher->invoice_date = $request->invoice_date ?? date('Y-m-d', strtotime(Carbon::now()));
                     $saleVoucher->customer_id = $request->customer;
                     $saleVoucher->status = "open";
                     $saleVoucher->remarks = $request->remarks;
@@ -108,7 +108,7 @@ class MainStoreSaleController extends Controller
                     for ($i = 1; $i < count($flattenedArray); $i++) {
                         $product = Product::where('serial_no', $flattenedArray[$i][0])->first(); //serial number of exel
 
-                        if ($product) { // serial number present  
+                        if ($product) { // serial number present
 
                             if ($product->main_store_qty < $flattenedArray[$i][2]) {
                                 return response()->json([
@@ -142,7 +142,7 @@ class MainStoreSaleController extends Controller
                             // gross payable
                             $saleOrderDetails[$i]['price'] = $grossForEachItem;
                             $grossPayable += $grossForEachItem; // Accumulate the total in the grand total
-                             $grossPayable = round( $grossPayable, 2);
+                            $grossPayable = round($grossPayable, 2);
 
                             $saleOrderDetails[$i]['discount_type_id'] = $discountName->id ?? null;
 
@@ -158,6 +158,19 @@ class MainStoreSaleController extends Controller
 
                         $saleVoucher->saleVoucherDetails()->insert($saleOrderDetails);
 
+                        FacadesDB::table('transaction_audits')->insert([
+                            'store_id' => 1,
+                            'sales_type_id' => $product->sale_type_id, // Corrected variable name
+                            'product_id' =>  $product->id,
+                            'item_number' => $product->item_number,
+                            'description' =>  $product->description,
+                            'stock' =>  - ($flattenedArray[$i][2]),
+                            'sales' =>  $flattenedArray[$i][2],
+                            'created_date' => $request->invoice_date ?? now(),
+                            'status' => 'sale',
+                            'created_at' => now(),
+                            'created_by' => auth()->user()->id,
+                        ]);
                     } // foreach ends
                     if (count($errorSerialNumbers) > 0) {
                         return response()->json([
@@ -172,12 +185,11 @@ class MainStoreSaleController extends Controller
                         'net_payable' => $netPayable,
                         'gross_payable' => $grossPayable
                     ]);
-
                 }
             } else { //if no attachment uploaded
                 $saleVoucher = new SaleVoucher;
                 $saleVoucher->invoice_no = $invoiceNo;
-                $saleVoucher->invoice_date = date('Y-m-d', strtotime(Carbon::now()));
+                $saleVoucher->invoice_date = $request->invoice_date ?? date('Y-m-d', strtotime(Carbon::now()));
                 $saleVoucher->customer_id = $request->customer;
                 $saleVoucher->walk_in_customer = $request->walk_in_customer;
                 $saleVoucher->contact_no = $request->contact_no;
@@ -202,18 +214,31 @@ class MainStoreSaleController extends Controller
 
                     $mainTransfer = Product::find($value['product']);
                     $quantityafterDistribute = $mainTransfer->total_quantity;
-                    $main_sold=$mainTransfer->main_store_sold_qty;
+                    $main_sold = $mainTransfer->main_store_sold_qty;
 
                     $mainTransfer->update([
                         'main_store_qty' => $quantityafterDistribute - $value['quantity'],
-                        'main_store_sold_qty' => $main_sold+ $value['quantity'],
+                        'main_store_sold_qty' => $main_sold + $value['quantity'],
                     ]);
                     // $saleOrderDetails[$key]['created_by'] = $request->user()->id;
+
+
+                    FacadesDB::table('transaction_audits')->insert([
+                        'store_id' => 1,
+                        'sales_type_id' => $mainTransfer->sale_type_id, // Corrected variable name
+                        'product_id' =>  $mainTransfer->id,
+                        'item_number' => $mainTransfer->item_number,
+                        'description' =>  $mainTransfer->description,
+                        'stock' =>  - ($value['quantity']),
+                        'sales' =>  $value['quantity'],
+                        'created_date' => $request->invoice_date ?? now(),
+                        'status' => 'sale',
+                        'created_at' => now(),
+                        'created_by' => auth()->user()->id,
+                    ]);
                 }
                 $saleVoucher->saleVoucherDetails()->insert($saleOrderDetails);
-
             }
-
         } catch (\Exception $e) {
             DB::rollback();
             return response()->json([
@@ -300,7 +325,6 @@ class MainStoreSaleController extends Controller
                     'status' => 'closed'
                 ]);
             }
-
         } catch (Exception $e) {
             DB::rollback();
             return response()->json([

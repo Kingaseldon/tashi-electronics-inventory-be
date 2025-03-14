@@ -22,6 +22,7 @@ use App\Models\Unit;
 use Carbon\Carbon;
 use DB;
 
+
 class ProductController extends Controller
 {
 
@@ -96,7 +97,6 @@ class ProductController extends Controller
             $jsonData = $request->json()->all();
 
             foreach ($jsonData as $item) {
-
                 if ($request->product_category_name == $itemProduct['product_type'] && $request->product_sub_category_name == $itemProduct['sub_category']) {
                     $itemProduct->item_number = empty($item['item_number']) == 'true' ? null : $item['item_number'];
                     $itemProduct->serial_no = $item['serial_no'];
@@ -104,9 +104,9 @@ class ProductController extends Controller
                     $itemProduct->category_id = empty($item['category']) == 'true' ? null : $item['category'];
                     $itemProduct->sub_category_id = empty($item['sub_category']) == 'true' ? null : $item['sub_category'];
                     $itemProduct->color_id = empty($item['color']) == 'true' ? null : $item['color'];
-                    // $itemProduct['unit_id'] =$item['unit']; 
+                    // $itemProduct['unit_id'] =$item['unit'];
                     $itemProduct->price = $item['price'];
-                    // $itemProduct['brand_id'] = empty($value['brand']) != true ? null :$item['brand']; 
+                    // $itemProduct['brand_id'] = empty($value['brand']) != true ? null :$item['brand'];
                     $itemProduct->sale_type_id = $item['type'];
                     $itemProduct->sub_inventory = empty($item['sub_inventory']) == 'true' ? null : $item['sub_inventory'];
                     $itemProduct->locator = empty($item['locator']) == 'true' ? null : $item['locator'];
@@ -117,9 +117,24 @@ class ProductController extends Controller
                     $itemProduct->main_store_qty = $item['quantity'];
                     $itemProduct->total_quantity = $item['quantity'];
                     $itemProduct->created_date = date('Y-m-d', strtotime(Carbon::now()));
-                    // $itemProduct['store_id'] = empty($item['store']) != true ? null : $item['store']; 
+                    // $itemProduct['store_id'] = empty($item['store']) != true ? null : $item['store'];
                     $itemProduct->created_by = auth()->user()->id;
                     $itemProduct->save();
+
+
+                    DB::table('transaction_audits')->insert([
+                        'store_id' => 1,
+                        'sales_type_id' => $itemProduct->sale_type_id,
+                        'product_id' => $itemProduct->id,
+                        'item_number' => $itemProduct->item_number,
+                        'description' => $itemProduct->description,
+                        'received' =>  $itemProduct->main_store_qty,
+                        'stock' =>  $itemProduct->main_store_qty,
+                        'created_date' => now(),
+                        'status' => 'upload',
+                        'created_at' => now(),
+                        'created_by' => auth()->user()->id,
+                    ]);
                 } else {
                     return response()->json([
                         'message' => 'Category and sub-category doesnot match',
@@ -145,13 +160,12 @@ class ProductController extends Controller
     public function importProduct(Request $request, SerialNumberGenerator $invoice)
     {
         try {
-
             //unique number generator
             $batchNo = $invoice->batchNumber('Product', 'created_date');
 
             if ($request->hasFile('attachment')) {
                 if ($request->product_category == '1') {
-                    // When the product category is 'phone'                
+                    // When the product category is 'phone'
                     $filePath = $request->file('attachment');
                     $import = new ProductImport($request, $filePath, $batchNo);
                     Excel::import($import, $filePath);
@@ -175,7 +189,8 @@ class ProductController extends Controller
                         // Return error messages if any rows failed validation.
                         return response()->json([
                             // 'message' => 'FAILED! Please check Product Type and Sub Category',
-m                         ], 201);
+                            'message' => 'Some Serial Numbers already exists ' . $serialNumbersString
+                        ], 201);
                     } else {
                         return response()->json([
                             'message' => 'You have Successfully uploaded ' . $rowCount . ' number of products',
@@ -289,7 +304,6 @@ m                         ], 201);
                 ->leftJoin('extensions', 'extensions.id', '=', 'product_transactions.region_extension_id')
                 ->groupBy('sale_types.name', 'sub_categories.name', 'stores.store_name', 'products.sale_type_id', 'products.store_id')
                 ->whereNotNull(\DB::raw('CASE WHEN products.sale_type_id != 2 AND products.store_id = 1 THEN stores.store_name END'))
-                ->where('products.sale_type_id', '=', 1)
                 ->where('products.price', $request->price) // Filter by price
                 ->havingRaw('SUM(products.main_store_qty) != 0')
                 ->union(
@@ -302,7 +316,6 @@ m                         ], 201);
                         ->leftJoin('sale_types', 'sale_types.id', '=', 'products.sale_type_id')
                         ->leftJoin('sub_categories', 'sub_categories.id', '=', 'products.sub_category_id')
                         ->where('products.main_store_qty', '>', 0)
-                        ->where('products.sale_type_id', '=', 1)
                         ->where('products.price', $request->price) // Filter by price
                         ->groupBy('sale_types.name', 'sub_categories.name', 'store_name')
                 )
@@ -319,7 +332,6 @@ m                         ], 201);
                         ->leftJoin('regions', 'regions.id', '=', 'product_transactions.regional_id')
                         ->whereNotNull('product_transactions.regional_id')
                         ->where('product_transactions.region_store_quantity', '>', 0)
-                        ->where('products.sale_type_id', '=', 1)
                         ->where('products.price', $request->price) // Filter by price
                         ->groupBy('sale_types.name', 'sub_categories.name', 'store_name')
                 )
@@ -336,7 +348,6 @@ m                         ], 201);
                         ->leftJoin('extensions', 'extensions.id', '=', 'product_transactions.region_extension_id')
                         ->whereNotNull('product_transactions.region_extension_id')
                         ->where('product_transactions.store_quantity', '>', 0)
-                        ->where('products.sale_type_id', '=', 1)
                         ->where('products.price', $request->price) // Filter by price
                         ->groupBy('sale_types.name', 'sub_categories.name', 'store_name')
                 )
@@ -410,7 +421,7 @@ m                         ], 201);
         // ]);
         DB::beginTransaction();
         try {
-            //get the product with same item number, quntity not zero and sale status stock 
+            //get the product with same item number, quntity not zero and sale status stock
             $products = Product::where('item_number', $id)->where('quantity', '!=', 0)->where('sale_status', 'stock')->get();
             // return response()->json($product);
             if (!$products) {
@@ -418,7 +429,7 @@ m                         ], 201);
                     'message' => 'The Product you are trying to update doesn\'t exist.'
                 ], 404);
             }
-            //updating product with same item number, quntity not zero and sale status stock 
+            //updating product with same item number, quntity not zero and sale status stock
             Product::where('item_number', $id)->where('quantity', '!=', 0)->where('sale_status', 'stock')->update(['price' => $request->new_price]);
 
             $prize = new ProductPrizeHistory;

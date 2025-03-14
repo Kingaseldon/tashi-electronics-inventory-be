@@ -25,14 +25,15 @@ class PostedSalesInvoiceController extends Controller
             $user = auth()->user();
             $roles = $user->roles;
 
+
             if ($request->region_extension_id == 'ALL' || $request->region_extension_id != 'ALL') {
                 $employee = User::where('username', $user->username)->with('roles.permissions', 'roles', 'assignAndEmployee.region', 'assignAndEmployee.extension')->first();
 
 
                 if ($employee->assignAndEmployee == null && !$employee->roles->contains('is_super_user', 1)) {
                     // Logic if the employee does not have the super user role
-                
-                    
+
+
                     $sales = DB::table('sale_vouchers as sv')
                         ->select(
                             'sv.invoice_no',
@@ -54,7 +55,9 @@ class PostedSalesInvoiceController extends Controller
                             'ph.cash_amount_paid',
                             'ph.online_amount_paid',
                             'sv.net_payable',
-                            'sv.gross_payable'
+                            'sv.gross_payable',
+                            'd.discount_name',
+                            'e.name as store'
 
                         )
                         ->leftJoin('customers as c', 'sv.customer_id', '=', 'c.id')
@@ -63,21 +66,25 @@ class PostedSalesInvoiceController extends Controller
                         ->leftJoin('users as u', 'sv.created_by', '=', 'u.id')
                         ->leftJoin('sale_voucher_details as svd', 'sv.id', '=', 'svd.sale_voucher_id')
                         ->leftJoin('products as p', 'p.id', '=', 'svd.product_id')
-                        ->where(function ($query) use ($request) { // Use $request in the closure 
+                        ->leftJoin('discount_types as d', 'd.id', '=', 'svd.discount_type_id')
+                        ->leftJoin('extensions as e', 'sv.region_extension_id', '=', 'e.id')
+
+
+                        ->where(function ($query) use ($request) { // Use $request in the closure
                             $query->when('ALL' === $request->category_id, function ($subquery) {
                                 $subquery->whereRaw('1 = 1');
                             }, function ($subquery) use ($request) {
                                 $subquery->where('p.category_id', '=', $request->category_id);
                             });
                         })
-                        ->where(function ($query) use ($request) { // Use $request in the closure 
+                        ->where(function ($query) use ($request) { // Use $request in the closure
                             $query->when('ALL' === null, function ($subquery) {
                                 $subquery->whereRaw('1 = 1');
                             }, function ($subquery) use ($request) {
                                 $subquery->where('sv.regional_id', '=', null);
                             });
                         })
-                        ->where(function ($query) use ($request) { // Use $request in the closure 
+                        ->where(function ($query) use ($request) { // Use $request in the closure
                             $query->when('ALL' === null, function ($subquery) {
                                 $subquery->whereRaw('1 = 1');
                             }, function ($subquery) use ($request) {
@@ -108,11 +115,14 @@ class PostedSalesInvoiceController extends Controller
                             'sv.net_payable',
                             'sv.gross_payable',
                             'svd.quantity',
+                            'd.discount_name',
+                            'e.name'
+
                         )
                         ->get();
 
                     $salesGrouped = $sales->groupBy(['invoice_no']);
-                    
+
 
                     // Prepare the grouped data for the API response
                     $responseData = [];
@@ -133,11 +143,17 @@ class PostedSalesInvoiceController extends Controller
                             'paid_date' => $sales[0]->paidAt,
                             'total_net_payable' => $sales[0]->net_payable,
                             'total_gross_payable' => $sales[0]->gross_payable,
+                            'updated_by' => $sales[0]->name,
+                            'discount_name' => $sales[0]->discount_name,
+                            'discount_amount' => $sales[0]->gross_payable - $sales[0]->net_payable,
+                            'store' => $sales[0]->store,
+
 
                         ];
 
                         // Loop through each sale within the group
                         foreach ($sales as $sale) {
+
                             $invoiceData['details'][] = [
                                 'serialNumbers' => $sale->serial_no,
                                 'price' => $sale->price,
@@ -145,19 +161,20 @@ class PostedSalesInvoiceController extends Controller
                                 'description' => $sale->description,
                                 'status' => $sale->status,
                                 'quantity' => $sale->quantity,
-                                // Add other fields as needed
+                                'discount_name' => $sales->discount_name,
+                                'discount_amount' => $sale->price - $sale->netpay                                // Add other fields as needed
                             ];
                         }
 
                         // $responseData[] = $invoiceData;
                         $responseData[] = $invoiceData;
-                      
                     }
                     return response([
                         'message' => 'success',
                         'sales' => $responseData
                     ], 200);
                 }
+
                 $sales = DB::table('sale_vouchers as sv')
                     ->select(
                         'sv.invoice_no',
@@ -179,7 +196,9 @@ class PostedSalesInvoiceController extends Controller
                         'ph.cash_amount_paid',
                         'ph.online_amount_paid',
                         'sv.net_payable',
-                        'sv.gross_payable'
+                        'sv.gross_payable',
+                        'd.discount_name',
+                        'e.name as store'
 
                     )
                     ->leftJoin('customers as c', 'sv.customer_id', '=', 'c.id')
@@ -188,21 +207,23 @@ class PostedSalesInvoiceController extends Controller
                     ->leftJoin('users as u', 'sv.created_by', '=', 'u.id')
                     ->leftJoin('sale_voucher_details as svd', 'sv.id', '=', 'svd.sale_voucher_id')
                     ->leftJoin('products as p', 'p.id', '=', 'svd.product_id')
-                    ->where(function ($query) use ($request) { // Use $request in the closure 
+                    ->leftJoin('discount_types as d', 'd.id', '=', 'svd.discount_type_id')
+                    ->leftJoin('extensions as e', 'sv.region_extension_id', '=', 'e.id')
+                    ->where(function ($query) use ($request) { // Use $request in the closure
                         $query->when('ALL' === $request->category_id, function ($subquery) {
                             $subquery->whereRaw('1 = 1');
                         }, function ($subquery) use ($request) {
                             $subquery->where('p.category_id', '=', $request->category_id);
                         });
                     })
-                    ->where(function ($query) use ($request) { // Use $request in the closure 
+                    ->where(function ($query) use ($request) { // Use $request in the closure
                         $query->when('ALL' === $request->regional_id, function ($subquery) {
                             $subquery->whereRaw('1 = 1');
                         }, function ($subquery) use ($request) {
                             $subquery->where('sv.regional_id', '=', $request->regional_id);
                         });
                     })
-                    ->where(function ($query) use ($request) { // Use $request in the closure 
+                    ->where(function ($query) use ($request) { // Use $request in the closure
                         $query->when('ALL' === $request->region_extension_id, function ($subquery) {
                             $subquery->whereRaw('1 = 1');
                         }, function ($subquery) use ($request) {
@@ -233,10 +254,14 @@ class PostedSalesInvoiceController extends Controller
                         'sv.net_payable',
                         'sv.gross_payable',
                         'svd.quantity',
+                        'd.discount_name',
+                        'e.name'
                     )
                     ->get();
 
+
                 $salesGrouped = $sales->groupBy(['invoice_no']);
+
 
 
                 // Prepare the grouped data for the API response
@@ -258,11 +283,15 @@ class PostedSalesInvoiceController extends Controller
                         'paid_date' => $sales[0]->paidAt,
                         'total_net_payable' => $sales[0]->net_payable,
                         'total_gross_payable' => $sales[0]->gross_payable,
-
+                        'updated_by' => $sales[0]->name,
+                        'discount_name' => $sales[0]->discount_name,
+                        'discount_amount' => $sales[0]->gross_payable - $sales[0]->net_payable,
+                        'store' => $sales[0]->store,
                     ];
 
                     // Loop through each sale within the group
                     foreach ($sales as $sale) {
+
                         $invoiceData['details'][] = [
                             'serialNumbers' => $sale->serial_no,
                             'price' => $sale->price,
@@ -270,6 +299,8 @@ class PostedSalesInvoiceController extends Controller
                             'description' => $sale->description,
                             'status' => $sale->status,
                             'quantity' => $sale->quantity,
+                            'discount_name' => $sale->discount_name,
+                            'discount_amount' => $sale->price - $sale->netpay
                             // Add other fields as needed
                         ];
                     }
@@ -299,7 +330,9 @@ class PostedSalesInvoiceController extends Controller
                         'ph.cash_amount_paid',
                         'ph.online_amount_paid',
                         'sv.net_payable',
-                        'sv.gross_payable'
+                        'sv.gross_payable',
+                        'd.discount_name',
+                        'e.name as store'
                     )
                     ->leftJoin('customers as c', 'sv.customer_id', '=', 'c.id')
                     ->leftJoin('payment_histories as ph', 'sv.id', '=', 'ph.sale_voucher_id')
@@ -307,21 +340,25 @@ class PostedSalesInvoiceController extends Controller
                     ->leftJoin('users as u', 'sv.created_by', '=', 'u.id')
                     ->leftJoin('sale_voucher_details as svd', 'sv.id', '=', 'svd.sale_voucher_id')
                     ->leftJoin('products as p', 'p.id', '=', 'svd.product_id')
-                    ->where(function ($query) use ($request) { // Use $request in the closure 
+                    ->leftJoin('discount_types as d', 'd.id', '=', 'svd.discount_type_id')
+                    ->leftJoin('extensions as e', 'sv.region_extension_id', '=', 'e.id')
+
+
+                    ->where(function ($query) use ($request) { // Use $request in the closure
                         $query->when('ALL' === $request->category_id, function ($subquery) {
                             $subquery->whereRaw('1 = 1');
                         }, function ($subquery) use ($request) {
                             $subquery->where('p.category_id', '=', $request->category_id);
                         });
                     })
-                    ->where(function ($query) use ($request) { // Use $request in the closure 
+                    ->where(function ($query) use ($request) { // Use $request in the closure
                         $query->when('ALL' === $request->regional_id, function ($subquery) {
                             $subquery->whereRaw('1 = 1');
                         }, function ($subquery) use ($request) {
                             $subquery->where('sv.regional_id', '=', $request->regional_id);
                         });
                     })
-                    ->where(function ($query) use ($request) { // Use $request in the closure 
+                    ->where(function ($query) use ($request) { // Use $request in the closure
                         $query->when('ALL' === $request->region_extension_id, function ($subquery) {
                             $subquery->whereRaw('1 = 1');
                         }, function ($subquery) use ($request) {
@@ -353,6 +390,8 @@ class PostedSalesInvoiceController extends Controller
                         'sv.net_payable',
                         'sv.gross_payable',
                         'svd.quantity',
+                        'd.discount_name',
+                        'e.name'
                     )
                     ->get();
 
@@ -378,6 +417,10 @@ class PostedSalesInvoiceController extends Controller
                         'paid_date' => $sales[0]->paidAt,
                         'total_net_payable' => $sales[0]->net_payable,
                         'total_gross_payable' => $sales[0]->gross_payable,
+                        'updated_by' => $sales[0]->name,
+                        'discount_name' => $sales[0]->discount_name,
+                        'discount_amount' => $sales[0]->gross_payable - $sales[0]->net_payable,
+                        'store' => $sales[0]->store,
 
                     ];
 
@@ -390,14 +433,14 @@ class PostedSalesInvoiceController extends Controller
                             'description' => $sale->description,
                             'status' => $sale->status,
                             'quantity' => $sale->quantity,
-                            // Add other fields as needed
+                            'discount_name' => $sale->discount_name,
+                            'discount_amount' => $sale->price - $sale->netpay                            // Add other fields as needed
                         ];
                     }
 
                     $responseData[] = $invoiceData;
                 }
             }
-
 
             // if ($sales->isEmpty()) {
             //     $sales = [];

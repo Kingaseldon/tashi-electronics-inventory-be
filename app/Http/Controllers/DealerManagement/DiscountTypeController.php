@@ -16,9 +16,9 @@ class DiscountTypeController extends Controller
     {
         $this->middleware('permission:discount-types.view')->only('index', 'show');
         $this->middleware('permission:discount-types.store')->only('store');
-        $this->middleware('permission:discount-types.update')->only('update');       
-        $this->middleware('permission:discount-types.edit-discounts')->only('editDiscountType');       
-        $this->middleware('permission:discount-types.get-products')->only('getProduct');       
+        $this->middleware('permission:discount-types.update')->only('update');
+        $this->middleware('permission:discount-types.edit-discounts')->only('editDiscountType');
+        $this->middleware('permission:discount-types.get-products')->only('getProduct');
     }
     /**
      * Display a listing of the resource.
@@ -27,18 +27,29 @@ class DiscountTypeController extends Controller
      */
     public function index()
     {
-        try{
-            $discountTypes = DiscountType::with('category.saleType', 'subCategory','region','extension',)->orderBy('id')->get();    
-            $categories = Category::with('sub_categories:id,name,category_id,code,description', 'saleType')->orderBy('id')->get(['id','sale_type_id', 'description']);            
-            if($discountTypes->isEmpty()){
+        try {
+            $categories = Category::with('sub_categories:id,name,category_id,code,description', 'saleType')->orderBy('id')->get(['id', 'sale_type_id', 'description']);
+           
+            $discountTypes = DiscountType::with('category.saleType', 'subCategory', 'region', 'extension',)->orderBy('id')->get();
+            // $discountTypesBasedOnDate = DiscountType::with('category.saleType', 'subCategory', 'region', 'extension',)->orderBy('id')->get();
+
+            //to display in sale voucher
+            $discountTypesDate = DiscountType::with('category.saleType', 'subCategory', 'region', 'extension')
+                ->where('start_date', '<=', now())  // Start date is today or earlier
+                ->where('end_date', '>=', now())    // End date is today or later
+                ->orderBy('id')
+                ->get();
+
+            if ($discountTypes->isEmpty()) {
                 $discountTypes = [];
-            }   
-                return response([
-                    'message' => 'success',
-                    'discountType' => $discountTypes,                
-                    'categories' => $categories,                
-                ],200);
-        }catch(Execption $e){
+            }
+            return response([
+                'message' => 'success',
+                'discountType' => $discountTypes,
+                'categories' => $categories,
+                'discountTypeWithDate' => $discountTypesDate
+            ], 200);
+        } catch (Execption $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -66,10 +77,10 @@ class DiscountTypeController extends Controller
         $this->validate($request, [
             'discount_type' => 'required',
         ]);
- 
+
         DB::beginTransaction();
- 
-        try{
+
+        try {
             $discountType = new DiscountType;
             $discountType->category_id = $request->category;
             $discountType->sub_category_id = $request->sub_category;
@@ -80,18 +91,16 @@ class DiscountTypeController extends Controller
             $discountType->applicable_to = $request->applicable_to;
             $discountType->discount_value = $request->discount_value;
             $discountType->start_date = $request->start_date == null ? null : date('Y-m-d', strtotime($request->start_date));
-            $discountType->end_date = $request->end_date == null ? null : date('Y-m-d', strtotime($request->end_date));            
-            $discountType->description = $request->description;     
+            $discountType->end_date = $request->end_date == null ? null : date('Y-m-d', strtotime($request->end_date));
+            $discountType->description = $request->description;
             $discountType->save();
-
-        }catch(\Exception $e)
-        {
+        } catch (\Exception $e) {
             DB::rollback();
-            return response()->json([  
-                'message'=> $e->getMessage(),                                                        
+            return response()->json([
+                'message' => $e->getMessage(),
             ], 500);
         }
- 
+
         DB::commit();
         return response()->json([
             'message' => 'Discount Type has been created Successfully'
@@ -114,12 +123,12 @@ class DiscountTypeController extends Controller
     {
         try {
             $products = Product::orderBy('id')->where('sub_category_id', $id)->get();
-           
+
             if ($products->isEmpty()) {
                 $products = [];
             }
             return response([
-                'message' => 'success',             
+                'message' => 'success',
                 'products' => $products,
             ], 200);
         } catch (Execption $e) {
@@ -136,21 +145,21 @@ class DiscountTypeController extends Controller
      */
     public function editDiscountType($id)
     {
-        try{
-            $discountType = DiscountType::with('category','subCategory','region','extension')->find($id);    
-            $categories = Category::with('sub_categories:id,name,category_id,code,description', 'saleType')->orderBy('id')->get(['id','sale_type_id', 'description']);               
-                
-            if(!$discountType){
+        try {
+            $discountType = DiscountType::with('category', 'subCategory', 'region', 'extension')->find($id);
+            $categories = Category::with('sub_categories:id,name,category_id,code,description', 'saleType')->orderBy('id')->get(['id', 'sale_type_id', 'description']);
+
+            if (!$discountType) {
                 return response()->json([
                     'message' => 'The Discount Type you are trying to update doesn\'t exist.'
                 ], 404);
             }
             return response([
                 'message' => 'success',
-                'discountType' => $discountType,            
-                'categories' => $categories,            
-            ],200);
-        }catch(Exception $e){
+                'discountType' => $discountType,
+                'categories' => $categories,
+            ], 200);
+        } catch (Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -169,15 +178,15 @@ class DiscountTypeController extends Controller
             'discount_type' => 'required',
         ]);
         DB::beginTransaction();
-        try{
+        try {
             $discountType = DiscountType::find($id);
-            
-            if(!$discountType){
+
+            if (!$discountType) {
                 return response()->json([
                     'message' => 'The Discount Type you are trying to update doesn\'t exist.'
                 ], 404);
             }
- 
+
             $discountType->category_id = $request->category;
             $discountType->sub_category_id = $request->sub_category;
             $discountType->discount_name = $request->discount_name;
@@ -187,18 +196,16 @@ class DiscountTypeController extends Controller
             $discountType->extension_id = $request->extension;
             $discountType->discount_value = $request->discount_value;
             $discountType->start_date = $request->start_date == null ? null : date('Y-m-d', strtotime($request->start_date));
-            $discountType->end_date = $request->end_date == null ? null : date('Y-m-d', strtotime($request->end_date));         
-            $discountType->description = $request->description;   
+            $discountType->end_date = $request->end_date == null ? null : date('Y-m-d', strtotime($request->end_date));
+            $discountType->description = $request->description;
             $discountType->save();
- 
-        }catch(\Exception $e)
-        {
+        } catch (\Exception $e) {
             DB::rollback();
-            return response()->json([  
-                'message'=> $e->getMessage(),                                                        
+            return response()->json([
+                'message' => $e->getMessage(),
             ], 500);
         }
- 
+
         DB::commit();
         return response()->json([
             'message' => 'Discount Type has been updated Successfully'
@@ -215,14 +222,14 @@ class DiscountTypeController extends Controller
     {
         try {
             DiscountType::find($id)->delete();
-    
-               return response()->json([
-                   'message' => 'Discount Type deleted successfully',
-               ], 200);
-           } catch (\Exception $e) {
-               return response()->json([                           
-                   'message' => 'Discount Type cannot be delete. Already used by other records.'
-               ], 202);
-           }
+
+            return response()->json([
+                'message' => 'Discount Type deleted successfully',
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Discount Type cannot be delete. Already used by other records.'
+            ], 202);
+        }
     }
 }

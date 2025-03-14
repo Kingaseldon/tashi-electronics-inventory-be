@@ -8,6 +8,7 @@ use App\Services\SerialNumberGenerator;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class AccessoryImport implements ToModel, WithHeadingRow
 {
@@ -38,7 +39,7 @@ class AccessoryImport implements ToModel, WithHeadingRow
         if ($row['product_type'] !== request()->input('product_category_name ') && $row['sub_category'] !== request()->input('product_sub_category_name')) {
             // Handle the case where sub_category does not match the product_sub_category_name.
 
-            // Log the error for debugging or record-keeping. 
+            // Log the error for debugging or record-keeping.
             // Log::error('Validation failed for a row: ' . json_encode($row));
             $this->validationErrors[] = 'Validation failed for this row. The product type or sub category does not match the expected values.';
             return null;
@@ -55,11 +56,10 @@ class AccessoryImport implements ToModel, WithHeadingRow
                     $existingProduct->price = $row['price_per_unit'];
                     $existingProduct->save();
 
-                    $this->addedQuantity[] = $row['qty'].' Quantity added to existing product with serial number: ' . $row['item_number'];
-
+                    $this->addedQuantity[] = $row['qty'] . ' Quantity added to existing product with serial number: ' . $row['item_number'];
                 } else {
 
-                    return new Product([
+                    $product = Product::create([
                         'item_number' => $row['item_number'],
                         'serial_no' => $row['item_number'],
                         'description' => $row['description'],
@@ -78,11 +78,25 @@ class AccessoryImport implements ToModel, WithHeadingRow
                         'locator' => $row['locator'] ?? null,
                         'created_by' => auth()->user()->id,
                     ]);
+
+                    DB::table('transaction_audits')->insert([
+                        'store_id' => 1,
+                        'sales_type_id' => $product->sale_type_id, // Corrected variable name
+                        'product_id' => $product->id,
+                        'item_number' => $product->item_number,
+                        'description' => $product->description,
+                        'received' =>  $product->main_store_qty,
+                        'stock' =>  $product->main_store_qty,
+                        'created_date' => now(),
+                        'status' => 'upload',
+                        'created_at' => now(),
+                        'created_by' => auth()->user()->id,
+                    ]);
+
+                    return $product;
                 }
             }
-
         }
-
     }
     public function getValidationErrors()
     {
@@ -97,4 +111,3 @@ class AccessoryImport implements ToModel, WithHeadingRow
         return $this->addedQuantity;
     }
 }
-
