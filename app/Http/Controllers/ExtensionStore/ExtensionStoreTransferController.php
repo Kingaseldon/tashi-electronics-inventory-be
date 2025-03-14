@@ -17,7 +17,6 @@ use App\Models\Extension;
 use App\Models\Region;
 use DB;
 use App\Models\Notification;
-use Illuminate\Support\Facades\DB as FacadesDB;
 use Maatwebsite\Excel\Facades\Excel;
 use Spatie\Permission\Models\Role;
 
@@ -228,7 +227,7 @@ class ExtensionStoreTransferController extends Controller
                 $store = Store::where('extension_id', $itemProduct->region_extension_id)->first();
 
 
-                FacadesDB::table('transaction_audits')->insert([
+                DB::table('transaction_audits')->insert([
                     'store_id' => $store->id,
                     'sales_type_id' => $product->sale_type_id, // Corrected variable name
                     'product_id' =>  $itemProduct->product_id,
