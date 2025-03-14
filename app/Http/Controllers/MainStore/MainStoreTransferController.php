@@ -274,7 +274,7 @@ class MainStoreTransferController extends Controller
 
 
                     $transferQuantity = $value['transfer_quantity'];
-                    dd($transferQuantity);
+            
                     $product = Product::where('serial_no', $value['serial_no'])->where('main_store_qty', '!=', 0)->first();
 
                     $quantityafterDistribute = $product->main_store_qty;
