@@ -151,7 +151,7 @@ class MainStoreTransferController extends Controller
             $date = date('Y-m-d', strtotime($request->transfer_date));
 
             $regionId = $request->region === 'null' ? null : $request->region;
-            $extensionId = $request->extension;
+            $extensionId = $request->extension === 'null' ? null : $request->extension;
             $requisitionId = $request->product_requisition;
             $movementNo = $serial->movementNumber('ProductMovement', 'movement_date');
 
