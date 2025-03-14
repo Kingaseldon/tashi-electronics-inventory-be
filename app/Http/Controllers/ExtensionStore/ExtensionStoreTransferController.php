@@ -366,6 +366,8 @@ class ExtensionStoreTransferController extends Controller
     {
         $this->validate($request, []);
 
+
+
         DB::beginTransaction();
         try {
 
@@ -476,8 +478,10 @@ class ExtensionStoreTransferController extends Controller
                             'created_by' => auth()->user()->id,
                         ]);
 
+                        $store = Store::where('extension_id', $extensionId)->first();
+
                         DB::table('transaction_audits')->insert([
-                            'store_id' => 1,
+                            'store_id' =>   $store->id,
                             'sales_type_id' =>   $productTable->sale_type_id, // Corrected variable name
                             'product_id' =>    $productTable->id,
                             'item_number' =>   $productTable->item_number,
@@ -597,7 +601,7 @@ class ExtensionStoreTransferController extends Controller
                         'description' => $value['description'],
                         'created_by' => auth()->user()->id,
                     ]);
-                    $store = Store::where('extension_id', $extensionId->region_extension_id)->first();
+                    $store = Store::where('extension_id', $extensionId)->first();
 
 
                     DB::table('transaction_audits')->insert([
