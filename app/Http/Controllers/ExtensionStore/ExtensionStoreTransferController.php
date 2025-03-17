@@ -215,10 +215,19 @@ class ExtensionStoreTransferController extends Controller
                     $store = Store::where('extension_id', $itemProduct->region_extension_id)->first();
 
                     $extensionStoreQty = $product_table->extension_store_qty;
-                    $product_table->update([
-                        'store_id' => $store->id,
-                        'updated_by' => auth()->user()->id,
-                    ]);
+
+                    if ($product_table->sale_type_id == 2) {
+                        $product_table->update([
+                            'updated_by' => auth()->user()->id,
+                        ]);
+                    } else {
+                        $product_table->update([
+                            'store_id' => $store->id,
+                            'updated_by' => auth()->user()->id,
+                        ]);
+                    }
+
+
 
                     $product_requisition->requested_extension == null ? $product_table->update([
                         'extension_store_qty' => $extensionStoreQty + $itemProduct->receive,
@@ -416,7 +425,7 @@ class ExtensionStoreTransferController extends Controller
 
 
 
-                        $extensionStoreQty = $productTable->extension_store_qty;
+                        $extensionStoreQty = $transaction->store_quantity;
 
                         //check when transfer quantity should not be greater than the stock quantity in
                         if ($transferQuantity > $extensionStoreQty) {
@@ -477,7 +486,7 @@ class ExtensionStoreTransferController extends Controller
                             'created_by' => auth()->user()->id,
                         ]);
 
-                        $store = Store::where('extension_id', $extensionId)->first();
+                        $store = Store::where('extension_id', $requisition->requested_extension)->first();
 
                         DB::table('transaction_audits')->insert([
                             'store_id' =>   $store->id,
@@ -540,7 +549,7 @@ class ExtensionStoreTransferController extends Controller
 
 
 
-                    $extensionStoreQty = $productTable->extension_store_qty;
+                    $extensionStoreQty = $transaction->store_quantity;
 
                     //check when transfer quantity should not be greater than the stock quantity in
                     if ($transferQuantity > $extensionStoreQty) {
@@ -600,7 +609,7 @@ class ExtensionStoreTransferController extends Controller
                         'description' => $value['description'],
                         'created_by' => auth()->user()->id,
                     ]);
-                    $store = Store::where('extension_id', $extensionId)->first();
+                    $store = Store::where('extension_id', $requisition->requested_extension)->first();
 
 
                     DB::table('transaction_audits')->insert([

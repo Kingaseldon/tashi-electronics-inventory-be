@@ -160,16 +160,17 @@ class MainStoreTransferController extends Controller
             if (($request->hasFile('attachment')) == true) {
 
                 $file = $request->file('attachment');
-
                 $nestedCollection = Excel::toCollection(new TransferProduct, $file);
 
                 // Flatten and transform the nested collection into a simple array
                 $flattenedArray = $nestedCollection->flatten(1)->toArray();
 
+
                 $errorMessage = "These serial numbers are not found";
                 $errorSerialNumbers = [];
 
                 for ($i = 1; $i < count($flattenedArray); $i++) {
+
                     $product = Product::where('serial_no', $flattenedArray[$i][0])->where('main_store_qty', '!=', 0)->first();
 
 
@@ -228,7 +229,6 @@ class MainStoreTransferController extends Controller
                         $requisition->transfer_date = date('Y-m-d', strtotime(Carbon::now()));
                         $requisition->save();
 
-
                         //store all the stock movement details in the product_movements table
                         ProductMovement::create([
                             'product_id' => $product->id,
@@ -272,9 +272,7 @@ class MainStoreTransferController extends Controller
 
                 foreach ($request->productDetails as $key => $value) {
 
-
                     $transferQuantity = $value['transfer_quantity'];
-            
                     $product = Product::where('serial_no', $value['serial_no'])->where('main_store_qty', '!=', 0)->first();
 
                     $quantityafterDistribute = $product->main_store_qty;
