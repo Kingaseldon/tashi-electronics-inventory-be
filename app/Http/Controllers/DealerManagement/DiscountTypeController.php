@@ -7,7 +7,7 @@ use App\Models\Product;
 use Illuminate\Http\Request;
 use App\Models\DiscountType;
 use App\Models\Category;
-use DB;
+use Illuminate\Support\Facades\DB;
 
 class DiscountTypeController extends Controller
 {
@@ -29,7 +29,7 @@ class DiscountTypeController extends Controller
     {
         try {
             $categories = Category::with('sub_categories:id,name,category_id,code,description', 'saleType')->orderBy('id')->get(['id', 'sale_type_id', 'description']);
-           
+
             $discountTypes = DiscountType::with('category.saleType', 'subCategory', 'region', 'extension',)->orderBy('id')->get();
             // $discountTypesBasedOnDate = DiscountType::with('category.saleType', 'subCategory', 'region', 'extension',)->orderBy('id')->get();
 
@@ -49,7 +49,7 @@ class DiscountTypeController extends Controller
                 'categories' => $categories,
                 'discountTypeWithDate' => $discountTypesDate
             ], 200);
-        } catch (Execption $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -131,7 +131,7 @@ class DiscountTypeController extends Controller
                 'message' => 'success',
                 'products' => $products,
             ], 200);
-        } catch (Execption $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -159,7 +159,7 @@ class DiscountTypeController extends Controller
                 'discountType' => $discountType,
                 'categories' => $categories,
             ], 200);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);

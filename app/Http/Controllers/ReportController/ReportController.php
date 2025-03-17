@@ -18,12 +18,11 @@ class ReportController extends Controller
         $this->middleware('permission:reports.salesorderlist')->only('orderlist');
         $this->middleware('permission:reports.cashreceipt')->only('cash');
         $this->middleware('permission:reports.onlinereceipt')->only('online');
-
     }
     public function salesinvoice(Request $request)
     {
         try {
-     
+
             $sales = DB::table('sale_vouchers as sv')
                 ->select(
                     'sv.invoice_no',
@@ -44,21 +43,21 @@ class ReportController extends Controller
                 ->leftJoin('users as u', 'sv.created_by', '=', 'u.id')
                 ->leftJoin('sale_voucher_details as svd', 'sv.id', '=', 'svd.sale_voucher_id')
                 ->leftJoin('products as p', 'p.id', '=', 'svd.product_id')
-                ->where(function ($query) use ($request) { // Use $request in the closure 
+                ->where(function ($query) use ($request) { // Use $request in the closure
                     $query->when('ALL' === $request->category_id, function ($subquery) {
                         $subquery->whereRaw('1 = 1');
                     }, function ($subquery) use ($request) {
                         $subquery->where('p.category_id', '=', $request->category_id);
                     });
                 })
-                ->where(function ($query) use ($request) { // Use $request in the closure 
+                ->where(function ($query) use ($request) { // Use $request in the closure
                     $query->when('ALL' === $request->regional_id, function ($subquery) {
                         $subquery->whereRaw('1 = 1');
                     }, function ($subquery) use ($request) {
                         $subquery->where('sv.regional_id', '=', $request->regional_id);
                     });
                 })
-                ->where(function ($query) use ($request) { // Use $request in the closure 
+                ->where(function ($query) use ($request) { // Use $request in the closure
                     $query->when('ALL' === $request->region_extension_id, function ($subquery) {
                         $subquery->whereRaw('1 = 1');
                     }, function ($subquery) use ($request) {
@@ -76,7 +75,7 @@ class ReportController extends Controller
                 'sales' => $sales,
 
             ], 200);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -110,7 +109,7 @@ class ReportController extends Controller
                 'onhand' => $onhand,
 
             ], 200);
-        } catch (Execption $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -132,7 +131,7 @@ class ReportController extends Controller
                 'stock' => $stock,
 
             ], 200);
-        } catch (Execption $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -166,7 +165,7 @@ class ReportController extends Controller
                 'orderlist' => $orderlist,
 
             ], 200);
-        } catch (Execption $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -205,7 +204,7 @@ class ReportController extends Controller
                 'cash' => $cash,
 
             ], 200);
-        } catch (Execption $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -244,11 +243,10 @@ class ReportController extends Controller
                 'online' => $online,
 
             ], 200);
-        } catch (Execption $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
         }
     }
-
 }

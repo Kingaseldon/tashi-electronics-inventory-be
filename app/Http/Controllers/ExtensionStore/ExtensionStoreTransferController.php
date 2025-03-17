@@ -15,8 +15,8 @@ use App\Models\ProductRequisition;
 use App\Models\ProductMovement;
 use App\Models\Extension;
 use App\Models\Region;
-use DB;
 use App\Models\Notification;
+use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 use Spatie\Permission\Models\Role;
 
@@ -91,7 +91,7 @@ class ExtensionStoreTransferController extends Controller
                 'transaction' => $transactions,
                 'receiveProduct' => $receiveProducts,
             ], 200);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -123,7 +123,7 @@ class ExtensionStoreTransferController extends Controller
                 'regions' => $regions,
                 'receiveProduct' => $receiveProduct,
             ], 200);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -310,7 +310,7 @@ class ExtensionStoreTransferController extends Controller
                 'requisitions' => $requisitions,
 
             ], 200);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -360,7 +360,7 @@ class ExtensionStoreTransferController extends Controller
                 'products' => $products,
                 'regions' => $regions,
             ], 200);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -418,12 +418,8 @@ class ExtensionStoreTransferController extends Controller
                             ->where('requisition_number', $requisitionId)
                             ->first();
 
-
-
                         $productTable = Product::where('serial_no',  $flattenedArray[$i][0])->first();
                         $transaction = ProductTransaction::where('product_id', $product->product_id)->where('region_extension_id', $requisition->requested_extension)->first();
-
-
 
                         $extensionStoreQty = $transaction->store_quantity;
 
@@ -536,6 +532,7 @@ class ExtensionStoreTransferController extends Controller
                     ], 203);
                 }
             } else {
+
                 foreach ($request->productDetails as $key => $value) {
                     $transferQuantity = $value['transfer_quantity'];
                     $product = Product::where('serial_no', $value['serial_no'])

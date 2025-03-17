@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\Extension;
 use App\Models\Region;
 use App\Models\Bank;
-use DB;
+use Illuminate\Support\Facades\DB;
 
 class BankController extends Controller
 {
@@ -20,28 +20,28 @@ class BankController extends Controller
     {
         $this->middleware('permission:banks.view')->only('index', 'show');
         $this->middleware('permission:banks.store')->only('store');
-        $this->middleware('permission:banks.update')->only('update');       
-        $this->middleware('permission:banks.edit-banks')->only('editBank');       
-        $this->middleware('permission:banks.get-banks')->only('getBanks');       
+        $this->middleware('permission:banks.update')->only('update');
+        $this->middleware('permission:banks.edit-banks')->only('editBank');
+        $this->middleware('permission:banks.get-banks')->only('getBanks');
     }
    public function index()
    {
        try{
 
            $banks = Bank::with('region', 'extension')->orderBy('id')->get();
-         
+
            $extensions = Extension::orderBy('id')->get();
-           $regions = Region::orderBy('id')->get();           
+           $regions = Region::orderBy('id')->get();
            if($banks->isEmpty()){
                $banks = [];
-           }   
+           }
                return response([
                    'message' => 'success',
                    'bank' => $banks,
                 //    'extension' => $extensions,
                 //    'region' => $regions,
                ],200);
-       }catch(Exception $e){
+       }catch(\Exception $e){
            return response([
                'message' => $e->getMessage()
            ], 400);
@@ -54,7 +54,7 @@ class BankController extends Controller
     * @return \Illuminate\Http\Response
     */
 
-  
+
    public function store(Request $request)
    {
        $this->validate($request, [
@@ -76,8 +76,8 @@ class BankController extends Controller
        }catch(\Exception $e)
        {
            DB::rollback();
-           return response()->json([  
-               'message'=> $e->getMessage(),                                                        
+           return response()->json([
+               'message'=> $e->getMessage(),
            ], 500);
        }
 
@@ -96,7 +96,7 @@ class BankController extends Controller
         return response([
             'message' => 'success',
             'banks'=>$banks
-           
+
         ], 200);
     }
    /**
@@ -121,8 +121,8 @@ class BankController extends Controller
        try{
            $bank = Bank::with('region','extension')->find($id);
         //    $extensions = Extension::orderBy('id')->get();
-        //    $regions = Region::orderBy('id')->get();    
-               
+        //    $regions = Region::orderBy('id')->get();
+
            if(!$bank){
                return response()->json([
                    'message' => 'The Bank you are trying to update doesn\'t exist.'
@@ -134,7 +134,7 @@ class BankController extends Controller
             //    'extension' => $extensions,
             //    'region' => $regions,
            ],200);
-       }catch(Exception $e){
+       }catch(\Exception $e){
            return response([
                'message' => $e->getMessage()
            ], 400);
@@ -156,7 +156,7 @@ class BankController extends Controller
        DB::beginTransaction();
        try{
            $bank = bank::find($id);
-           
+
            if(!$bank){
                return response()->json([
                    'message' => 'The Bank you are trying to update doesn\'t exist.'
@@ -174,8 +174,8 @@ class BankController extends Controller
        }catch(\Exception $e)
        {
            DB::rollback();
-           return response()->json([  
-               'message'=> $e->getMessage(),                                                        
+           return response()->json([
+               'message'=> $e->getMessage(),
            ], 500);
        }
 
@@ -195,13 +195,13 @@ class BankController extends Controller
    {
        try {
 
-           Bank::find($id)->delete(); 
+           Bank::find($id)->delete();
 
            return response()->json([
                'message' => 'Bank deleted successfully',
            ], 200);
        } catch (\Exception $e) {
-           return response()->json([                           
+           return response()->json([
                'message' => 'Bank cannot be delete. Already used by other records.'
            ], 202);
        }

@@ -16,7 +16,7 @@ use App\Models\Customer;
 use App\Models\Bank;
 use App\Models\Store;
 use Carbon\Carbon;
-use DB;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -80,7 +80,7 @@ class ExtensionStoreSaleController extends Controller
                     'customers' => $customers,
                 ], 200);
             }
-        } catch (Execption $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -125,7 +125,7 @@ class ExtensionStoreSaleController extends Controller
                 'product' => $product,
 
             ], 200);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -643,7 +643,7 @@ class ExtensionStoreSaleController extends Controller
                 'receiptNo' => $receiptNo,
                 'bank' => $bank,
             ], 200);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -697,7 +697,7 @@ class ExtensionStoreSaleController extends Controller
                     'status' => 'closed'
                 ]);
             }
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             DB::rollback();
             return response()->json([
                 'message' => $e->getMessage(),

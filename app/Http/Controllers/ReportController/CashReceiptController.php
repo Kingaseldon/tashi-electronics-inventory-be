@@ -18,8 +18,6 @@ class CashReceiptController extends Controller
     {
 
         $this->middleware('permission:cashreceipt.view')->only('index');
-
-
     }
     public function index(Request $request)
     {
@@ -141,7 +139,7 @@ class CashReceiptController extends Controller
                 'cash' => $cash,
 
             ], 200);
-        } catch (Execption $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);

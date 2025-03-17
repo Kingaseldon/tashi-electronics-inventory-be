@@ -13,8 +13,7 @@ use App\Models\Product;
 use App\Models\Customer;
 use App\Models\Bank;
 use Carbon\Carbon;
-use DB;
-use Illuminate\Support\Facades\DB as FacadesDB;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage as FacadesStorage;
 use Storage;
 use Maatwebsite\Excel\Facades\Excel;
@@ -52,7 +51,7 @@ class MainStoreSaleController extends Controller
                 'products' => $products,
                 'customers' => $customers,
             ], 200);
-        } catch (Execption $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -159,7 +158,7 @@ class MainStoreSaleController extends Controller
 
                         $saleVoucher->saleVoucherDetails()->insert($saleOrderDetails);
 
-                        FacadesDB::table('transaction_audits')->insert([
+                        DB::table('transaction_audits')->insert([
                             'store_id' => 1,
                             'sales_type_id' => $product->sale_type_id, // Corrected variable name
                             'product_id' =>  $product->id,
@@ -224,7 +223,7 @@ class MainStoreSaleController extends Controller
                     // $saleOrderDetails[$key]['created_by'] = $request->user()->id;
 
 
-                    FacadesDB::table('transaction_audits')->insert([
+                    DB::table('transaction_audits')->insert([
                         'store_id' => 1,
                         'sales_type_id' => $mainTransfer->sale_type_id, // Corrected variable name
                         'product_id' =>  $mainTransfer->id,
@@ -282,7 +281,7 @@ class MainStoreSaleController extends Controller
                 'receiptNo' => $receiptNo,
                 'bank' => $bank,
             ], 200);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -335,7 +334,7 @@ class MainStoreSaleController extends Controller
                     'status' => 'closed'
                 ]);
             }
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             DB::rollback();
             return response()->json([
                 'message' => $e->getMessage(),

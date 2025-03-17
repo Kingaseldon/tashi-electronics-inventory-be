@@ -7,7 +7,7 @@ use App\Models\CustomerEmi;
 use App\Models\Product;
 use App\Services\SerialNumberGenerator;
 use Illuminate\Http\Request;
-use DB;
+use Illuminate\Support\Facades\DB;
 
 class ApproveEmi extends Controller
 {
@@ -43,7 +43,7 @@ class ApproveEmi extends Controller
                 'emi' => $emi
 
             ], 200);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -102,17 +102,15 @@ class ApproveEmi extends Controller
      */
     public function update(Request $request, $id, SerialNumberGenerator $serial)
     {
-        $this->validate($request, [
-
-        ]);
+        $this->validate($request, []);
 
         DB::beginTransaction();
         try {
             $emi = CustomerEmi::find($id);
             //unique number generator
-         
+
             $emi->emi_no = 'EMI-' . $emi->id;
-            $emi->status= $request->status;
+            $emi->status = $request->status;
             $emi->save();
 
 
@@ -121,7 +119,6 @@ class ApproveEmi extends Controller
                     'message' => 'The EMI request you are trying to approve doesn\'t exist.'
                 ], 404);
             }
-
         } catch (\Exception $e) {
             DB::rollback();
             return response()->json([
@@ -131,10 +128,10 @@ class ApproveEmi extends Controller
 
         DB::commit();
         return response()->json([
-            'message' => 'EMI Verified'            
+            'message' => 'EMI Verified'
         ], 200);
     }
-    
+
     /**
      * Remove the specified resource from storage.
      *

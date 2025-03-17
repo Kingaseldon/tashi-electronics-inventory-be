@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Master;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Unit;
-use DB;
+use Illuminate\Support\Facades\DB;
 
 class UnitController extends Controller
 {
@@ -13,8 +13,8 @@ class UnitController extends Controller
      {
          $this->middleware('permission:units.view')->only('index', 'show');
          $this->middleware('permission:units.store')->only('store');
-         $this->middleware('permission:units.update')->only('update');       
-         $this->middleware('permission:units.edit-units')->only('editUnit');       
+         $this->middleware('permission:units.update')->only('update');
+         $this->middleware('permission:units.edit-units')->only('editUnit');
      }
     public function index()
     {
@@ -23,12 +23,12 @@ class UnitController extends Controller
             $units = Unit::orderBy('id')->get();
             if($units->isEmpty()){
                 $units = [];
-            }   
+            }
                 return response([
                     'message' => 'success',
                     'unit' =>$units
                 ],200);
-        }catch(Exception $e){
+        }catch(\Exception $e){
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -57,8 +57,8 @@ class UnitController extends Controller
         }catch(\Exception $e)
         {
             DB::rollback();
-            return response()->json([  
-                'message'=> $e->getMessage(),                                                        
+            return response()->json([
+                'message'=> $e->getMessage(),
             ], 500);
         }
 
@@ -89,7 +89,7 @@ class UnitController extends Controller
     {
         try{
             $unit = Unit::find($id);
-                
+
             if(!$unit){
                 return response()->json([
                     'message' => 'The Unit you are trying to update doesn\'t exist.'
@@ -99,7 +99,7 @@ class UnitController extends Controller
                 'message' => 'success',
                 'unit' =>$unit
             ],200);
-        }catch(Exception $e){
+        }catch(\Exception $e){
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -121,7 +121,7 @@ class UnitController extends Controller
         DB::beginTransaction();
         try{
             $unit = Unit::find($id);
-            
+
             if(!$unit){
                 return response()->json([
                     'message' => 'The Unit you are trying to update doesn\'t exist.'
@@ -135,8 +135,8 @@ class UnitController extends Controller
         }catch(\Exception $e)
         {
             DB::rollback();
-            return response()->json([  
-                'message'=> $e->getMessage(),                                                        
+            return response()->json([
+                'message'=> $e->getMessage(),
             ], 500);
         }
 
@@ -156,13 +156,13 @@ class UnitController extends Controller
     {
         try {
 
-            Unit::find($id)->delete(); 
+            Unit::find($id)->delete();
 
             return response()->json([
                 'message' => 'Unit deleted successfully',
             ], 200);
         } catch (\Exception $e) {
-            return response()->json([                           
+            return response()->json([
                 'message' => 'Unit cannot be delete. Already used by other records.'
             ], 202);
         }

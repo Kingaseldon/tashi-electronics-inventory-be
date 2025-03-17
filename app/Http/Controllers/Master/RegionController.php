@@ -8,8 +8,7 @@ use Illuminate\Http\Request;
 use App\Models\Dzongkhag;
 use App\Models\Extension;
 use App\Models\Region;
-use DB;
-
+use Illuminate\Support\Facades\DB;
 
 class RegionController extends Controller
 {
@@ -38,7 +37,7 @@ class RegionController extends Controller
                 'region' => $regions,
                 'dzongkhags' => $dzongkhags,
             ], 200);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -83,7 +82,7 @@ class RegionController extends Controller
                     'name' => $value['name'],
                 ];
 
-                // Check if the extension already exists by name  
+                // Check if the extension already exists by name
                 $extension = Extension::firstOrNew($extensionData);
                 // Set other attributes
                 $extension->description = isset($value['description']) ? $value['description'] : null;
@@ -145,7 +144,7 @@ class RegionController extends Controller
                 'message' => 'success',
                 'Region' => $region
             ], 200);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -267,7 +266,7 @@ class RegionController extends Controller
         try {
 
             Region::find($id)->delete();
-            
+
 
             return response()->json([
                 'message' => 'Region has been deleted successfully',

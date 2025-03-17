@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Master;
 use App\Http\Controllers\Controller;
 use App\Models\Gewog;
 use Illuminate\Http\Request;
-use DB;
+use Illuminate\Support\Facades\DB;
 
 class GewogController extends Controller
 {
@@ -18,8 +18,8 @@ class GewogController extends Controller
     {
         $this->middleware('permission:gewogs.view')->only('index', 'show');
         $this->middleware('permission:gewogs.store')->only('store');
-        $this->middleware('permission:gewogs.update')->only('update');       
-        $this->middleware('permission:gewogs.edit-gewogs')->only('editGewog');       
+        $this->middleware('permission:gewogs.update')->only('update');
+        $this->middleware('permission:gewogs.edit-gewogs')->only('editGewog');
     }
     public function index()
     {
@@ -33,9 +33,9 @@ class GewogController extends Controller
                 'message' => 'success',
                 'gewog' => $gewogs
             ], 200);
-        }  
+        }
         catch (\Exception $e) {
-            return response()->json([                           
+            return response()->json([
                 'message' => 'Something went wrong. Try Again later'
             ], 500);
         }
@@ -105,7 +105,7 @@ class GewogController extends Controller
                 'message' => 'success',
                 'gewog' => $gewog
             ], 200);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -128,7 +128,7 @@ class GewogController extends Controller
         DB::beginTransaction();
         try{
             $gewogs = Gewog::find($id);
-            
+
             if(!$gewogs){
                 return response()->json([
                     'message' => 'The Gewog you are trying to update doesn\'t exist.'
@@ -143,8 +143,8 @@ class GewogController extends Controller
         }catch(\Exception $e)
         {
             DB::rollback();
-            return response()->json([  
-                'message'=> $e->getMessage(),                                                        
+            return response()->json([
+                'message'=> $e->getMessage(),
             ], 500);
         }
 

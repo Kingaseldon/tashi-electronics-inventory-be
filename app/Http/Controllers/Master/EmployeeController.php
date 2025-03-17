@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CustomerType;
 use App\Models\Employee;
 use Illuminate\Http\Request;
-use DB;
+use Illuminate\Support\Facades\DB;
 
 class EmployeeController extends Controller
 {
@@ -35,7 +35,7 @@ class EmployeeController extends Controller
                 'employee' => $employee,
                 'customerType' => $customerTypes,
             ], 200);
-        } catch (Execption $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -64,7 +64,7 @@ class EmployeeController extends Controller
             'employee_name' => 'required',
             'employee_id' => 'required',
             'contact_no' => 'required',
-      
+
         ]);
 
         DB::beginTransaction();
@@ -76,9 +76,9 @@ class EmployeeController extends Controller
             $employee->contact_no = $request->contact_no;
             $employee->email = $request->email;
             $employee->description = $request->description;
-            $employee->customer_type_id = $request->customer_type_id; 
+            $employee->customer_type_id = $request->customer_type_id;
             $employee->save();
-        } 
+        }
         catch (\Exception $e) {
             DB::rollback();
             return response()->json([
@@ -107,7 +107,7 @@ class EmployeeController extends Controller
                 'employee' => $employee,
                 'CustomerType' => $customerTypes,
             ], 200);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);

@@ -8,7 +8,7 @@ use Spatie\Permission\Models\Role;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Http\Request;
 use App\Models\User;
-use DB;
+use Illuminate\Support\Facades\DB;
 
 class UserController extends Controller
 {
@@ -17,9 +17,9 @@ class UserController extends Controller
     {
         $this->middleware('permission:users.view')->only('index', 'show');
         $this->middleware('permission:users.store')->only('store');
-        $this->middleware('permission:users.update')->only('update');       
-        $this->middleware('permission:users.reset-password')->only('password');       
-        $this->middleware('permission:users.edit-users')->only('editUser');             
+        $this->middleware('permission:users.update')->only('update');
+        $this->middleware('permission:users.reset-password')->only('password');
+        $this->middleware('permission:users.edit-users')->only('editUser');
     }
     /**
      * Display a listing of the resource.
@@ -34,13 +34,13 @@ class UserController extends Controller
             $roles = Role::orderBy('id')->get();
             if($users->isEmpty()){
                 $users = [];
-            }   
+            }
                 return response([
                     'message' => 'success',
                     'user' => $users,
                     'roles' => $roles,
                 ],200);
-        }catch(Exception $e){
+        }catch(\Exception $e){
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -78,8 +78,8 @@ class UserController extends Controller
         }catch(\Exception $e)
         {
             DB::rollback();
-            return response()->json([  
-                'message'=> $e->getMessage(),                                                        
+            return response()->json([
+                'message'=> $e->getMessage(),
             ], 500);
         }
 
@@ -110,7 +110,7 @@ class UserController extends Controller
     {
         try{
             $user = User::with('roles')->find($id);
-                
+
             if(!$user){
                 return response()->json([
                     'message' => 'The User you are trying to update doesn\'t exist.'
@@ -120,7 +120,7 @@ class UserController extends Controller
                 'message' => 'success',
                 'user' =>$user
             ],200);
-        }catch(Exception $e){
+        }catch(\Exception $e){
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -142,7 +142,7 @@ class UserController extends Controller
         DB::beginTransaction();
         try{
             $user = User::find($id);
-            
+
             if(!$user){
                 return response()->json([
                     'message' => 'The User you are trying to update doesn\'t exist.'
@@ -163,8 +163,8 @@ class UserController extends Controller
         }catch(\Exception $e)
         {
             DB::rollback();
-            return response()->json([  
-                'message'=> $e->getMessage(),                                                        
+            return response()->json([
+                'message'=> $e->getMessage(),
             ], 500);
         }
 
@@ -184,13 +184,13 @@ class UserController extends Controller
     {
         try {
 
-            User::find($id)->delete(); 
+            User::find($id)->delete();
 
             return response()->json([
                 'message' => 'User deleted successfully',
             ], 200);
         } catch (\Exception $e) {
-            return response()->json([                           
+            return response()->json([
                 'message' => 'User cannot be delete. Already used by other records.'
             ], 202);
         }
@@ -200,14 +200,14 @@ class UserController extends Controller
         try {
 
             $user = User::find($id);
-          
+
             if (!$user) {
                 return response([
-                    'message' => 'User does not exist'                   
+                    'message' => 'User does not exist'
                 ], 200);
             }
-            else{           
-                $user->password = Hash::make($request->password);          
+            else{
+                $user->password = Hash::make($request->password);
                 $user->save();
 
                 return response([
@@ -215,8 +215,8 @@ class UserController extends Controller
                 ], 200);
 
             }
-        
-        } catch (Exception $e) {
+
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);

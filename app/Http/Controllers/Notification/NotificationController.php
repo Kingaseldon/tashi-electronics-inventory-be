@@ -34,7 +34,7 @@ class NotificationController extends Controller
                 'notification' => $notifications,
 
             ], 200);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -44,7 +44,7 @@ class NotificationController extends Controller
     public function getNotificationsforUser($id)
     {
         try {
-            $notifications = \DB::table('notifications as n')
+            $notifications = DB::table('notifications as n')
                 ->select('n.id', 'n.requisition_number', 'sub.name', 'n.quantity', 'e.name as extension_from', 'ex.name as extension_to', 'n.status', 'n.read', 'n.created_date')
                 ->leftJoin('extensions as e', 'n.extension_from', '=', 'e.id')
                 ->leftJoin('extensions as ex', 'n.extension_to', '=', 'ex.id')
@@ -53,13 +53,13 @@ class NotificationController extends Controller
                 ->where('n.user_id', $id)
                 ->where('n.read', 0)
                 ->get();
-            
+
             return response([
                 'message' => 'success',
                 'notification' => $notifications,
 
             ], 200);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -125,9 +125,9 @@ class NotificationController extends Controller
             ]);
             return response([
                 'message' => 'success',
-                
+
             ], 200);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);

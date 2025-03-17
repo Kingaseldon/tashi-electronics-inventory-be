@@ -67,7 +67,7 @@ class ExtensionRequisitionController extends Controller {
 
             ], 200);
 
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -83,7 +83,7 @@ class ExtensionRequisitionController extends Controller {
             $assignType = " ";
             if($employees->assignAndEmployee->regional_id) {
                 $assignType = "region";
-                $products = Product::with('saleType')->select('item_number', 'description', 'sale_type_id', \DB::raw('SUM(main_store_qty) as total_quantity'))
+                $products = Product::with('saleType')->select('item_number', 'description', 'sale_type_id', DB::raw('SUM(main_store_qty) as total_quantity'))
                     ->groupBy('item_number', 'sale_type_id', 'description')
                     ->get();
             } else {
@@ -94,7 +94,7 @@ class ExtensionRequisitionController extends Controller {
                     ->groupBy('products.item_number', 'products.description', 'products.sale_type_id')
                     ->where('regional_id', $extension->regional_id)
                     ->get();
-                $products = Product::with('saleType')->select('item_number', 'description', 'sale_type_id', \DB::raw('SUM(main_store_qty) as total_quantity'))
+                $products = Product::with('saleType')->select('item_number', 'description', 'sale_type_id', DB::raw('SUM(main_store_qty) as total_quantity'))
                     ->groupBy('item_number', 'sale_type_id', 'description')
                     ->get();
             }
@@ -113,7 +113,7 @@ class ExtensionRequisitionController extends Controller {
                 'assignType' => $assignType,
             ], 200);
 
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -217,7 +217,7 @@ class ExtensionRequisitionController extends Controller {
 
             ], 200);
 
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);

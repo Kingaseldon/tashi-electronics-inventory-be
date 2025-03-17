@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Master;
 use App\Http\Controllers\Controller;
 use App\Models\Dzongkhag;
 use Illuminate\Http\Request;
-use DB;
+use Illuminate\Support\Facades\DB;
 
 class DzongkhagController extends Controller
 {
@@ -13,8 +13,8 @@ class DzongkhagController extends Controller
     {
         $this->middleware('permission:dzongkhags.view')->only('index', 'show');
         $this->middleware('permission:dzongkhags.store')->only('store');
-        $this->middleware('permission:dzongkhags.update')->only('update');       
-        $this->middleware('permission:dzongkhags.edit-dzongkhags')->only('editDzongkhag');       
+        $this->middleware('permission:dzongkhags.update')->only('update');
+        $this->middleware('permission:dzongkhags.edit-dzongkhags')->only('editDzongkhag');
     }
     /**
      * Display a listing of the resource.
@@ -23,16 +23,16 @@ class DzongkhagController extends Controller
      */
     public function index()
     {
-        try{
-            $dzongkhags = Dzongkhag::with('gewogs:id,dzongkhag_id,name,code', 'gewogs.villages:gewog_id,id,name,code')->orderBy('name')->get(['id', 'name','code']);
-            if($dzongkhags->isEmpty()){
+        try {
+            $dzongkhags = Dzongkhag::with('gewogs:id,dzongkhag_id,name,code', 'gewogs.villages:gewog_id,id,name,code')->orderBy('name')->get(['id', 'name', 'code']);
+            if ($dzongkhags->isEmpty()) {
                 $dzongkhags = [];
-            }   
-                return response([
-                    'message' => 'success',
-                    'dzongkhag' =>$dzongkhags
-                ],200);
-        }catch(Exception $e){
+            }
+            return response([
+                'message' => 'success',
+                'dzongkhag' => $dzongkhags
+            ], 200);
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -59,17 +59,15 @@ class DzongkhagController extends Controller
 
         DB::beginTransaction();
 
-        try{
+        try {
             $dzongkhag = new Dzongkhag;
             $dzongkhag->name = $request->name;
             $dzongkhag->code = $request->code;
             $dzongkhag->save();
-
-        }catch(\Exception $e)
-        {
+        } catch (\Exception $e) {
             DB::rollback();
-            return response()->json([  
-                'message'=> $e->getMessage(),                                                        
+            return response()->json([
+                'message' => $e->getMessage(),
             ], 500);
         }
 
@@ -98,19 +96,19 @@ class DzongkhagController extends Controller
      */
     public function editDzongkhag($id)
     {
-        try{
+        try {
             $dzongkhag = Dzongkhag::with('gewogs:id,dzongkhag_id,name,code', 'gewogs.villages:gewog_id,id,name,code')->orderBy('name')->get(['id', 'name', 'code'])->find($id);
-                
-            if(!$dzongkhag){
+
+            if (!$dzongkhag) {
                 return response()->json([
                     'message' => 'The Dzongkhag you are trying to update doesn\'t exist.'
                 ], 404);
             }
             return response([
                 'message' => 'success',
-                'dzongkhag' =>$dzongkhag
-            ],200);
-        }catch(Exception $e){
+                'dzongkhag' => $dzongkhag
+            ], 200);
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -130,10 +128,10 @@ class DzongkhagController extends Controller
             'name' => 'required',
         ]);
         DB::beginTransaction();
-        try{
+        try {
             $dzongkhag = Dzongkhag::find($id);
-            
-            if(!$dzongkhag){
+
+            if (!$dzongkhag) {
                 return response()->json([
                     'message' => 'The Dzongkhag you are trying to update doesn\'t exist.'
                 ], 404);
@@ -142,12 +140,10 @@ class DzongkhagController extends Controller
             $dzongkhag->name = $request->name;
             $dzongkhag->code = $request->code;
             $dzongkhag->save();
-
-        }catch(\Exception $e)
-        {
+        } catch (\Exception $e) {
             DB::rollback();
-            return response()->json([  
-                'message'=> $e->getMessage(),                                                        
+            return response()->json([
+                'message' => $e->getMessage(),
             ], 500);
         }
 
@@ -164,16 +160,16 @@ class DzongkhagController extends Controller
      * @return \Illuminate\Http\Response
      */
     public function destroy($id)
-    {  
+    {
         try {
 
-            Dzongkhag::find($id)->delete(); 
+            Dzongkhag::find($id)->delete();
 
             return response()->json([
                 'message' => 'Dzongkhag deleted successfully',
             ], 200);
         } catch (\Exception $e) {
-            return response()->json([                           
+            return response()->json([
                 'message' => 'Dzongkhag cannot be delete. Already used by other records.'
             ], 202);
         }

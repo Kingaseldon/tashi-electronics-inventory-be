@@ -450,7 +450,7 @@ class PostedSalesInvoiceController extends Controller
                 'sales' => $responseData,
 
             ], 200);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);

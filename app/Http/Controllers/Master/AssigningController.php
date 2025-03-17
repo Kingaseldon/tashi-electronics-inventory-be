@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\AssignRegionExtension;
 use App\Models\Region;
 use App\Models\User;
-use DB;
+use Illuminate\Support\Facades\DB;
 
 class AssigningController extends Controller
 {
@@ -15,9 +15,9 @@ class AssigningController extends Controller
     public function __construct()
     {
         $this->middleware('permission:assignings.view')->only('index', 'show');
-        $this->middleware('permission:assignings.update')->only('update');  
-        $this->middleware('permission:assignings.edit-assignings')->only('changeAssignRegion');          
-        $this->middleware('permission:assignings.edit-assignings')->only('editAssigning');       
+        $this->middleware('permission:assignings.update')->only('update');
+        $this->middleware('permission:assignings.edit-assignings')->only('changeAssignRegion');
+        $this->middleware('permission:assignings.edit-assignings')->only('editAssigning');
     }
 
     /**
@@ -30,16 +30,16 @@ class AssigningController extends Controller
         try{
             $employees = User::whereHas('roles', function ($query) {
                                         $query->where('is_super_user', '!=', 1);
-                                    })->with('assignAndEmployee.region', 'assignAndEmployee.extension')->orderBy('id')->get(); 
-            return response($employees);                                       
+                                    })->with('assignAndEmployee.region', 'assignAndEmployee.extension')->orderBy('id')->get();
+            return response($employees);
             if($employees->isEmpty()){
                 $employees = [];
-            }   
+            }
                 return response([
                     'message' => 'success',
-                    'employees' => $employees,                    
+                    'employees' => $employees,
                 ],200);
-        }catch(Exception $e){
+        }catch(\Exception $e){
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -61,8 +61,8 @@ class AssigningController extends Controller
     public function show($id)
     {
         try{
-        $assignAndEmployee = AssignRegionExtension::with('user')->findOrFail($id); 
-        $regions = Region::with('extensions:id,regional_id,name')->orderBy('name')->get(['id', 'name']); 
+        $assignAndEmployee = AssignRegionExtension::with('user')->findOrFail($id);
+        $regions = Region::with('extensions:id,regional_id,name')->orderBy('name')->get(['id', 'name']);
 
         if(!$assignAndEmployee){
             return response()->json([
@@ -71,10 +71,10 @@ class AssigningController extends Controller
             }
             return response([
                 'message' => 'success',
-                'assignAndEmployee' => $assignAndEmployee,            
+                'assignAndEmployee' => $assignAndEmployee,
                 'regions' => $regions,
             ],200);
-        }catch(Exception $e){
+        }catch(\Exception $e){
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -93,9 +93,9 @@ class AssigningController extends Controller
         try{
             $employee = User::whereHas('roles', function ($query) {
                                         $query->where('is_super_user', '!=', 1);
-                                    })->with('assignAndEmployee')->find($id);  
+                                    })->with('assignAndEmployee')->find($id);
             $regions = Region::with('extensions:id,regional_id,name')->orderBy('name')->get(['id', 'name']);
-                
+
             if(!$employee){
                 return response()->json([
                     'message' => 'The Employee you are trying to update doesn\'t exist.'
@@ -103,10 +103,10 @@ class AssigningController extends Controller
             }
             return response([
                 'message' => 'success',
-                'employee' => $employee,            
+                'employee' => $employee,
                 'region' => $regions,
             ],200);
-        }catch(Exception $e){
+        }catch(\Exception $e){
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -130,7 +130,7 @@ class AssigningController extends Controller
         DB::beginTransaction();
         try{
             $employee = User::findOrFail($id);
-            
+
             if(!$employee){
                 return response()->json([
                     'message' => 'The Employee you are trying to update doesn\'t exist.'
@@ -163,14 +163,14 @@ class AssigningController extends Controller
             $assignRegion->assign_type = $request->assign_type;
             $assignRegion->regional_id = $region;
             $assignRegion->extension_id = $extension;
-            $assignRegion->is_assign = $assign;  
-            $assignRegion->user_id = $employee->id;   
+            $assignRegion->is_assign = $assign;
+            $assignRegion->user_id = $employee->id;
             $assignRegion->save();
         }catch(\Exception $e)
         {
             DB::rollback();
-            return response()->json([  
-                'message'=> $e->getMessage(),                                                        
+            return response()->json([
+                'message'=> $e->getMessage(),
             ], 500);
         }
 
@@ -195,7 +195,7 @@ class AssigningController extends Controller
         DB::beginTransaction();
         try{
             $assignAndEmployee = AssignRegionExtension::findOrFail($id);
-            
+
             if(!$assignAndEmployee){
                 return response()->json([
                     'message' => 'The Employee asssign you are trying to update doesn\'t exist.'
@@ -223,13 +223,13 @@ class AssigningController extends Controller
             $assignAndEmployee->assign_type = $request->assign_type;
             $assignAndEmployee->regional_id = $region;
             $assignAndEmployee->extension_id = $extension;
-            $assignAndEmployee->is_assign = $assign;            
+            $assignAndEmployee->is_assign = $assign;
             $assignAndEmployee->save();
         }catch(\Exception $e)
         {
             DB::rollback();
-            return response()->json([  
-                'message'=> $e->getMessage(),                                                        
+            return response()->json([
+                'message'=> $e->getMessage(),
             ], 500);
         }
 

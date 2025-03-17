@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Master;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Color;
-use DB;
+use Illuminate\Support\Facades\DB;
 
 class ColorController extends Controller
 {
@@ -14,10 +14,10 @@ class ColorController extends Controller
     {
         $this->middleware('permission:colors.view')->only('index', 'show');
         $this->middleware('permission:colors.store')->only('store');
-        $this->middleware('permission:colors.update')->only('update');       
-        $this->middleware('permission:colors.edit-colors')->only('editColor');       
+        $this->middleware('permission:colors.update')->only('update');
+        $this->middleware('permission:colors.edit-colors')->only('editColor');
     }
-    
+
     public function index()
     {
         try{
@@ -25,12 +25,12 @@ class ColorController extends Controller
             $colors = Color::orderBy('id')->get();
             if($colors->isEmpty()){
                 $colors = [];
-            }   
+            }
                 return response([
                     'message' => 'success',
                     'color' =>$colors
                 ],200);
-        }catch(Exception $e){
+        }catch(\Exception $e){
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -59,8 +59,8 @@ class ColorController extends Controller
         }catch(\Exception $e)
         {
             DB::rollback();
-            return response()->json([  
-                'message'=> $e->getMessage(),                                                        
+            return response()->json([
+                'message'=> $e->getMessage(),
             ], 500);
         }
 
@@ -91,7 +91,7 @@ class ColorController extends Controller
     {
         try{
             $color = Color::find($id);
-                
+
             if(!$color){
                 return response()->json([
                     'message' => 'The Color you are trying to update doesn\'t exist.'
@@ -101,7 +101,7 @@ class ColorController extends Controller
                 'message' => 'success',
                 'color' =>$color
             ],200);
-        }catch(Exception $e){
+        }catch(\Exception $e){
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -123,7 +123,7 @@ class ColorController extends Controller
         DB::beginTransaction();
         try{
             $color = Color::find($id);
-            
+
             if(!$color){
                 return response()->json([
                     'message' => 'The Color you are trying to update doesn\'t exist.'
@@ -137,8 +137,8 @@ class ColorController extends Controller
         }catch(\Exception $e)
         {
             DB::rollback();
-            return response()->json([  
-                'message'=> $e->getMessage(),                                                        
+            return response()->json([
+                'message'=> $e->getMessage(),
             ], 500);
         }
 
@@ -158,13 +158,13 @@ class ColorController extends Controller
     {
         try {
 
-            Color::find($id)->delete(); 
+            Color::find($id)->delete();
 
             return response()->json([
                 'message' => 'Color deleted successfully',
             ], 200);
         } catch (\Exception $e) {
-            return response()->json([                           
+            return response()->json([
                 'message' => 'Color cannot be delete. Already used by other records.'
             ], 202);
         }

@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Master;
 use App\Http\Controllers\Controller;
 use App\Models\Brand;
 use Illuminate\Http\Request;
-use DB;
+use Illuminate\Support\Facades\DB;
 
 class BrandController extends Controller
 {
@@ -18,8 +18,8 @@ class BrandController extends Controller
      {
          $this->middleware('permission:brands.view')->only('index', 'show');
          $this->middleware('permission:brands.store')->only('store');
-         $this->middleware('permission:brands.update')->only('update');       
-         $this->middleware('permission:brands.edit-brands')->only('editBrand');       
+         $this->middleware('permission:brands.update')->only('update');
+         $this->middleware('permission:brands.edit-brands')->only('editBrand');
      }
     public function index()
     {
@@ -27,12 +27,12 @@ class BrandController extends Controller
             $brands = Brand::orderBy('id')->get();
             if($brands->isEmpty()){
                 $brands = [];
-            }   
+            }
                 return response([
                     'message' => 'success',
                     'brand' =>$brands
                 ],200);
-        }catch(Exception $e){
+        }catch(\Exception $e){
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -61,8 +61,8 @@ class BrandController extends Controller
         }catch(\Exception $e)
         {
             DB::rollback();
-            return response()->json([  
-                'message'=> $e->getMessage(),                                                        
+            return response()->json([
+                'message'=> $e->getMessage(),
             ], 500);
         }
 
@@ -93,7 +93,7 @@ class BrandController extends Controller
     {
         try{
             $brand = Brand::find($id);
-                
+
             if(!$brand){
                 return response()->json([
                     'message' => 'The Brand you are trying to update doesn\'t exist.'
@@ -103,7 +103,7 @@ class BrandController extends Controller
                 'message' => 'success',
                 'brand' =>$brand
             ],200);
-        }catch(Exception $e){
+        }catch(\Exception $e){
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -125,7 +125,7 @@ class BrandController extends Controller
         DB::beginTransaction();
         try{
             $brand = Brand::find($id);
-            
+
             if(!$brand){
                 return response()->json([
                     'message' => 'The Brand you are trying to update doesn\'t exist.'
@@ -139,8 +139,8 @@ class BrandController extends Controller
         }catch(\Exception $e)
         {
             DB::rollback();
-            return response()->json([  
-                'message'=> $e->getMessage(),                                                        
+            return response()->json([
+                'message'=> $e->getMessage(),
             ], 500);
         }
 
@@ -160,13 +160,13 @@ class BrandController extends Controller
     {
         try {
 
-            Brand::find($id)->delete(); 
+            Brand::find($id)->delete();
 
             return response()->json([
                 'message' => 'Brand deleted successfully',
             ], 200);
         } catch (\Exception $e) {
-            return response()->json([                           
+            return response()->json([
                 'message' => 'Brand cannot be delete. Already used by other records.'
             ], 202);
         }

@@ -15,7 +15,7 @@ use App\Models\User;
 use App\Services\SerialNumberGenerator;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use DB;
+use Illuminate\Support\Facades\DB;
 
 class ApplyEmi extends Controller
 {
@@ -32,7 +32,6 @@ class ApplyEmi extends Controller
         $this->middleware('permission:apply-emi.phone-details')->only('productDetails');
         $this->middleware('permission:apply-emi.store')->only('store');
         $this->middleware('permission:apply-emi.update')->only('update');
-
     }
 
     public function index()
@@ -72,7 +71,7 @@ class ApplyEmi extends Controller
                 'emi' => $emi
 
             ], 200);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -97,9 +96,7 @@ class ApplyEmi extends Controller
      */
     public function store(Request $request)
     {
-        $this->validate($request, [
-
-        ]);
+        $this->validate($request, []);
 
         DB::beginTransaction();
 
@@ -115,7 +112,6 @@ class ApplyEmi extends Controller
             $emi->status = 'pending';
             $emi->description = $request->description;
             $emi->save();
-
         } catch (\Exception $e) {
             DB::rollback();
             return response()->json([
@@ -156,10 +152,7 @@ class ApplyEmi extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function edit($id)
-    {
-
-    }
+    public function edit($id) {}
 
     /**
      * Update the specified resource in storage.
@@ -191,7 +184,6 @@ class ApplyEmi extends Controller
             $emi->status = 'pending';
             $emi->description = $request->description;
             $emi->save();
-
         } catch (\Exception $e) {
             DB::rollback();
             return response()->json([
@@ -238,17 +230,12 @@ class ApplyEmi extends Controller
 
             if ($employee->assignAndEmployee == null) {
                 $phone = Product::where('item_number', '=', $request->item_no)->where('main_store_qty', '!=', 0)->get();
-
-
             } elseif ($employee->assignAndEmployee['regional_id'] != null) {
 
                 $phone = Product::where('item_number', '=', $request->item_no)->where('region_store_qty', '!=', 0)->get();
-
             } else {
 
                 $phone = Product::where('item_number', '=', $request->item_no)->where('extension_store_qty', '!=', 0)->get();
-
-
             }
 
 
@@ -259,7 +246,7 @@ class ApplyEmi extends Controller
 
 
             ], 200);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -292,7 +279,6 @@ class ApplyEmi extends Controller
             if ($employee->assignAndEmployee == null) {
                 $invoiceNo = $invoice->mainInvoiceNumber('SaleVoucher', 'invoice_date');
                 $storeID = 1;
-
             } elseif ($employee->assignAndEmployee->regional_id != null) {
                 $region = $employee->assignAndEmployee->regional_id;
                 $regionName = Region::where('id', '=', $region)->first();
@@ -304,7 +290,6 @@ class ApplyEmi extends Controller
                 $invoiceNo = $invoice->invoiceNumber('SaleVoucher', 'invoice_date', $regionID, $firstWord);
                 $store = Store::where('region_id', '=', $region)->first();
                 $storeID = $store->id;
-
             } else {
 
                 $extension = $employee->assignAndEmployee->extension_id;
@@ -316,7 +301,6 @@ class ApplyEmi extends Controller
                 $invoiceNo = $invoice->extensionInvoiceNumber('SaleVoucher', 'invoice_date', $extensionID, $firstWord);
                 $store = Store::where('extension_id', '=', $extension)->first();
                 $storeID = $store->id;
-
             }
 
             //generate sale voucher
@@ -381,12 +365,10 @@ class ApplyEmi extends Controller
                     'extension_store_sold_qty' => $soldquantity + 1,
                     'updated_by' => auth()->user()->id,
                 ]);
-
             }
             //save sale voucher id to emi table after genertaion
             $emi->sale_voucher_id = $saleVoucher->id;
             $emi->save();
-
         } catch (\Exception $e) {
             DB::rollback();
             return response()->json([

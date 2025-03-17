@@ -11,7 +11,7 @@ class PermissionController extends Controller
     public function __construct()
     {
         $this->middleware('permission:permission.refresh')->only('refresh');
-        $this->middleware('permission:permission.index')->only('index');        
+        $this->middleware('permission:permission.index')->only('index');
     }
 
     public function index()
@@ -21,13 +21,13 @@ class PermissionController extends Controller
             $permissions = Permission::with('roles')->orderBy('id')->get();
             if($permissions->isEmpty()){
                 $permissions = [];
-            }   
+            }
                 return response([
                     'message' => 'success',
                     'permission' =>$permissions
                 ],200);
-                
-        }catch(Exception $e){
+
+        }catch(\Exception $e){
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -73,9 +73,9 @@ class PermissionController extends Controller
         Permission::whereNotIn('name', $permissions)->delete();
         return response([
             'message' => 'The permissions table has been regenerated',
-         
-        ],200);   
-    }catch(Exception $e){
+
+        ],200);
+    }catch(\Exception $e){
         return response([
             'message' => $e->getMessage()
         ], 400);

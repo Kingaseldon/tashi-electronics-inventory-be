@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Dzongkhag;
 use App\Models\Store;
-use DB;
+use Illuminate\Support\Facades\DB;
 
 class StoreController extends Controller
 {
@@ -14,8 +14,8 @@ class StoreController extends Controller
     {
         //  $this->middleware('permission:stores.view')->only('index', 'show');
         //  $this->middleware('permission:stores.store')->only('store');
-        //  $this->middleware('permission:stores.update')->only('update');       
-        //  $this->middleware('permission:stores.edit-stores')->only('editStore');       
+        //  $this->middleware('permission:stores.update')->only('update');
+        //  $this->middleware('permission:stores.edit-stores')->only('editStore');
     }
     public function index()
     {
@@ -25,13 +25,13 @@ class StoreController extends Controller
             $dzongkhags = Dzongkhag::orderBy('id')->get();
             if($stores->isEmpty()){
                 $stores = [];
-            }   
+            }
                 return response([
                     'message' => 'success',
                     'store' =>$stores,
                     'dzongkhag' =>$dzongkhags,
                 ],200);
-        }catch(Exception $e){
+        }catch(\Exception $e){
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -61,8 +61,8 @@ class StoreController extends Controller
         }catch(\Exception $e)
         {
             DB::rollback();
-            return response()->json([  
-                'message'=> $e->getMessage(),                                                        
+            return response()->json([
+                'message'=> $e->getMessage(),
             ], 500);
         }
 
@@ -94,7 +94,7 @@ class StoreController extends Controller
         try{
             $store = Store::with('dzongkhag')->find($id);
             $dzongkhags = Dzongkhag::orderBy('id')->get();
-                
+
             if(!$store){
                 return response()->json([
                     'message' => 'The Store you are trying to update doesn\'t exist.'
@@ -105,7 +105,7 @@ class StoreController extends Controller
                 'store' =>$store,
                 'dzongkhag' =>$dzongkhags,
             ],200);
-        }catch(Exception $e){
+        }catch(\Exception $e){
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -127,7 +127,7 @@ class StoreController extends Controller
         DB::beginTransaction();
         try{
             $store = Store::find($id);
-            
+
             if(!$store){
                 return response()->json([
                     'message' => 'The Srore you are trying to update doesn\'t exist.'
@@ -142,8 +142,8 @@ class StoreController extends Controller
         }catch(\Exception $e)
         {
             DB::rollback();
-            return response()->json([  
-                'message'=> $e->getMessage(),                                                        
+            return response()->json([
+                'message'=> $e->getMessage(),
             ], 500);
         }
 
@@ -163,13 +163,13 @@ class StoreController extends Controller
     {
         try {
 
-            Store::find($id)->delete(); 
+            Store::find($id)->delete();
 
             return response()->json([
                 'message' => 'Store deleted successfully',
             ], 200);
         } catch (\Exception $e) {
-            return response()->json([                           
+            return response()->json([
                 'message' => 'Store cannot be delete. Already used by other records.'
             ], 202);
         }

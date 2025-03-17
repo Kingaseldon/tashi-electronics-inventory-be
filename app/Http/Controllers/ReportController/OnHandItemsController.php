@@ -20,8 +20,6 @@ class OnHandItemsController extends Controller
     {
 
         $this->middleware('permission:onhanditems.view')->only('index');
-
-
     }
     public function index(Request $request)
     {
@@ -44,17 +42,17 @@ class OnHandItemsController extends Controller
                     }
                 })->whereBetween(DB::raw('DATE_FORMAT(products.created_date, "%Y-%m-%d")'), [$request->from_date, $request->to_date])
                 ->where('products.main_store_qty', '>', 0)->select([
-                        'products.id',
-                        'products.item_number',
-                        'products.serial_no',
-                          'products.created_date',
-                        DB::raw('COALESCE(products.sub_inventory, "--") AS sub_inventory'),
-                        DB::raw('COALESCE(products.locator, "--") AS locator'),
-                        DB::raw('COALESCE(products.iccid, "--") AS iccid'),
-                        'products.main_store_qty AS store_qty',
-                        'products.description',
-                      
-                    ])->union(
+                    'products.id',
+                    'products.item_number',
+                    'products.serial_no',
+                    'products.created_date',
+                    DB::raw('COALESCE(products.sub_inventory, "--") AS sub_inventory'),
+                    DB::raw('COALESCE(products.locator, "--") AS locator'),
+                    DB::raw('COALESCE(products.iccid, "--") AS iccid'),
+                    'products.main_store_qty AS store_qty',
+                    'products.description',
+
+                ])->union(
                     DB::table('product_transactions')->leftJoin('products', function ($join) {
                         $join->on('product_transactions.product_id', '=', 'products.id');
                     })
@@ -86,7 +84,7 @@ class OnHandItemsController extends Controller
                             DB::raw('COALESCE(products.iccid, "--") AS iccid'),
                             DB::raw('CASE WHEN product_transactions.regional_id IS NOT NULL THEN product_transactions.region_store_quantity ELSE product_transactions.store_quantity END AS store_qty'),
                             'products.description',
-                            
+
                         ])
                         ->where(DB::raw('CASE WHEN product_transactions.regional_id IS NOT NULL THEN product_transactions.region_store_quantity ELSE product_transactions.store_quantity END'), '>', 0)
                 )
@@ -99,7 +97,7 @@ class OnHandItemsController extends Controller
                 'onhand' => $onhand,
 
             ], 200);
-        } catch (Execption $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);

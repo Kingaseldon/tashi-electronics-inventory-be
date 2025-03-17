@@ -28,8 +28,6 @@ class WarrantyController extends Controller
         $this->middleware('permission:warranties.replace')->only('Replace');
         $this->middleware('permission:warranties.repair')->only('Repair');
         $this->middleware('permission:warranties.search-warranties')->only('searchForWarranty');
-
-
     }
     /**
      * Display a listing of the resource.
@@ -45,7 +43,7 @@ class WarrantyController extends Controller
                 'message' => 'success',
                 'products' => $warranties
             ], 200);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -68,10 +66,7 @@ class WarrantyController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    public function store(Request $request)
-    {
-
-    }
+    public function store(Request $request) {}
     public function Replace(Request $request, SerialNumberGenerator $invoice)
     {
 
@@ -121,14 +116,13 @@ class WarrantyController extends Controller
             $extensionName = Extension::where('id', '=', $extension)->first();
             $storeID = "";
 
-      
+
 
             //unique number generator
             $invoiceNo = "";
             if ($region === null && $extension === null) {
                 $invoiceNo = $invoice->mainInvoiceNumber('SaleVoucher', 'invoice_date');
                 $storeID = 1;
-
             } elseif ($region != null) {
                 $wordArray = explode(' ', $regionName->name);
                 // The first element of the $wordArray will contain the first word
@@ -137,7 +131,6 @@ class WarrantyController extends Controller
                 $invoiceNo = $invoice->invoiceNumber('SaleVoucher', 'invoice_date', $regionID, $regionName->name);
                 $store = Store::where('region_id', '=', $region)->first();
                 $storeID = $store->id;
-
             } else {
                 $wordArray = explode(' ', $extensionName->name);
                 // The first element of the $wordArray will contain the first word
@@ -146,7 +139,6 @@ class WarrantyController extends Controller
                 $invoiceNo = $invoice->extensionInvoiceNumber('SaleVoucher', 'invoice_date', $extensionID, $extensionName->name);
                 $store = Store::where('extension_id', '=', $extension)->first();
                 $storeID = $store->id;
-
             }
             $customer = "";
             if ($customerType == 2) {
@@ -212,7 +204,6 @@ class WarrantyController extends Controller
                     'main_store_sold_qty' => $mainStoreSoldQty + $newDetails['qty'],
                     'sale_status' => "replaced"
                 ]);
-
             } elseif ($region != null) {
                 $Transaction = ProductTransaction::where('product_id', '=', $productTable->id)->loggedInAssignRegion()->first();
                 if ($Transaction == null) {
@@ -235,9 +226,6 @@ class WarrantyController extends Controller
                     'sold_quantity' => $soldQty + $newDetails['qty'],
                     'sale_status' => "replaced"
                 ]);
-
-
-
             } else {
                 $Transaction = ProductTransaction::where('product_id', '=', $productTable->id)->LoggedInAssignExtension()->first();
 
@@ -262,9 +250,7 @@ class WarrantyController extends Controller
                     'sold_quantity' => $soldQty + $newDetails['qty'],
                     'sale_status' => "replaced"
                 ]);
-
             }
-
         } catch (\Exception $e) {
             DB::rollback();
             return response()->json([
@@ -328,7 +314,6 @@ class WarrantyController extends Controller
             if ($region === null && $extension === null) {
                 $invoiceNo = $invoice->mainInvoiceNumber('SaleVoucher', 'invoice_date');
                 $storeID = 1;
-
             } elseif ($region != null) {
                 $wordArray = explode(' ', $regionName->name);
                 // The first element of the $wordArray will contain the first word
@@ -337,7 +322,6 @@ class WarrantyController extends Controller
                 $invoiceNo = $invoice->invoiceNumber('SaleVoucher', 'invoice_date', $regionID, $firstWord);
                 $store = Store::where('region_id', '=', $region)->first();
                 $storeID = $store->id;
-
             } else {
                 $wordArray = explode(' ', $extensionName->name);
                 // The first element of the $wordArray will contain the first word
@@ -428,7 +412,6 @@ class WarrantyController extends Controller
                         'main_store_sold_qty' => $mainStoreSoldQty + $value['quantity'],
                         'sale_status' => "replaced"
                     ]);
-
                 } elseif ($region != null) {
                     $Transaction = ProductTransaction::where('product_id', '=', $productTable->id)->loggedInAssignRegion()->first();
 
@@ -452,7 +435,6 @@ class WarrantyController extends Controller
                         'sold_quantity' => $soldQty + $value['quantity'],
                         'sale_status' => "replaced"
                     ]);
-
                 } else {
                     $Transaction = ProductTransaction::where('product_id', '=', $productTable->id)->LoggedInAssignExtension()->first();
                     if ($Transaction == null) {
@@ -598,7 +580,7 @@ class WarrantyController extends Controller
                 'message' => 'success',
                 'products' => $product
             ], 200);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);

@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\CustomerType;
 use App\Models\Customer;
-use DB;
+use Illuminate\Support\Facades\DB;
 
 class CustomerController extends Controller
 {
@@ -15,9 +15,9 @@ class CustomerController extends Controller
     {
         $this->middleware('permission:customers.view')->only('index', 'show');
         $this->middleware('permission:customers.store')->only('store');
-        $this->middleware('permission:customers.update')->only('update');       
-        $this->middleware('permission:customers.edit-customers')->only('editCustomer');       
-        $this->middleware('permission:customers.get-customers')->only('getCustomers');       
+        $this->middleware('permission:customers.update')->only('update');
+        $this->middleware('permission:customers.edit-customers')->only('editCustomer');
+        $this->middleware('permission:customers.get-customers')->only('getCustomers');
     }
     /**
      * Display a listing of the resource.
@@ -26,18 +26,18 @@ class CustomerController extends Controller
      */
     public function index()
     {
-        try{
+        try {
             $customers = Customer::with('customerType')->orderBy('id')->get();
-            $customerTypes = CustomerType::orderBy('id')->get();            
-            if($customers->isEmpty()){
+            $customerTypes = CustomerType::orderBy('id')->get();
+            if ($customers->isEmpty()) {
                 $customers = [];
-            }   
-                return response([
-                    'message' => 'success',
-                    'customer' => $customers,                
-                    'customerType' => $customerTypes,                
-                ],200);
-        }catch(Execption $e){
+            }
+            return response([
+                'message' => 'success',
+                'customer' => $customers,
+                'customerType' => $customerTypes,
+            ], 200);
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -65,27 +65,25 @@ class CustomerController extends Controller
         $this->validate($request, [
             'customer_name' => 'required',
         ]);
- 
+
         DB::beginTransaction();
- 
-        try{
+
+        try {
             $customer = new Customer;
             $customer->customer_name = $request->customer_name;
             $customer->contact_no = $request->contact_no;
             $customer->address = $request->address;
             $customer->license_no = $request->license_no;
-            $customer->customer_type_id = $request->customer_type; 
-            $customer->description = $request->description;     
+            $customer->customer_type_id = $request->customer_type;
+            $customer->description = $request->description;
             $customer->save();
- 
-        }catch(\Exception $e)
-        {
+        } catch (\Exception $e) {
             DB::rollback();
-            return response()->json([  
-                'message'=> $e->getMessage(),                                                        
+            return response()->json([
+                'message' => $e->getMessage(),
             ], 500);
         }
- 
+
         DB::commit();
         return response()->json([
             'message' => 'Customer has been created Successfully'
@@ -111,31 +109,31 @@ class CustomerController extends Controller
      */
     public function editCustomer($id)
     {
-        try{
-            $customer = Customer::with('customerType')->find($id); 
-            $customerTypes = CustomerType::orderBy('id')->get();        
-                
-            if(!$customer){
+        try {
+            $customer = Customer::with('customerType')->find($id);
+            $customerTypes = CustomerType::orderBy('id')->get();
+
+            if (!$customer) {
                 return response()->json([
                     'message' => 'The Customer you are trying to update doesn\'t exist.'
                 ], 404);
             }
             return response([
                 'message' => 'success',
-                'customer' => $customer,  
-                'customerType' => $customerTypes,            
-            ],200);
-        }catch(Exception $e){
+                'customer' => $customer,
+                'customerType' => $customerTypes,
+            ], 200);
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
         }
     }
-//get customer based on customer type id
+    //get customer based on customer type id
     public function getCustomers($id)
     {
         try {
-       
+
             $customer = Customer::orderBy('id')->where('customer_type_id', $id)->get();
 
             if (!$customer) {
@@ -146,9 +144,9 @@ class CustomerController extends Controller
             return response([
                 'message' => 'success',
                 'customer' => $customer,
-         
+
             ], 200);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -168,31 +166,29 @@ class CustomerController extends Controller
             'customer_name' => 'required',
         ]);
         DB::beginTransaction();
-        try{
+        try {
             $customer = Customer::find($id);
-            
-            if(!$customer){
+
+            if (!$customer) {
                 return response()->json([
                     'message' => 'The Customer you are trying to update doesn\'t exist.'
                 ], 404);
             }
- 
+
             $customer->customer_name = $request->customer_name;
             $customer->contact_no = $request->contact_no;
             $customer->address = $request->address;
             $customer->license_no = $request->license_no;
-            $customer->customer_type_id = $request->customer_type; 
-            $customer->description = $request->description;     
+            $customer->customer_type_id = $request->customer_type;
+            $customer->description = $request->description;
             $customer->save();
- 
-        }catch(\Exception $e)
-        {
+        } catch (\Exception $e) {
             DB::rollback();
-            return response()->json([  
-                'message'=> $e->getMessage(),                                                        
+            return response()->json([
+                'message' => $e->getMessage(),
             ], 500);
         }
- 
+
         DB::commit();
         return response()->json([
             'message' => 'Customer has been updated Successfully'
@@ -209,15 +205,15 @@ class CustomerController extends Controller
     {
         try {
 
-            Customer::find($id)->delete(); 
-    
-               return response()->json([
-                   'message' => 'Customer deleted successfully',
-               ], 200);
-           } catch (\Exception $e) {
-               return response()->json([                           
-                   'message' => 'Customer cannot be delete. Already used by other records.'
-               ], 202);
-           }
+            Customer::find($id)->delete();
+
+            return response()->json([
+                'message' => 'Customer deleted successfully',
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Customer cannot be delete. Already used by other records.'
+            ], 202);
+        }
     }
 }

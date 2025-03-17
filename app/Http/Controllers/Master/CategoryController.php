@@ -4,10 +4,10 @@ namespace App\Http\Controllers\Master;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Models\SubCategory;  
-use App\Models\Category;  
-use App\Models\SaleType;  
-use DB;
+use App\Models\SubCategory;
+use App\Models\Category;
+use App\Models\SaleType;
+use Illuminate\Support\Facades\DB;
 
 class CategoryController extends Controller
 {
@@ -20,24 +20,24 @@ class CategoryController extends Controller
     {
         $this->middleware('permission:categories.view')->only('index', 'show');
         $this->middleware('permission:categories.store')->only('store');
-        $this->middleware('permission:categories.update')->only('update');       
-        $this->middleware('permission:categories.edit-categories')->only('editCategory');       
+        $this->middleware('permission:categories.update')->only('update');
+        $this->middleware('permission:categories.edit-categories')->only('editCategory');
     }
     public function index()
     {
-        try{
+        try {
 
             $categories = Category::with('sub_categories', 'saleType')->orderBy('id')->get();
             $saleTypes = SaleType::orderBy('id')->get();
-            if($categories->isEmpty()){
+            if ($categories->isEmpty()) {
                 $categories = [];
-            }   
-                return response([
-                    'message' => 'success',
-                    'category' =>$categories,
-                    'saleTypes' =>$saleTypes,
-                ],200);
-        }catch(Exception $e){
+            }
+            return response([
+                'message' => 'success',
+                'category' => $categories,
+                'saleTypes' => $saleTypes,
+            ], 200);
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -58,7 +58,7 @@ class CategoryController extends Controller
 
         DB::beginTransaction();
 
-        try{
+        try {
             $category = new Category;
 
             $category->sale_type_id = $request->sale_type;
@@ -71,17 +71,15 @@ class CategoryController extends Controller
                 $subCategory[$key]['category_id'] = $category->id;
                 $subCategory[$key]['name'] = $value['name'];
                 $subCategory[$key]['code'] = $value['code'];
-                $subCategory[$key]['description'] = isset($value['description']) == true ? $value['description'] : null ;
+                $subCategory[$key]['description'] = isset($value['description']) == true ? $value['description'] : null;
                 $subCategory[$key]['created_by'] = auth()->user()->id;
             }
 
             $category->sub_categories()->insert($subCategory);
-
-        }catch(\Exception $e)
-        {
+        } catch (\Exception $e) {
             DB::rollback();
-            return response()->json([  
-                'message'=> $e->getMessage(),                                                        
+            return response()->json([
+                'message' => $e->getMessage(),
             ], 500);
         }
 
@@ -110,21 +108,21 @@ class CategoryController extends Controller
      */
     public function editCategory($id)
     {
-        try{
+        try {
             $category = Category::with('sub_categories', 'saleType')->find($id);
             $saleTypes = SaleType::orderBy('id')->get();
-                
-            if(!$category){
+
+            if (!$category) {
                 return response()->json([
                     'message' => 'The Category you are trying to update doesn\'t exist.'
                 ], 404);
             }
             return response([
                 'message' => 'success',
-                'category' =>$category,
-                'saleTypes' =>$saleTypes,
-            ],200);
-        }catch(Exception $e){
+                'category' => $category,
+                'saleTypes' => $saleTypes,
+            ], 200);
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -144,10 +142,10 @@ class CategoryController extends Controller
             'sale_type' => 'required',
         ]);
         DB::beginTransaction();
-        try{
+        try {
             $category = Category::findOrFail($id);
-            
-            if(!$category){
+
+            if (!$category) {
                 return response()->json([
                     'message' => 'The Category you are trying to update doesn\'t exist.'
                 ], 404);
@@ -165,10 +163,10 @@ class CategoryController extends Controller
             $subModuleIdsFromRequestCount = sizeof($request->subCategories);
 
             //store the incoming form values in an array but only the sub modules/menus id
-             $subModuleIdsFromRequest =[];
+            $subModuleIdsFromRequest = [];
             foreach ($request->subCategories as $value) {
-                if(isset($value['sub_category_id'])) {
-                $subModuleIdsFromRequest [] = (int) $value['sub_category_id'];
+                if (isset($value['sub_category_id'])) {
+                    $subModuleIdsFromRequest[] = (int) $value['sub_category_id'];
                 }
             }
 
@@ -178,7 +176,7 @@ class CategoryController extends Controller
             //after that remove the deleted sub module from the system_sub_menus table
             SubCategory::whereIn('id', $uniqueSubModuleIds)->delete();
 
-      
+
             foreach ($request->subCategories as $key => $value) {
                 $subCategory = SubCategory::whereId($value['sub_category_id'])->first();
                 if ($subCategory) {
@@ -192,18 +190,17 @@ class CategoryController extends Controller
 
                     SubCategory::create([
                         'name' => $value['name'],
-                        'category_id'=>$category->id,
+                        'category_id' => $category->id,
                         'code' => isset($value['code']) == true ? $value['code'] : null,
                         'description' => isset($value['description']) == true ? $value['description'] : null,
                         'created_by' => auth()->user()->id,
                     ]);
                 }
             }
-        }catch(\Exception $e)
-        {
+        } catch (\Exception $e) {
             DB::rollback();
-            return response()->json([  
-                'message'=> $e->getMessage(),                                                        
+            return response()->json([
+                'message' => $e->getMessage(),
             ], 500);
         }
 
@@ -223,13 +220,13 @@ class CategoryController extends Controller
     {
         try {
 
-            Category::find($id)->delete(); 
+            Category::find($id)->delete();
 
             return response()->json([
                 'message' => 'Category deleted successfully',
             ], 200);
         } catch (\Exception $e) {
-            return response()->json([                           
+            return response()->json([
                 'message' => 'Category cannot be delete. Already used by other records.'
             ], 202);
         }

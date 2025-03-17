@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Master;
 use App\Http\Controllers\Controller;
 use App\Models\Extension;
 use Illuminate\Http\Request;
-use DB;
+use Illuminate\Support\Facades\DB;
 
 class ExtensionController extends Controller
 {
@@ -18,8 +18,8 @@ class ExtensionController extends Controller
     {
         // $this->middleware('permission:extensions.view')->only('index', 'show');
         // $this->middleware('permission:extensions.store')->only('store');
-        // $this->middleware('permission:extensions.update')->only('update');       
-        // $this->middleware('permission:extensions.edit-extensions')->only('editExension');       
+        // $this->middleware('permission:extensions.update')->only('update');
+        // $this->middleware('permission:extensions.edit-extensions')->only('editExension');
     }
     public function index()
     {
@@ -28,12 +28,12 @@ class ExtensionController extends Controller
             $extensions = Extension::with('region.dzongkhag')->orderBy('id')->get();
             if($extensions->isEmpty()){
                 $extensions = [];
-            }   
+            }
                 return response([
                     'message' => 'success',
                     'extension' =>$extensions
                 ],200);
-        }catch(Exception $e){
+        }catch(\Exception $e){
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -67,15 +67,15 @@ class ExtensionController extends Controller
         try{
             $extensions = new Extension;
             $extensions->regional_id = $request->regional_id;
-            $extensions->name = $request->name;        
+            $extensions->name = $request->name;
             $extensions->description = $request->description;
             $extensions->save();
 
         }catch(\Exception $e)
         {
             DB::rollback();
-            return response()->json([  
-                'message'=> $e->getMessage(),                                                        
+            return response()->json([
+                'message'=> $e->getMessage(),
             ], 500);
         }
 
@@ -106,7 +106,7 @@ class ExtensionController extends Controller
     {
         try{
             $extension = Extension::with('region.dzongkhag')->find($id);
-                
+
             if(!$extension){
                 return response()->json([
                     'message' => 'The Extension you are trying to update doesn\'t exist.'
@@ -116,7 +116,7 @@ class ExtensionController extends Controller
                 'message' => 'success',
                 'extension' =>$extension
             ],200);
-        }catch(Exception $e){
+        }catch(\Exception $e){
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -138,7 +138,7 @@ class ExtensionController extends Controller
         DB::beginTransaction();
         try{
             $extension = Extension::find($id);
-            
+
             if(!$extension){
                 return response()->json([
                     'message' => 'The Extension you are trying to update doesn\'t exist.'
@@ -153,8 +153,8 @@ class ExtensionController extends Controller
         }catch(\Exception $e)
         {
             DB::rollback();
-            return response()->json([  
-                'message'=> $e->getMessage(),                                                        
+            return response()->json([
+                'message'=> $e->getMessage(),
             ], 500);
         }
 
@@ -174,13 +174,13 @@ class ExtensionController extends Controller
     {
         try {
 
-            Extension::find($id)->delete(); 
+            Extension::find($id)->delete();
 
             return response()->json([
                 'message' => 'Extension has been deleted successfully',
             ], 200);
         } catch (\Exception $e) {
-            return response()->json([                           
+            return response()->json([
                 'message' => 'Extension cannot be delete. Already used by other records.'
             ], 202);
         }

@@ -10,6 +10,7 @@ use App\Models\ProductRequisition;
 use App\Models\ProductTransaction;
 use App\Models\Region;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ExtensionProductTransferController extends Controller
 {
@@ -20,7 +21,7 @@ class ExtensionProductTransferController extends Controller
         $this->middleware('permission:extension-transfers.view')->only('index', 'show');
         $this->middleware('permission:extension-transfers.update')->only('update');
 
-      
+
     }
 
     /**
@@ -41,7 +42,7 @@ class ExtensionProductTransferController extends Controller
                 'transaction' => $giveProducts,
             ], 200);
 
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -98,7 +99,7 @@ class ExtensionProductTransferController extends Controller
                 'requisitions' => $requisitions,
             ], 200);
 
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -164,8 +165,8 @@ class ExtensionProductTransferController extends Controller
             $productMovement->description = $request->transfer_description;
             $productMovement->save();
 
-          
-        } catch (Exception $e) {
+
+        } catch (\Exception $e) {
             DB::rollback();
             return response()->json([
                 'message' => $e->getMessage(),

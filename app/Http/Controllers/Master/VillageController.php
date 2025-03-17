@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 // use App\Models\Dzongkhag;
 use App\Models\Village;
 use Illuminate\Http\Request;
-use DB;
+use Illuminate\Support\Facades\DB;
 
 class VillageController extends Controller
 {
@@ -19,8 +19,8 @@ class VillageController extends Controller
     {
         $this->middleware('permission:villages.view')->only('index', 'show');
         $this->middleware('permission:villages.store')->only('store');
-        $this->middleware('permission:villages.update')->only('update');       
-        $this->middleware('permission:villages.edit-villages')->only('editVillage');       
+        $this->middleware('permission:villages.update')->only('update');
+        $this->middleware('permission:villages.edit-villages')->only('editVillage');
     }
     public function index()
     {
@@ -38,7 +38,7 @@ class VillageController extends Controller
 
         }
         catch (\Exception $e) {
-            return response()->json([                           
+            return response()->json([
                 'message' => 'Something went wrong. Try Again later'
             ], 500);
         }
@@ -68,8 +68,8 @@ class VillageController extends Controller
         }catch(\Exception $e)
         {
             DB::rollback();
-            return response()->json([  
-                'message'=> $e->getMessage(),                                                        
+            return response()->json([
+                'message'=> $e->getMessage(),
             ], 500);
         }
 
@@ -101,7 +101,7 @@ class VillageController extends Controller
         try{
             $villages = Village::with('gewog.dzongkhag')->find($id);
             // $dzongkhags = Dzongkhag::with('gewogs:id,dzongkhag_id,name', 'gewogs.villages:gewog_id,id,name')->orderBy('name')->get(['id', 'name']);
-                
+
             if(!$villages){
                 return response()->json([
                     'message' => 'The Village you are trying to update doesn\'t exist.'
@@ -112,7 +112,7 @@ class VillageController extends Controller
                 'village' =>$villages,
                 // 'dzongkhags' =>$dzongkhags,
             ],200);
-        }catch(Exception $e){
+        }catch(\Exception $e){
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -134,7 +134,7 @@ class VillageController extends Controller
         DB::beginTransaction();
         try{
             $villages = Village::find($id);
-            
+
             if(!$villages){
                 return response()->json([
                     'message' => 'The village you are trying to update doesn\'t exist.'
@@ -149,8 +149,8 @@ class VillageController extends Controller
         }catch(\Exception $e)
         {
             DB::rollback();
-            return response()->json([  
-                'message'=> $e->getMessage(),                                                        
+            return response()->json([
+                'message'=> $e->getMessage(),
             ], 500);
         }
 
@@ -170,13 +170,13 @@ class VillageController extends Controller
     {
         try {
 
-            Village::find($id)->delete(); 
+            Village::find($id)->delete();
 
             return response()->json([
                 'message' => 'Village has been deleted successfully',
             ], 200);
-        } catch (\Exception $e) {    
-            return response()->json([                           
+        } catch (\Exception $e) {
+            return response()->json([
                 'message' => 'Village cannot be delete. Already used by other records.'
             ], 202);
         }

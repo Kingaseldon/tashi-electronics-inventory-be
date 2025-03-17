@@ -16,7 +16,7 @@ use App\Models\User;
 use App\Services\SerialNumberGenerator;
 use App\Models\SaleVoucher;
 use Carbon\Carbon;
-use DB;
+use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 
 class EmiController extends Controller
@@ -36,7 +36,7 @@ class EmiController extends Controller
     public function index()
     {
         try {
-          
+
             // $customerEmi = CustomerEmi::with('emiDetail')->orderBy('id')->get();
             $products=Product::where('category_id', 1)->select('item_number','sub_category_id','description','price')
                 ->groupBy('sub_category_id','item_number','description','price')
@@ -49,7 +49,7 @@ class EmiController extends Controller
                 'product' => $products,
                 // 'customerEmi' => $customerEmi,
             ], 200);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -151,7 +151,7 @@ class EmiController extends Controller
                     for ($i = 1; $i < count($flattenedArray); $i++) {
                         $product = Product::where('serial_no', $flattenedArray[$i][0])->first(); //serial number of exel
 
-                        if ($product) { // serial number present  
+                        if ($product) { // serial number present
 
                             if ($product->main_store_qty < $flattenedArray[$i][2]) {
                                 return response()->json([

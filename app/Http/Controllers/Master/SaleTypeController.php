@@ -5,16 +5,17 @@ namespace App\Http\Controllers\Master;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\SaleType;
-use DB;
+use Illuminate\Support\Facades\DB;
+
 
 class SaleTypeController extends Controller
 {
     public function __construct()
     {
-         $this->middleware('permission:sale-types.view')->only('index', 'show');
-         $this->middleware('permission:sale-types.store')->only('store');
-         $this->middleware('permission:sale-types.update')->only('update');       
-         $this->middleware('permission:sale-types.edit-sale-types')->only('editSaleType');       
+        $this->middleware('permission:sale-types.view')->only('index', 'show');
+        $this->middleware('permission:sale-types.store')->only('store');
+        $this->middleware('permission:sale-types.update')->only('update');
+        $this->middleware('permission:sale-types.edit-sale-types')->only('editSaleType');
     }
     /**
      * Display a listing of the resource.
@@ -23,17 +24,17 @@ class SaleTypeController extends Controller
      */
     public function index()
     {
-        try{
+        try {
 
             $saleTypes = SaleType::orderBy('id')->get();
-            if($saleTypes->isEmpty()){
+            if ($saleTypes->isEmpty()) {
                 $saleTypes = [];
-            }   
-                return response([
-                    'message' => 'success',
-                    'saleType' =>$saleTypes
-                ],200);
-        }catch(Exception $e){
+            }
+            return response([
+                'message' => 'success',
+                'saleType' => $saleTypes
+            ], 200);
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -53,17 +54,15 @@ class SaleTypeController extends Controller
 
         DB::beginTransaction();
 
-        try{
+        try {
             $saleType = new SaleType;
             $saleType->name = $request->name;
             $saleType->description = $request->description;
             $saleType->save();
-
-        }catch(\Exception $e)
-        {
+        } catch (\Exception $e) {
             DB::rollback();
-            return response()->json([  
-                'message'=> $e->getMessage(),                                                        
+            return response()->json([
+                'message' => $e->getMessage(),
             ], 500);
         }
 
@@ -92,19 +91,19 @@ class SaleTypeController extends Controller
      */
     public function editSaleType($id)
     {
-        try{
+        try {
             $saleType = SaleType::find($id);
-                
-            if(!$saleType){
+
+            if (!$saleType) {
                 return response()->json([
                     'message' => 'The Sale Type you are trying to update doesn\'t exist.'
                 ], 404);
             }
             return response([
                 'message' => 'success',
-                'saleType' =>$saleType
-            ],200);
-        }catch(Exception $e){
+                'saleType' => $saleType
+            ], 200);
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -124,10 +123,10 @@ class SaleTypeController extends Controller
             'name' => 'required',
         ]);
         DB::beginTransaction();
-        try{
+        try {
             $saleType = SaleType::find($id);
-            
-            if(!$saleType){
+
+            if (!$saleType) {
                 return response()->json([
                     'message' => 'The Sale Type you are trying to update doesn\'t exist.'
                 ], 404);
@@ -136,12 +135,10 @@ class SaleTypeController extends Controller
             $saleType->name = $request->name;
             $saleType->description = $request->description;
             $saleType->save();
-
-        }catch(\Exception $e)
-        {
+        } catch (\Exception $e) {
             DB::rollback();
-            return response()->json([  
-                'message'=> $e->getMessage(),                                                        
+            return response()->json([
+                'message' => $e->getMessage(),
             ], 500);
         }
 
@@ -161,13 +158,13 @@ class SaleTypeController extends Controller
     {
         try {
 
-            SaleType::find($id)->delete(); 
+            SaleType::find($id)->delete();
 
             return response()->json([
                 'message' => 'Sale Type deleted successfully',
             ], 200);
         } catch (\Exception $e) {
-            return response()->json([                           
+            return response()->json([
                 'message' => 'Sale Type cannot be delete. Already used by other records.'
             ], 202);
         }

@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Master;
 use App\Http\Controllers\Controller;
 use App\Models\Warranty;
 use Illuminate\Http\Request;
-use DB;
+use Illuminate\Support\Facades\DB;
 
 class MasterWarrantyController extends Controller
 {
@@ -27,16 +27,16 @@ class MasterWarrantyController extends Controller
         try {
 
             $warranty = Warranty::with('saleType')->orderBy('id')->get();
-          
+
             if ($warranty->isEmpty()) {
                 $warranty = [];
             }
             return response([
                 'message' => 'success',
                 'warranty' => $warranty,
-               
+
             ], 200);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -62,25 +62,25 @@ class MasterWarrantyController extends Controller
     public function store(Request $request)
     {
         $this->validate($request, [
-           
+
         ]);
- 
+
         DB::beginTransaction();
- 
+
         try{
             $warranty = new Warranty;
             $warranty->sale_type_id = $request->sale_type_id;
-            $warranty->no_of_years = $request->no_of_years;         
+            $warranty->no_of_years = $request->no_of_years;
             $warranty->save();
- 
+
         }catch(\Exception $e)
         {
             DB::rollback();
-            return response()->json([  
-                'message'=> $e->getMessage(),                                                        
+            return response()->json([
+                'message'=> $e->getMessage(),
             ], 500);
         }
- 
+
         DB::commit();
         return response()->json([
             'message' => 'Warranty has been created Successfully'
@@ -95,7 +95,7 @@ class MasterWarrantyController extends Controller
      */
     public function show($id)
     {
-        
+
     }
 
     /**
@@ -109,7 +109,7 @@ class MasterWarrantyController extends Controller
         try {
             $warranty = Warranty::with('saleType')->find($id);
             //    $extensions = Extension::orderBy('id')->get();
-            //    $regions = Region::orderBy('id')->get();    
+            //    $regions = Region::orderBy('id')->get();
 
             if (!$warranty) {
                 return response()->json([
@@ -122,7 +122,7 @@ class MasterWarrantyController extends Controller
                 //    'extension' => $extensions,
                 //    'region' => $regions,
             ], 200);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -139,7 +139,7 @@ class MasterWarrantyController extends Controller
     public function update(Request $request, $id)
     {
         $this->validate($request, [
-            
+
         ]);
         DB::beginTransaction();
         try {

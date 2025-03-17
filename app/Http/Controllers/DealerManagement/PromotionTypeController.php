@@ -5,7 +5,7 @@ namespace App\Http\Controllers\DealerManagement;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\PromotionType;
-use DB;
+use Illuminate\Support\Facades\DB;
 
 class PromotionTypeController extends Controller
 {
@@ -18,8 +18,8 @@ class PromotionTypeController extends Controller
     {
         // $this->middleware('permission:promotion-types.view')->only('index', 'show');
         // $this->middleware('permission:promotion-types.store')->only('store');
-        // $this->middleware('permission:promotion-types.update')->only('update');       
-        // $this->middleware('permission:promotion-types.edit-promotions')->only('editPromotion');       
+        // $this->middleware('permission:promotion-types.update')->only('update');
+        // $this->middleware('permission:promotion-types.edit-promotions')->only('editPromotion');
     }
 
 
@@ -27,15 +27,15 @@ class PromotionTypeController extends Controller
    {
        try{
 
-           $promotionTypes = PromotionType::orderBy('id')->get();          
+           $promotionTypes = PromotionType::orderBy('id')->get();
            if($promotionTypes->isEmpty()){
                $promotionTypes = [];
-           }   
+           }
                return response([
                    'message' => 'success',
-                   'promotionType' => $promotionTypes,                
+                   'promotionType' => $promotionTypes,
                ],200);
-       }catch(Exception $e){
+       }catch(\Exception $e){
            return response([
                'message' => $e->getMessage()
            ], 400);
@@ -61,14 +61,14 @@ class PromotionTypeController extends Controller
            $promotionType->start_date = $request->start_date;
            $promotionType->end_date = $request->end_date;
            $promotionType->promotion_percentage = $request->percentage;
-           $promotionType->description = $request->description;     
+           $promotionType->description = $request->description;
            $promotionType->save();
 
        }catch(\Exception $e)
        {
            DB::rollback();
-           return response()->json([  
-               'message'=> $e->getMessage(),                                                        
+           return response()->json([
+               'message'=> $e->getMessage(),
            ], 500);
        }
 
@@ -98,8 +98,8 @@ class PromotionTypeController extends Controller
    public function editPromotion($id)
    {
        try{
-           $promotionType = PromotionType::find($id);       
-               
+           $promotionType = PromotionType::find($id);
+
            if(!$promotionType){
                return response()->json([
                    'message' => 'The Promotion Type you are trying to update doesn\'t exist.'
@@ -107,9 +107,9 @@ class PromotionTypeController extends Controller
            }
            return response([
                'message' => 'success',
-               'promotionType' => $promotionType,            
+               'promotionType' => $promotionType,
            ],200);
-       }catch(Exception $e){
+       }catch(\Exception $e){
            return response([
                'message' => $e->getMessage()
            ], 400);
@@ -131,7 +131,7 @@ class PromotionTypeController extends Controller
        DB::beginTransaction();
        try{
            $promotionType = PromotionType::find($id);
-           
+
            if(!$promotionType){
                return response()->json([
                    'message' => 'The Promotion Type you are trying to update doesn\'t exist.'
@@ -142,14 +142,14 @@ class PromotionTypeController extends Controller
            $promotionType->start_date = $request->start_date;
            $promotionType->end_date = $request->end_date;
            $promotionType->promotion_percentage = $request->percentage;
-           $promotionType->description = $request->description;     
+           $promotionType->description = $request->description;
            $promotionType->save();
 
        }catch(\Exception $e)
        {
            DB::rollback();
-           return response()->json([  
-               'message'=> $e->getMessage(),                                                        
+           return response()->json([
+               'message'=> $e->getMessage(),
            ], 500);
        }
 
@@ -169,13 +169,13 @@ class PromotionTypeController extends Controller
    {
        try {
 
-        PromotionType::find($id)->delete(); 
+        PromotionType::find($id)->delete();
 
            return response()->json([
                'message' => 'Promotion Type deleted successfully',
            ], 200);
        } catch (\Exception $e) {
-           return response()->json([                           
+           return response()->json([
                'message' => 'Promotion Type cannot be delete. Already used by other records.'
            ], 202);
        }

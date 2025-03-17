@@ -4,9 +4,10 @@ namespace App\Http\Controllers\SystemSetting;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
-use DB;
+
 
 class RoleController extends Controller
 {
@@ -14,9 +15,9 @@ class RoleController extends Controller
     {
         $this->middleware('permission:roles.view')->only('index', 'show');
         $this->middleware('permission:roles.store')->only('store');
-        $this->middleware('permission:roles.update')->only('update');       
-        $this->middleware('permission:roles.edit-roles')->only('editRole');             
-        // $this->middleware('permission:roles.roles-base')->only('getRoleBase');             
+        $this->middleware('permission:roles.update')->only('update');
+        $this->middleware('permission:roles.edit-roles')->only('editRole');
+        // $this->middleware('permission:roles.roles-base')->only('getRoleBase');
     }
     /**
      * Display a listing of the resource.
@@ -29,12 +30,12 @@ class RoleController extends Controller
             $roles = Role::with('users')->orderBy('is_super_user', 'desc')->orderBy('name')->get();
             if($roles->isEmpty()){
                 $roles = [];
-            }   
+            }
                 return response([
                     'message' => 'success',
                     'role' => $roles
                 ],200);
-        }catch(Exception $e){
+        }catch(\Exception $e){
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -60,10 +61,10 @@ class RoleController extends Controller
             $role->description = $request->description;
             $role->save();
 
-        }catch(Exception $e){
+        }catch(\Exception $e){
             DB::rollback();
-            return response()->json([  
-                'message'=> $e->getMessage(),                                                        
+            return response()->json([
+                'message'=> $e->getMessage(),
             ], 500);
         }
 
@@ -98,17 +99,17 @@ class RoleController extends Controller
             }
             $rolePermissions = $role->permissions->pluck('id')->toArray();
             return response([
-                'message' => 'success',             
+                'message' => 'success',
                 'role' => $role,
                 'permissions' => $permissions,
                 'rolePermission' => $rolePermissions,
-            ],200);  
+            ],200);
 
-        } catch(Exception $e){
+        } catch(\Exception $e){
             return response([
                 'message' => $e->getMessage()
             ], 400);
-        }    
+        }
     }
 
     /**
@@ -158,12 +159,12 @@ class RoleController extends Controller
             }
             $role->syncPermissions($permissions);
 
-        } catch(Exception $e)
+        } catch(\Exception $e)
         {
             DB::rollback();
-            return response()->json([  
-                'message'=> $e->getMessage(),                                                        
-            ], 500);   
+            return response()->json([
+                'message'=> $e->getMessage(),
+            ], 500);
         }
 
         DB::commit();
@@ -189,8 +190,8 @@ class RoleController extends Controller
             return response()->json([
                 'message' => 'Role has been deleted successfully',
             ], 200);
-        } catch (\Exception $e) {    
-            return response()->json([                           
+        } catch (\Exception $e) {
+            return response()->json([
                 'message' => 'Role cannot be delete. Already used by other records.'
             ], 202);
         }
@@ -200,17 +201,17 @@ class RoleController extends Controller
     {
         try {
             $roleBases = Role::with('permissions')->findOrFail($id);
-         
+
             if(!$roleBases){
                 return response()->json([
                     'message' => 'The Role you are searching  doesn\'t exist.'
                 ], 404);
-            } 
+            }
                 return response([
                     'message' => 'success',
                     'roleBases' => $roleBases
                 ],200);
-        }catch(Exception $e){
+        }catch(\Exception $e){
             return response([
                 'message' => $e->getMessage()
             ], 400);

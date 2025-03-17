@@ -118,7 +118,7 @@ class SalesAndStockController extends Controller
                 'message' => 'success',
                 'stock' => $result, // Use $finalResults here
             ], 200);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage(),
             ], 400);

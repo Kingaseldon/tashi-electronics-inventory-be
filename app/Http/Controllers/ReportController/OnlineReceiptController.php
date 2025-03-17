@@ -18,7 +18,6 @@ class OnlineReceiptController extends Controller
     {
 
         $this->middleware('permission:onlinereceipt.view')->only('index');
-
     }
     public function index(Request $request)
     {
@@ -52,7 +51,9 @@ class OnlineReceiptController extends Controller
                         'u.name AS createdBy',
                         'pr.description',
                         'pr.price',
-                        'pr.serial_no'
+                        'pr.serial_no',
+                        'ph.attachment'
+
                     )
                     ->where(function ($query) use ($categoryId) {
                         if ($categoryId != 'ALL') {
@@ -103,7 +104,8 @@ class OnlineReceiptController extends Controller
                         'u.name AS createdBy',
                         'pr.description',
                         'pr.price',
-                        'pr.serial_no'
+                        'pr.serial_no',
+                        'ph.attachment'
                     )
                     ->where(function ($query) use ($categoryId) {
                         if ($categoryId != 'ALL') {
@@ -137,7 +139,7 @@ class OnlineReceiptController extends Controller
                 'online' => $online,
 
             ], 200);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);

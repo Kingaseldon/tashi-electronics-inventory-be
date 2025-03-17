@@ -16,14 +16,13 @@ class SalesOrderListController extends Controller
      */
     public function __construct()
     {
-      
+
         $this->middleware('permission:salesorderlist.view')->only('index');
-   
     }
     public function index(Request $request)
     {
         try {
-             if ($request->region_extension_id == 'ALL') {
+            if ($request->region_extension_id == 'ALL') {
                 $orderlist = DB::table('sale_vouchers as sv')
                     ->select(
                         'sv.invoice_no',
@@ -47,21 +46,21 @@ class SalesOrderListController extends Controller
                     ->leftJoin('users as u', 'sv.created_by', '=', 'u.id')
                     ->leftJoin('sale_voucher_details as svd', 'sv.id', '=', 'svd.sale_voucher_id')
                     ->leftJoin('products as p', 'p.id', '=', 'svd.product_id')
-                    ->where(function ($query) use ($request) { // Use $request in the closure 
+                    ->where(function ($query) use ($request) { // Use $request in the closure
                         $query->when('ALL' === $request->category_id, function ($subquery) {
                             $subquery->whereRaw('1 = 1');
                         }, function ($subquery) use ($request) {
                             $subquery->where('p.category_id', '=', $request->category_id);
                         });
                     })
-                    ->where(function ($query) use ($request) { // Use $request in the closure 
+                    ->where(function ($query) use ($request) { // Use $request in the closure
                         $query->when('ALL' === $request->regional_id, function ($subquery) {
                             $subquery->whereRaw('1 = 1');
                         }, function ($subquery) use ($request) {
                             $subquery->where('sv.regional_id', '=', $request->regional_id);
                         });
                     })
-                    ->where(function ($query) use ($request) { // Use $request in the closure 
+                    ->where(function ($query) use ($request) { // Use $request in the closure
                         $query->when('ALL' === $request->region_extension_id, function ($subquery) {
                             $subquery->whereRaw('1 = 1');
                         }, function ($subquery) use ($request) {
@@ -71,9 +70,7 @@ class SalesOrderListController extends Controller
                     ->whereBetween(DB::raw('DATE_FORMAT(sv.invoice_date, "%Y-%m-%d")'), [$request->from_date, $request->to_date])
                     ->where('sv.status', 'open')
                     ->get();
-
-            }
-            else{
+            } else {
                 $orderlist = DB::table('sale_vouchers as sv')
                     ->select(
                         'sv.invoice_no',
@@ -97,21 +94,21 @@ class SalesOrderListController extends Controller
                     ->leftJoin('users as u', 'sv.created_by', '=', 'u.id')
                     ->leftJoin('sale_voucher_details as svd', 'sv.id', '=', 'svd.sale_voucher_id')
                     ->leftJoin('products as p', 'p.id', '=', 'svd.product_id')
-                    ->where(function ($query) use ($request) { // Use $request in the closure 
+                    ->where(function ($query) use ($request) { // Use $request in the closure
                         $query->when('ALL' === $request->category_id, function ($subquery) {
                             $subquery->whereRaw('1 = 1');
                         }, function ($subquery) use ($request) {
                             $subquery->where('p.category_id', '=', $request->category_id);
                         });
                     })
-                    ->where(function ($query) use ($request) { // Use $request in the closure 
+                    ->where(function ($query) use ($request) { // Use $request in the closure
                         $query->when('ALL' === $request->regional_id, function ($subquery) {
                             $subquery->whereRaw('1 = 1');
                         }, function ($subquery) use ($request) {
                             $subquery->where('sv.regional_id', '=', $request->regional_id);
                         });
                     })
-                    ->where(function ($query) use ($request) { // Use $request in the closure 
+                    ->where(function ($query) use ($request) { // Use $request in the closure
                         $query->when('ALL' === $request->region_extension_id, function ($subquery) {
                             $subquery->whereRaw('1 = 1');
                         }, function ($subquery) use ($request) {
@@ -122,9 +119,8 @@ class SalesOrderListController extends Controller
                     ->where('sv.status', 'open')
                     ->where('u.id', auth()->user()->id)
                     ->get();
-
             }
-          
+
             if ($orderlist->isEmpty()) {
                 $orderlist = [];
             }
@@ -133,7 +129,7 @@ class SalesOrderListController extends Controller
                 'orderlist' => $orderlist,
 
             ], 200);
-        } catch (Execption $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);

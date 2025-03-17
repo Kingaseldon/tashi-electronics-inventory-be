@@ -12,7 +12,10 @@ use App\Models\Region;
 use App\Models\SaleVoucher;
 use App\Models\User;
 use Illuminate\Http\Request;
-use App\Http\Controllers\DashboardController\DB;
+use Illuminate\Support\Facades\DB;
+
+
+// use App\Http\Controllers\DashboardController\DB;
 
 class DashboardController extends Controller
 {
@@ -25,7 +28,6 @@ class DashboardController extends Controller
         $this->middleware('permission:dashboards.product-list')->only('productList');
         $this->middleware('permission:dashboards.repair-list')->only('repair');
         $this->middleware('permission:dashboards.replace-list')->only('replace');
-
     }
     public function index()
     {
@@ -65,7 +67,7 @@ class DashboardController extends Controller
                 'status' => $statusData,
 
             ], 200);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -89,20 +91,17 @@ class DashboardController extends Controller
             }
             $invoice = [];
             if ($isSuperUser) {
-                $invoice = SaleVoucher::with('saleVoucherDetails', 'customer','user')->orderBy('invoice_date', 'desc')->get();
+                $invoice = SaleVoucher::with('saleVoucherDetails', 'customer', 'user')->orderBy('invoice_date', 'desc')->get();
             } elseif ($employee->assignAndEmployee == null) {
-                $invoice = SaleVoucher::with('saleVoucherDetails', 'customer','user')->orderBy('invoice_date', 'desc')
+                $invoice = SaleVoucher::with('saleVoucherDetails', 'customer', 'user')->orderBy('invoice_date', 'desc')
                     ->where('regional_id', null)
                     ->where('region_extension_id', null)
                     ->get();
-
             } elseif ($employee->assignAndEmployee->regional_id != null) {
-                $invoice = SaleVoucher::with('saleVoucherDetails', 'customer','user')->orderBy('invoice_date', 'desc')->LoggedInAssignRegion()->get();
-
+                $invoice = SaleVoucher::with('saleVoucherDetails', 'customer', 'user')->orderBy('invoice_date', 'desc')->LoggedInAssignRegion()->get();
             } else {
 
-                $invoice = SaleVoucher::with('saleVoucherDetails', 'customer','user')->orderBy('invoice_date', 'desc')->LoggedInAssignExtension()->get();
-
+                $invoice = SaleVoucher::with('saleVoucherDetails', 'customer', 'user')->orderBy('invoice_date', 'desc')->LoggedInAssignExtension()->get();
             }
 
             return response([
@@ -111,7 +110,7 @@ class DashboardController extends Controller
 
 
             ], 200);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -136,15 +135,14 @@ class DashboardController extends Controller
             $payment = [];
             if ($isSuperUser) {
 
-                $payment = \DB::table('payment_histories')
+                $payment = DB::table('payment_histories')
                     ->select('*')
                     ->leftJoin('sale_vouchers', 'payment_histories.sale_voucher_id', '=', 'sale_vouchers.id')
                     ->leftJoin('customers', 'sale_vouchers.customer_id', '=', 'customers.id')
                     ->get();
-
             } elseif ($employee->assignAndEmployee == null) {
 
-                $payment = \DB::table('payment_histories')
+                $payment = DB::table('payment_histories')
                     ->select('*')
                     ->leftJoin('sale_vouchers', 'payment_histories.sale_voucher_id', '=', 'sale_vouchers.id')
                     ->where('sale_vouchers.regional_id', null)
@@ -153,7 +151,7 @@ class DashboardController extends Controller
             } elseif ($employee->assignAndEmployee->regional_id != null) {
 
 
-                $payment = \DB::table('payment_histories')
+                $payment = DB::table('payment_histories')
                     ->select('*')
                     ->leftJoin('sale_vouchers', 'payment_histories.sale_voucher_id', '=', 'sale_vouchers.id')
                     ->where('sale_vouchers.regional_id', auth()->user()->assignAndEmployee->regional_id)
@@ -161,13 +159,12 @@ class DashboardController extends Controller
             } else {
 
 
-                $payment = \DB::table('payment_histories')
+                $payment = DB::table('payment_histories')
                     ->select('*')
                     ->leftJoin('sale_vouchers', 'payment_histories.sale_voucher_id', '=', 'sale_vouchers.id')
                     ->leftJoin('customers', 'sale_vouchers.customer_id', '=', 'customers.id')
                     ->where('sale_vouchers.region_extension_id', auth()->user()->assignAndEmployee->extension_id)
                     ->get();
-
             }
 
             return response([
@@ -176,7 +173,7 @@ class DashboardController extends Controller
 
 
             ], 200);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -256,7 +253,7 @@ class DashboardController extends Controller
 
 
             ], 200);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -282,8 +279,8 @@ class DashboardController extends Controller
                 $productTable = Product::select(
                     'sale_types.name as category',
                     'sub_categories.name as sub_category',
-                    \DB::raw('CASE WHEN products.sale_type_id != 2 AND products.store_id = 1 THEN stores.store_name END AS store_name'),
-                    \DB::raw('SUM(products.main_store_qty) AS total_quantity')
+                    DB::raw('CASE WHEN products.sale_type_id != 2 AND products.store_id = 1 THEN stores.store_name END AS store_name'),
+                    DB::raw('SUM(products.main_store_qty) AS total_quantity')
                 )
                     ->leftJoin('sale_types', 'sale_types.id', '=', 'products.sale_type_id')
                     ->leftJoin('sub_categories', 'sub_categories.id', '=', 'products.sub_category_id')
@@ -292,14 +289,14 @@ class DashboardController extends Controller
                     ->leftJoin('regions', 'regions.id', '=', 'product_transactions.regional_id')
                     ->leftJoin('extensions', 'extensions.id', '=', 'product_transactions.region_extension_id')
                     ->groupBy('sale_types.name', 'sub_categories.name', 'stores.store_name', 'products.sale_type_id', 'products.store_id')
-                    ->whereNotNull(\DB::raw('CASE WHEN products.sale_type_id != 2 AND products.store_id = 1 THEN stores.store_name END'))
+                    ->whereNotNull(DB::raw('CASE WHEN products.sale_type_id != 2 AND products.store_id = 1 THEN stores.store_name END'))
                     ->havingRaw('SUM(products.main_store_qty) != 0')
                     ->union(
                         Product::select(
                             'sale_types.name as category',
                             'sub_categories.name as sub_category',
-                            \DB::raw("'main store' AS store_name"),
-                            \DB::raw('SUM(products.main_store_qty) AS total_quantity')
+                            DB::raw("'main store' AS store_name"),
+                            DB::raw('SUM(products.main_store_qty) AS total_quantity')
                         )
                             ->leftJoin('sale_types', 'sale_types.id', '=', 'products.sale_type_id')
                             ->leftJoin('sub_categories', 'sub_categories.id', '=', 'products.sub_category_id')
@@ -314,7 +311,7 @@ class DashboardController extends Controller
                             'sale_types.name as category',
                             'sub_categories.name as sub_category',
                             'regions.name as store_name',
-                            \DB::raw('SUM(product_transactions.region_store_quantity) AS total_quantity')
+                            DB::raw('SUM(product_transactions.region_store_quantity) AS total_quantity')
                         )
                             ->leftJoin('sale_types', 'sale_types.id', '=', 'products.sale_type_id')
                             ->leftJoin('sub_categories', 'sub_categories.id', '=', 'products.sub_category_id')
@@ -331,7 +328,7 @@ class DashboardController extends Controller
                             'sale_types.name as category',
                             'sub_categories.name as sub_category',
                             'extensions.name as store_name',
-                            \DB::raw('SUM(product_transactions.store_quantity) AS total_quantity')
+                            DB::raw('SUM(product_transactions.store_quantity) AS total_quantity')
                         )
                             ->leftJoin('sale_types', 'sale_types.id', '=', 'products.sale_type_id')
                             ->leftJoin('sub_categories', 'sub_categories.id', '=', 'products.sub_category_id')
@@ -348,8 +345,8 @@ class DashboardController extends Controller
                 $productTable = Product::select(
                     'sale_types.name as category',
                     'sub_categories.name as sub_category',
-                    \DB::raw('CASE WHEN products.sale_type_id != 2 AND products.store_id = 1 THEN stores.store_name END AS store_name'),
-                    \DB::raw('SUM(products.main_store_qty) AS total_quantity')
+                    DB::raw('CASE WHEN products.sale_type_id != 2 AND products.store_id = 1 THEN stores.store_name END AS store_name'),
+                    DB::raw('SUM(products.main_store_qty) AS total_quantity')
                 )
                     ->leftJoin('sale_types', 'sale_types.id', '=', 'products.sale_type_id')
                     ->leftJoin('sub_categories', 'sub_categories.id', '=', 'products.sub_category_id')
@@ -358,13 +355,13 @@ class DashboardController extends Controller
                     ->leftJoin('regions', 'regions.id', '=', 'product_transactions.regional_id')
                     ->leftJoin('extensions', 'extensions.id', '=', 'product_transactions.region_extension_id')
                     ->groupBy('sale_types.name', 'sub_categories.name', 'stores.store_name', 'products.sale_type_id', 'products.store_id')
-                    ->whereNotNull(\DB::raw('CASE WHEN products.sale_type_id != 2 AND products.store_id = 1 THEN stores.store_name END'))
+                    ->whereNotNull(DB::raw('CASE WHEN products.sale_type_id != 2 AND products.store_id = 1 THEN stores.store_name END'))
                     ->union(
                         Product::select(
                             'sale_types.name as category',
                             'sub_categories.name as sub_category',
-                            \DB::raw("'main store' AS store_name"),
-                            \DB::raw('SUM(products.main_store_qty) AS total_quantity')
+                            DB::raw("'main store' AS store_name"),
+                            DB::raw('SUM(products.main_store_qty) AS total_quantity')
                         )
                             ->leftJoin('sale_types', 'sale_types.id', '=', 'products.sale_type_id')
                             ->leftJoin('sub_categories', 'sub_categories.id', '=', 'products.sub_category_id')
@@ -379,7 +376,7 @@ class DashboardController extends Controller
                     'sale_types.name as category',
                     'sub_categories.name as sub_category',
                     'regions.name as store_name',
-                    \DB::raw('SUM(product_transactions.region_store_quantity) AS total_quantity')
+                    DB::raw('SUM(product_transactions.region_store_quantity) AS total_quantity')
                 )
                     ->leftJoin('sale_types', 'sale_types.id', '=', 'products.sale_type_id')
                     ->leftJoin('sub_categories', 'sub_categories.id', '=', 'products.sub_category_id')
@@ -396,7 +393,7 @@ class DashboardController extends Controller
                     'sale_types.name as category',
                     'sub_categories.name as sub_category',
                     'extensions.name as store_name',
-                    \DB::raw('SUM(product_transactions.store_quantity) AS total_quantity')
+                    DB::raw('SUM(product_transactions.store_quantity) AS total_quantity')
                 )
                     ->leftJoin('sale_types', 'sale_types.id', '=', 'products.sale_type_id')
                     ->leftJoin('sub_categories', 'sub_categories.id', '=', 'products.sub_category_id')
@@ -417,7 +414,7 @@ class DashboardController extends Controller
 
 
             ], 200);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -444,7 +441,7 @@ class DashboardController extends Controller
             }
             $repair = "";
             if ($isSuperUser) {
-                $repair = \DB::table('repairs')
+                $repair = DB::table('repairs')
                     ->leftJoin('products', 'repairs.serial_no', '=', 'products.serial_no')
                     ->leftJoin('sale_types', 'repairs.sale_type_id', '=', 'sale_types.id')
                     ->leftJoin('sub_categories', 'repairs.sub_category_id', '=', 'sub_categories.id')
@@ -453,15 +450,15 @@ class DashboardController extends Controller
                     ->groupBy('return_products.serial_no', 'stores.store_name')
                     ->select(
                         'return_products.serial_no as product',
-                        \DB::raw('GROUP_CONCAT(repairs.item_number ORDER BY repairs.item_number) as replaced_parts'),
-                        \DB::raw('GROUP_CONCAT(DISTINCT sale_types.name ORDER BY sale_types.name) as sales_types'),
-                        \DB::raw('GROUP_CONCAT(DISTINCT sub_categories.name ORDER BY sub_categories.name) as sub_categories'),
+                        DB::raw('GROUP_CONCAT(repairs.item_number ORDER BY repairs.item_number) as replaced_parts'),
+                        DB::raw('GROUP_CONCAT(DISTINCT sale_types.name ORDER BY sale_types.name) as sales_types'),
+                        DB::raw('GROUP_CONCAT(DISTINCT sub_categories.name ORDER BY sub_categories.name) as sub_categories'),
                         'stores.store_name',
-                        \DB::raw('SUM(repairs.total_quantity) as total_quantity')
+                        DB::raw('SUM(repairs.total_quantity) as total_quantity')
                     )
                     ->get();
             } elseif ($employee->assignAndEmployee == null) {
-                $repair = \DB::table('repairs')
+                $repair = DB::table('repairs')
                     ->leftJoin('products', 'repairs.serial_no', '=', 'products.serial_no')
                     ->leftJoin('sale_types', 'repairs.sale_type_id', '=', 'sale_types.id')
                     ->leftJoin('sub_categories', 'repairs.sub_category_id', '=', 'sub_categories.id')
@@ -470,16 +467,16 @@ class DashboardController extends Controller
                     ->groupBy('return_products.serial_no', 'stores.store_name')
                     ->select(
                         'return_products.serial_no as product',
-                        \DB::raw('GROUP_CONCAT(repairs.item_number ORDER BY repairs.item_number) as replaced_parts'),
-                        \DB::raw('GROUP_CONCAT(DISTINCT sale_types.name ORDER BY sale_types.name) as sales_types'),
-                        \DB::raw('GROUP_CONCAT(DISTINCT sub_categories.name ORDER BY sub_categories.name) as sub_categories'),
+                        DB::raw('GROUP_CONCAT(repairs.item_number ORDER BY repairs.item_number) as replaced_parts'),
+                        DB::raw('GROUP_CONCAT(DISTINCT sale_types.name ORDER BY sale_types.name) as sales_types'),
+                        DB::raw('GROUP_CONCAT(DISTINCT sub_categories.name ORDER BY sub_categories.name) as sub_categories'),
                         'stores.store_name',
-                        \DB::raw('SUM(repairs.total_quantity) as total_quantity')
+                        DB::raw('SUM(repairs.total_quantity) as total_quantity')
                     )
                     ->where('stores.id', '=', 1)
                     ->get();
             } elseif ($employee->assignAndEmployee->regional_id != null) {
-                $repair = \DB::table('repairs')
+                $repair = DB::table('repairs')
                     ->leftJoin('products', 'repairs.serial_no', '=', 'products.serial_no')
                     ->leftJoin('sale_types', 'repairs.sale_type_id', '=', 'sale_types.id')
                     ->leftJoin('sub_categories', 'repairs.sub_category_id', '=', 'sub_categories.id')
@@ -488,16 +485,16 @@ class DashboardController extends Controller
                     ->groupBy('return_products.serial_no', 'stores.store_name')
                     ->select(
                         'return_products.serial_no as product',
-                        \DB::raw('GROUP_CONCAT(repairs.item_number ORDER BY repairs.item_number) as replaced_parts'),
-                        \DB::raw('GROUP_CONCAT(DISTINCT sale_types.name ORDER BY sale_types.name) as sales_types'),
-                        \DB::raw('GROUP_CONCAT(DISTINCT sub_categories.name ORDER BY sub_categories.name) as sub_categories'),
+                        DB::raw('GROUP_CONCAT(repairs.item_number ORDER BY repairs.item_number) as replaced_parts'),
+                        DB::raw('GROUP_CONCAT(DISTINCT sale_types.name ORDER BY sale_types.name) as sales_types'),
+                        DB::raw('GROUP_CONCAT(DISTINCT sub_categories.name ORDER BY sub_categories.name) as sub_categories'),
                         'stores.store_name',
-                        \DB::raw('SUM(repairs.total_quantity) as total_quantity')
+                        DB::raw('SUM(repairs.total_quantity) as total_quantity')
                     )
                     ->where('stores.region_id', '=', auth()->user()->assignAndEmployee->regional_id)
                     ->get();
             } else {
-                $repair = \DB::table('repairs')
+                $repair = DB::table('repairs')
                     ->leftJoin('products', 'repairs.serial_no', '=', 'products.serial_no')
                     ->leftJoin('sale_types', 'repairs.sale_type_id', '=', 'sale_types.id')
                     ->leftJoin('sub_categories', 'repairs.sub_category_id', '=', 'sub_categories.id')
@@ -506,11 +503,11 @@ class DashboardController extends Controller
                     ->groupBy('return_products.serial_no', 'stores.store_name')
                     ->select(
                         'return_products.serial_no as product',
-                        \DB::raw('GROUP_CONCAT(repairs.item_number ORDER BY repairs.item_number) as replaced_parts'),
-                        \DB::raw('GROUP_CONCAT(DISTINCT sale_types.name ORDER BY sale_types.name) as sales_types'),
-                        \DB::raw('GROUP_CONCAT(DISTINCT sub_categories.name ORDER BY sub_categories.name) as sub_categories'),
+                        DB::raw('GROUP_CONCAT(repairs.item_number ORDER BY repairs.item_number) as replaced_parts'),
+                        DB::raw('GROUP_CONCAT(DISTINCT sale_types.name ORDER BY sale_types.name) as sales_types'),
+                        DB::raw('GROUP_CONCAT(DISTINCT sub_categories.name ORDER BY sub_categories.name) as sub_categories'),
                         'stores.store_name',
-                        \DB::raw('SUM(repairs.total_quantity) as total_quantity')
+                        DB::raw('SUM(repairs.total_quantity) as total_quantity')
                     )
                     ->where('stores.extension_id', '=', auth()->user()->assignAndEmployee->extension_id)
                     ->get();
@@ -521,7 +518,7 @@ class DashboardController extends Controller
                 'repair' => $repair,
 
             ], 200);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
@@ -546,7 +543,7 @@ class DashboardController extends Controller
             }
             $replace = "";
             if ($isSuperUser) {
-                $replace = \DB::table('replaces')
+                $replace = DB::table('replaces')
                     ->leftJoin('products', 'replaces.serial_no', '=', 'products.serial_no')
                     ->leftJoin('sale_types', 'replaces.sale_type_id', '=', 'sale_types.id')
                     ->leftJoin('sub_categories', 'replaces.sub_category_id', '=', 'sub_categories.id')
@@ -562,9 +559,8 @@ class DashboardController extends Controller
                     )
 
                     ->get();
-
             } elseif ($employee->assignAndEmployee == null) {
-                $replace = \DB::table('replaces')
+                $replace = DB::table('replaces')
                     ->leftJoin('products', 'replaces.serial_no', '=', 'products.serial_no')
                     ->leftJoin('sale_types', 'replaces.sale_type_id', '=', 'sale_types.id')
                     ->leftJoin('sub_categories', 'replaces.sub_category_id', '=', 'sub_categories.id')
@@ -580,9 +576,8 @@ class DashboardController extends Controller
                     )
                     ->where('stores.id', '=', 1)
                     ->get();
-
             } elseif ($employee->assignAndEmployee->regional_id != null) {
-                $replace = \DB::table('replaces')
+                $replace = DB::table('replaces')
                     ->leftJoin('products', 'replaces.serial_no', '=', 'products.serial_no')
                     ->leftJoin('sale_types', 'replaces.sale_type_id', '=', 'sale_types.id')
                     ->leftJoin('sub_categories', 'replaces.sub_category_id', '=', 'sub_categories.id')
@@ -599,7 +594,7 @@ class DashboardController extends Controller
                     ->where('stores.region_id', '=', auth()->user()->assignAndEmployee->regional_id)
                     ->get();
             } else {
-                $replace = \DB::table('replaces')
+                $replace = DB::table('replaces')
                     ->leftJoin('products', 'replaces.serial_no', '=', 'products.serial_no')
                     ->leftJoin('sale_types', 'replaces.sale_type_id', '=', 'sale_types.id')
                     ->leftJoin('sub_categories', 'replaces.sub_category_id', '=', 'sub_categories.id')
@@ -623,7 +618,7 @@ class DashboardController extends Controller
                 'repair' => $replace,
 
             ], 200);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response([
                 'message' => $e->getMessage()
             ], 400);
