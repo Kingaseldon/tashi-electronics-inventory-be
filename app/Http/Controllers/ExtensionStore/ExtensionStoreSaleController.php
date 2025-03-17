@@ -17,6 +17,7 @@ use App\Models\Bank;
 use App\Models\Store;
 use Carbon\Carbon;
 use DB;
+use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 
 class ExtensionStoreSaleController extends Controller
@@ -654,6 +655,24 @@ class ExtensionStoreSaleController extends Controller
     {
         DB::beginTransaction();
         try {
+
+            $request->validate([
+                'attachment' => 'nullable|file|mimes:jpg,jpeg,png|max:2048', // 2MB max
+            ]);
+
+            if ($request->hasFile('attachment')) {
+                $file = $request->file('attachment');
+                $fileName = time() . '.' . $file->extension();
+
+                // Store the file and get the path
+                $filePath = $file->storeAs('public/images', $fileName);
+
+                // Convert to accessible URL (optional)
+                $filePath = Storage::url($filePath);
+            } else {
+                $filePath = ''; // Handle the case when no file is uploaded.
+            }
+
             $paymentHistory = new PaymentHistory;
 
             $paymentHistory->sale_voucher_id = $request->sale_voucher_id;
@@ -667,6 +686,7 @@ class ExtensionStoreSaleController extends Controller
             $paymentHistory->total_amount_paid = $request->total_amount_paid;
             $paymentHistory->paid_at = $request->payment_date;
             $paymentHistory->remarks = $request->remarks;
+            $paymentHistory->attachment = $filePath;
             $paymentHistory->save();
 
             //close the payment status(partial/full) when paymet is full

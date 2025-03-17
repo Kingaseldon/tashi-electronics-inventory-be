@@ -15,6 +15,7 @@ use App\Models\Bank;
 use Carbon\Carbon;
 use DB;
 use Illuminate\Support\Facades\DB as FacadesDB;
+use Illuminate\Support\Facades\Storage as FacadesStorage;
 use Storage;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -293,15 +294,24 @@ class MainStoreSaleController extends Controller
     {
         DB::beginTransaction();
         try {
+            $request->validate([
+                'attachment' => 'nullable|file|mimes:jpg,jpeg,png|max:2048', // 2MB max
+            ]);
             $paymentHistory = new PaymentHistory;
 
             if ($request->hasFile('attachment')) {
                 $file = $request->file('attachment');
                 $fileName = time() . '.' . $file->extension();
-                $file->storeAs('public/images', $fileName);
+
+                // Store the file and get the path
+                $filePath = $file->storeAs('public/images', $fileName);
+
+                // Convert to accessible URL (optional)
+                $filePath = FacadesStorage::url($filePath);
             } else {
-                $fileName = ''; // Handle the case when no file is uploaded.
+                $filePath = ''; // Handle the case when no file is uploaded.
             }
+
 
             $paymentHistory->sale_voucher_id = $request->sale_voucher_id;
             $paymentHistory->receipt_no = $request->receipt_no;
@@ -314,7 +324,7 @@ class MainStoreSaleController extends Controller
             $paymentHistory->total_amount_paid = $request->total_amount_paid;
             $paymentHistory->paid_at = $request->payment_date;
             $paymentHistory->remarks = $request->remarks;
-            $paymentHistory->attachment = $fileName;
+            $paymentHistory->attachment = $filePath;
             $paymentHistory->save();
 
             //close the payment status when paymet is full
