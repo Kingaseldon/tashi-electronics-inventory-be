@@ -19,14 +19,12 @@ class TransferController extends Controller
     {
 
         $this->middleware('permission:transfer-reports.view')->only('index');
-
-
     }
     public function index(Request $request)
     {
         try {
 
-           $transfer = DB::table('product_movements as m')
+            $transfer = DB::table('product_movements as m')
                 ->select(
                     'm.*',
                     'u.name as created_by',
@@ -69,7 +67,7 @@ class TransferController extends Controller
 
             return response([
                 'message' => 'success',
-                'transfer' =>$transfer,
+                'transfer' => $transfer,
 
             ], 200);
         } catch (\Exception $e) {
