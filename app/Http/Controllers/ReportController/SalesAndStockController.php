@@ -17,7 +17,7 @@ class SalesAndStockController extends Controller
     public function __construct()
     {
 
-        $this->middleware('permission:reports.salesandstocks')->only('stock');
+        $this->middleware('permission:reports.salesandstocks')->only('index');
     }
     public function index(Request $request)
     {
