@@ -328,7 +328,6 @@ class ApplyEmi extends Controller
             $quantityafterDistribute = $mainTransfer->total_quantity;
             if ($employee->assignAndEmployee == null) {
                 $main_sold = $mainTransfer->main_store_sold_qty;
-
                 $mainTransfer->update([
                     'main_store_qty' => $quantityafterDistribute - 1,
                     'main_store_sold_qty' => $main_sold + 1,
@@ -369,6 +368,20 @@ class ApplyEmi extends Controller
             //save sale voucher id to emi table after genertaion
             $emi->sale_voucher_id = $saleVoucher->id;
             $emi->save();
+
+            DB::table('transaction_audits')->insert([
+                'store_id' =>   $storeID,
+                'sales_type_id' =>   $product_table->sale_type_id, // Corrected variable name
+                'product_id' =>    $product_table->id,
+                'item_number' =>   $product_table->item_number,
+                'description' =>    $product_table->description,
+                'stock' =>  - ($soldquantity),
+                'sales' =>  $soldquantity,
+                'created_date' => now(),
+                'status' => 'transfer',
+                'created_at' => now(),
+                'created_by' => auth()->user()->id,
+            ]);
         } catch (\Exception $e) {
             DB::rollback();
             return response()->json([
