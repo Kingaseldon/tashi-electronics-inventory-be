@@ -67,6 +67,7 @@ class WarrantyController extends Controller
      * @return \Illuminate\Http\Response
      */
     public function store(Request $request) {}
+    
     public function Replace(Request $request, SerialNumberGenerator $invoice)
     {
 

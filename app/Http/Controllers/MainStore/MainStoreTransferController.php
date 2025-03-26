@@ -171,11 +171,11 @@ class MainStoreTransferController extends Controller
 
                 for ($i = 1; $i < count($flattenedArray); $i++) {
 
-                    $product = Product::where('serial_no', $flattenedArray[$i][0])->where('main_store_qty', '!=', 0)->first();
+                    $product = Product::where('serial_no', $flattenedArray[$i][1])->where('description', $flattenedArray[$i][0])->where('main_store_qty', '!=', 0)->first();
 
 
                     if ($product) { // serial number present
-                        $transferQuantity = $flattenedArray[$i][1];
+                        $transferQuantity = $flattenedArray[$i][2];
                         // $product = Product::where('serial_no', $value['serial_no'])->where('main_store_qty', '!=', 0)->first();
                         $quantityafterDistribute = $product->main_store_qty;
 
@@ -258,7 +258,7 @@ class MainStoreTransferController extends Controller
                             'created_by' => auth()->user()->id,
                         ]);
                     } else {
-                        $errorSerialNumbers[] = $flattenedArray[$i][0];
+                        $errorSerialNumbers[] = $flattenedArray[$i][1];
                     }
                 } // foreach ends
                 if (count($errorSerialNumbers) > 0) {

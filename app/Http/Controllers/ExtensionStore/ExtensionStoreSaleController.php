@@ -393,6 +393,7 @@ class ExtensionStoreSaleController extends Controller
 
                         $errorMessage = "These serial numbers are not found";
                         $errorSerialNumbers = [];
+                        $saleOrderDetails = [];
 
                         foreach ($flattenedArrays as $data) {
                             // Assuming $data is in the format [0 => ..., 'discount_name' => ..., 'quantity' => ...]
@@ -655,6 +656,7 @@ class ExtensionStoreSaleController extends Controller
     {
         DB::beginTransaction();
         try {
+
 
             $request->validate([
                 'attachment' => 'nullable|file|mimes:jpg,jpeg,png|max:2048', // 2MB max

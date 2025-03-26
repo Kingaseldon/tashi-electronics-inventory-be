@@ -15,8 +15,10 @@ class TransferProduct implements ToCollection
         $filteredData = $rows->map(function ($row) {
 
             return [
-                'serial_no' => $row['serial_no'],
+                'item_description' => $row['item_description'],
+                'serial_no' => $row['imei_no'],
                 'transfer_quantity' => $row['transfer_quantity']
+
             ];
         });
 

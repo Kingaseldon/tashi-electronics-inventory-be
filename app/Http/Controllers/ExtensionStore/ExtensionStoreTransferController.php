@@ -404,13 +404,13 @@ class ExtensionStoreTransferController extends Controller
                 $errorSerialNumbers = [];
 
                 for ($i = 1; $i < count($flattenedArray); $i++) {
-                    $product = $product = Product::where('serial_no', $flattenedArray[$i][0])
+                    $product = Product::where('serial_no', $flattenedArray[$i][1])->where('description', $flattenedArray[$i][0])
                         ->join('product_transactions as Tb1', 'Tb1.product_id', '=', 'products.id')
                         ->select('products.*', 'Tb1.*', 'products.description as product_description') // Ensures all product columns are retrieved
                         ->first();
 
                     if ($product) { // serial number present
-                        $transferQuantity = $flattenedArray[$i][1];
+                        $transferQuantity = $flattenedArray[$i][2];
 
 
                         $requisition = ProductRequisition::where('description', $product->product_description)
@@ -418,7 +418,7 @@ class ExtensionStoreTransferController extends Controller
                             ->where('requisition_number', $requisitionId)
                             ->first();
 
-                        $productTable = Product::where('serial_no',  $flattenedArray[$i][0])->first();
+                        $productTable = Product::where('serial_no',  $flattenedArray[$i][1])->first();
                         $transaction = ProductTransaction::where('product_id', $product->product_id)->where('region_extension_id', $requisition->requested_extension)->first();
 
                         $extensionStoreQty = $transaction->store_quantity;
@@ -521,7 +521,7 @@ class ExtensionStoreTransferController extends Controller
                             $notification->save();
                         }
                     } else {
-                        $errorSerialNumbers[] = $flattenedArray[$i][0];
+                        $errorSerialNumbers[] = $flattenedArray[$i][1];
                     }
                 } // foreach ends
                 if (count($errorSerialNumbers) > 0) {

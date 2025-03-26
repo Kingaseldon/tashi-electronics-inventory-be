@@ -184,7 +184,6 @@ class ProductController extends Controller
                     } elseif (!empty($serialNoValidationError)) {
                         $serialNumbersString = implode(', ', $serialNoValidationError);
 
-
                         // Return error messages if any rows failed validation.
                         return response()->json([
                             // 'message' => 'FAILED! Please check Product Type and Sub Category',
