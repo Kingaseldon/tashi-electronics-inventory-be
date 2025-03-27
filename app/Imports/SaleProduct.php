@@ -15,14 +15,16 @@ class SaleProduct implements ToCollection
             // If 'price' column exists and has a value, use it, otherwise, fetch from product
             if ($price !== null) {
                 return [
-                    'serial_no' => $row['serial_no'],
+                    'item_description' => $row['item_description'],
+                    'serial_no' => $row['imei_no'],
                     'discount_name' => $row['discount_name'],
                     'quantity' => $row['quantity'],
                     'price' => $price, // Use price from Excel
                 ];
             } else {
                 return [
-                    'serial_no' => $row['serial_no'],
+                    'item_description' => $row['item_description'],
+                    'serial_no' => $row['imei_no'],
                     'discount_name' => $row['discount_name'],
                     'quantity' => $row['quantity'],
                 ];

@@ -37,7 +37,9 @@ class ApproveEmi extends Controller
                     break;
                 }
             }
-            $emi = CustomerEmi::with('user')->get();
+            $emi = CustomerEmi::with('user')->join('products', 'customer_emis.item_number', '=', 'products.item_number')
+                ->select('customer_emis.*', 'products.description as product_description')
+                ->distinct()->get();
             return response([
                 'message' => 'success',
                 'emi' => $emi

@@ -400,25 +400,33 @@ class ExtensionStoreSaleController extends Controller
                             $product = ProductTransaction::with('product')
                                 ->join('products as Tb1', 'Tb1.id', '=', 'product_transactions.product_id')
                                 ->LoggedInAssignExtension()
-                                ->where('Tb1.serial_no', $data[0])
+                                ->where('Tb1.serial_no', $data[1])
+                                ->where('Tb1.description', $data[0])
                                 ->first();
 
                             if ($product) {
-                                if ($product->store_quantity < $data[2]) {
+                                if ($product->store_quantity < $data[3]) {
+                                    return response()->json([
+                                        'success' => false,
+                                        'message' => 'Quantity cannot be greater than store quantity',
+                                    ], 406);
+                                }
+                                if ($product->description != $data[0]) {
                                     return response()->json([
                                         'success' => false,
                                         'message' => 'Quantity cannot be greater than store quantity',
                                     ], 406);
                                 }
 
+
                                 // Calculate the price
-                                $price = $data[3] ?? $product->price; // Use price from Excel if present, otherwise from product
+                                $price = $data[4] ?? $product->price; // Use price from Excel if present, otherwise from product
 
                                 // Calculate gross for each item
-                                $grossForEachItem = $data[2] * $price;
+                                $grossForEachItem = $data[3] * $price;
 
                                 // Find discount
-                                $discountName = DiscountType::where('discount_name', 'like', trim($data[1]))->first();
+                                $discountName = DiscountType::where('discount_name', 'like', trim($data[2]))->first();
                                 if ($discountName) {
                                     if ($discountName->discount_type === 'Percentage') {
                                         $netPay = $grossForEachItem - (($discountName->discount_value / 100) * $grossForEachItem);
@@ -439,14 +447,14 @@ class ExtensionStoreSaleController extends Controller
                                 $soldquantity = $regionTransfer->sold_quantity;
 
                                 $regionTransfer->update([
-                                    'store_quantity' => $storequantity - $data[2],
-                                    'sold_quantity' => $soldquantity + $data[2],
+                                    'store_quantity' => $storequantity - $data[3],
+                                    'sold_quantity' => $soldquantity + $data[3],
                                 ]);
 
                                 $product_table = Product::where('id', $regionTransfer->product_id)->first();
                                 $product_table->update([
-                                    'extension_store_qty' => $storequantity - $data[2],
-                                    'extension_store_sold_qty' => $soldquantity + $data[2],
+                                    'extension_store_qty' => $storequantity - $data[3],
+                                    'extension_store_sold_qty' => $soldquantity + $data[3],
                                     'updated_by' => auth()->user()->id,
                                 ]);
 
@@ -454,14 +462,14 @@ class ExtensionStoreSaleController extends Controller
                                 $saleOrderDetails[] = [
                                     'sale_voucher_id' => $saleVoucher->id,
                                     'product_id' => $product->id,
-                                    'quantity' => $data[2],
+                                    'quantity' => $data[3],
                                     'price' => $price,
                                     'total' => $netPay,
                                     'discount_type_id' => $discountName->id ?? null // To be filled later
                                 ];
                                 $store = Store::where('extension_id', $extensionId)->first();
 
-                                $productDetail =  Product::where('serial_no',  $data[0])->first();
+                                $productDetail =  Product::where('serial_no',  $data[1])->first();
 
 
                                 DB::table('transaction_audits')->insert([
@@ -478,7 +486,7 @@ class ExtensionStoreSaleController extends Controller
                                     'created_by' => auth()->user()->id,
                                 ]);
                             } else {
-                                $errorSerialNumbers[] = $data[0];
+                                $errorSerialNumbers[] = $data[1];
                             }
                         }
 

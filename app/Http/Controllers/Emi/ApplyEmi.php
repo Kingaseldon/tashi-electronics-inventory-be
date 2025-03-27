@@ -59,11 +59,21 @@ class ApplyEmi extends Controller
             $emi = "";
 
             if ($isSuperUser) {
-                $emi = CustomerEmi::with('user')->get();
+                $emi = CustomerEmi::with('user')->join('products', 'customer_emis.item_number', '=', 'products.item_number')
+                    ->select('customer_emis.*', 'products.description as product_description')
+                    ->distinct()
+                    ->get();;
             } else if ($employee->assignAndEmployee->extension_id == B2B_ID || $employee->assignAndEmployee->extension_id == JUNGSHINA) {
-                $emi = CustomerEmi::with('user')->get();
+                $emi = CustomerEmi::with('user')
+                    ->join('products', 'customer_emis.item_number', '=', 'products.item_number')
+                    ->select('customer_emis.*', 'products.description as product_description')
+                    ->distinct()
+                    ->get();
             } else {
-                $emi = CustomerEmi::where('user_id', '=', $user->id)->with('user')->get();
+                $emi = CustomerEmi::with('user')->join('products', 'customer_emis.item_number', '=', 'products.item_number')
+                    ->select('customer_emis.*', 'products.description as product_description')
+                    ->where('user_id', '=', $user->id)->distinct()
+                    ->get();
             }
             if ($products->isEmpty()) {
                 $products = [];
@@ -239,7 +249,12 @@ class ApplyEmi extends Controller
                 $phone = Product::where('item_number', '=', $request->item_no)->where('region_store_qty', '!=', 0)->get();
             } else {
 
-                $phone = Product::where('item_number', '=', $request->item_no)->where('extension_store_qty', '!=', 0)->get();
+                $phone = Product::join('product_transactions', 'products.id', '=', 'product_transactions.product_id')
+                    ->where('product_transactions.region_extension_id', $employee->assignAndEmployee->extension->id)
+                    ->where('products.item_number', '=', $request->item_no)
+                    ->where('product_transactions.store_quantity', '!=', 0)
+                    ->select('products.*')
+                    ->get();
             }
 
 
