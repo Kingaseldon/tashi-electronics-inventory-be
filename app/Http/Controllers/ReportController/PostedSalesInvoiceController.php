@@ -116,8 +116,8 @@ class PostedSalesInvoiceController extends Controller
                             'sv.gross_payable',
                             'svd.quantity',
                             'd.discount_name',
-                            'e.name'
-
+                            'e.name',
+                            'sv.service_charge'
                         )
                         ->get();
 
@@ -143,6 +143,7 @@ class PostedSalesInvoiceController extends Controller
                             'paid_date' => $sales[0]->paidAt,
                             'total_net_payable' => $sales[0]->net_payable,
                             'total_gross_payable' => $sales[0]->gross_payable,
+                            'service_charge' => $sales[0]->service_charge,
                             'updated_by' => $sales[0]->name,
                             'discount_name' => $sales[0]->discount_name,
                             'discount_amount' => $sales[0]->gross_payable - $sales[0]->net_payable,
@@ -198,7 +199,8 @@ class PostedSalesInvoiceController extends Controller
                         'sv.net_payable',
                         'sv.gross_payable',
                         'd.discount_name',
-                        'e.name as store'
+                        'e.name as store',
+                        'sv.service_charge'
 
                     )
                     ->leftJoin('customers as c', 'sv.customer_id', '=', 'c.id')
@@ -255,7 +257,8 @@ class PostedSalesInvoiceController extends Controller
                         'sv.gross_payable',
                         'svd.quantity',
                         'd.discount_name',
-                        'e.name'
+                        'e.name',
+                        'sv.service_charge'
                     )
                     ->get();
 
@@ -283,6 +286,7 @@ class PostedSalesInvoiceController extends Controller
                         'paid_date' => $sales[0]->paidAt,
                         'total_net_payable' => $sales[0]->net_payable,
                         'total_gross_payable' => $sales[0]->gross_payable,
+                        'service_charge' => $sales[0]->service_charge,
                         'updated_by' => $sales[0]->name,
                         'discount_name' => $sales[0]->discount_name,
                         'discount_amount' => $sales[0]->gross_payable - $sales[0]->net_payable,
@@ -332,7 +336,8 @@ class PostedSalesInvoiceController extends Controller
                         'sv.net_payable',
                         'sv.gross_payable',
                         'd.discount_name',
-                        'e.name as store'
+                        'e.name as store',
+                        'sv.service_charge'
                     )
                     ->leftJoin('customers as c', 'sv.customer_id', '=', 'c.id')
                     ->leftJoin('payment_histories as ph', 'sv.id', '=', 'ph.sale_voucher_id')
@@ -391,7 +396,8 @@ class PostedSalesInvoiceController extends Controller
                         'sv.gross_payable',
                         'svd.quantity',
                         'd.discount_name',
-                        'e.name'
+                        'e.name',
+                        'sv.service_charge'
                     )
                     ->get();
 
@@ -417,6 +423,7 @@ class PostedSalesInvoiceController extends Controller
                         'paid_date' => $sales[0]->paidAt,
                         'total_net_payable' => $sales[0]->net_payable,
                         'total_gross_payable' => $sales[0]->gross_payable,
+                        'service_charge' => $sales[0]->service_charge,
                         'updated_by' => $sales[0]->name,
                         'discount_name' => $sales[0]->discount_name,
                         'discount_amount' => $sales[0]->gross_payable - $sales[0]->net_payable,
