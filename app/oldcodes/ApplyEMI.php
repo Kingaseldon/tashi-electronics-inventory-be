@@ -282,9 +282,24 @@ class ApplyEmi extends Controller
             $emi->save();
 
             $invoiceNo = "";
+            // if ($employee->assignAndEmployee == null) {
+            //     $invoiceNo = $invoice->mainInvoiceNumber('SaleVoucher', 'invoice_date');
+            //     $storeID = 1;
+            // } elseif ($employee->assignAndEmployee->regional_id != null) {
+            //     $region = $employee->assignAndEmployee->regional_id;
+            //     $regionName = Region::where('id', '=', $region)->first();
 
+            //     $wordArray = explode(' ', $regionName->name);
+            //     // The first element of the $wordArray will contain the first word
+            //     $firstWord = $wordArray[0];
+            //     $regionID = $regionName->id;
+            //     $invoiceNo = $invoice->invoiceNumber('SaleVoucher', 'invoice_date', $regionID, $firstWord);
+            //     $store = Store::where('region_id', '=', $region)->first();
+            //     $storeID = $store->id;
+            // }
             $extension = $employee->assignAndEmployee->extension_id;
             if ($extension == B2B_ID ||  $extension == JUNGSHINA) {
+
                 $extension = $employee->assignAndEmployee->extension_id;
                 $extensionName = Extension::where('id', '=', $extension)->first();
                 $wordArray = explode(' ', $extensionName->name);
@@ -318,7 +333,33 @@ class ApplyEmi extends Controller
             ]);
 
 
-            if ($extensionID == B2B_ID || $extensionID == JUNGSHINA) {
+            $mainTransfer = Product::find($request->product);
+            $quantityafterDistribute = $mainTransfer->total_quantity;
+            // if ($employee->assignAndEmployee == null) {
+            //     $main_sold = $mainTransfer->main_store_sold_qty;
+            //     $mainTransfer->update([
+            //         'main_store_qty' => $quantityafterDistribute - 1,
+            //         'main_store_sold_qty' => $main_sold + 1,
+            //     ]);
+            // } elseif ($employee->assignAndEmployee->regional_id != null) {
+            //     $regionTransfer = ProductTransaction::where('product_id', $request->product)->first();
+            //     // $storequantity = $regionTransfer->store_quantity;
+            //     $soldquantity = $regionTransfer->sold_quantity;
+            //     $regionStoreQuantity = $regionTransfer->region_store_quantity;
+
+            //     $regionTransfer->update([
+            //         // 'store_quantity' => $storequantity - $value['quantity'],
+            //         'region_store_quantity' => $regionStoreQuantity - 1,
+            //         'sold_quantity' => $soldquantity + 1,
+            //     ]);
+            //     $product_table = Product::where('id', $regionTransfer->product_id)->first();
+            //     $product_table->update([
+            //         'region_store_qty' => $regionStoreQuantity - 1,
+            //         'region_store_sold_qty' => $soldquantity + 1,
+            //         'updated_by' => auth()->user()->id,
+            //     ]);
+            // }
+            if ($extension == B2B_ID &&  $extension == JUNGSHINA) {
                 $extensionTransfer = ProductTransaction::where('product_id', $request->product)->where('region_extension_id', $extension)->first();
                 $storequantity = $extensionTransfer->store_quantity;
                 $soldquantity = $extensionTransfer->sold_quantity;

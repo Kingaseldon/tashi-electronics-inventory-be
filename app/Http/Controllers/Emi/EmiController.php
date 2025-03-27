@@ -38,8 +38,8 @@ class EmiController extends Controller
         try {
 
             // $customerEmi = CustomerEmi::with('emiDetail')->orderBy('id')->get();
-            $products=Product::where('category_id', 1)->select('item_number','sub_category_id','description','price')
-                ->groupBy('sub_category_id','item_number','description','price')
+            $products = Product::where('category_id', 1)->select('item_number', 'sub_category_id', 'description', 'price')
+                ->groupBy('sub_category_id', 'item_number', 'description', 'price')
                 ->get();
             if ($products->isEmpty()) {
                 $products = [];
@@ -79,6 +79,7 @@ class EmiController extends Controller
 
         //unique number generator
         try {
+
             $invoiceNo = "";
             $region = $request->input('region');
             $extension = $request->input('extension');
@@ -88,7 +89,6 @@ class EmiController extends Controller
             if ($region === null && $extension === null) {
                 $invoiceNo = $invoice->mainInvoiceNumber('SaleVoucher', 'invoice_date');
                 $storeID = 1;
-
             } elseif ($region != null) {
                 $wordArray = explode(' ', $regionName->name);
                 // The first element of the $wordArray will contain the first word
@@ -97,7 +97,6 @@ class EmiController extends Controller
                 $invoiceNo = $invoice->invoiceNumber('SaleVoucher', 'invoice_date', $regionID, $firstWord);
                 $store = Store::where('region_id', '=', $region)->first();
                 $storeID = $store->id;
-
             } else {
                 $wordArray = explode(' ', $extensionName->name);
                 // The first element of the $wordArray will contain the first word
@@ -106,7 +105,6 @@ class EmiController extends Controller
                 $invoiceNo = $invoice->extensionInvoiceNumber('SaleVoucher', 'invoice_date', $extensionID, $firstWord);
                 $store = Store::where('extension_id', '=', $extension)->first();
                 $storeID = $store->id;
-
             }
 
             $user = auth()->user();
@@ -229,13 +227,11 @@ class EmiController extends Controller
                                     'updated_by' => auth()->user()->id,
                                 ]);
                             }
-
                         } else {
                             $errorSerialNumbers[] = $flattenedArray[$i][0];
                         }
 
                         $saleVoucher->saleVoucherDetails()->insert($saleOrderDetails);
-
                     } // foreach ends
                     if (count($errorSerialNumbers) > 0) {
                         return response()->json([
@@ -250,7 +246,6 @@ class EmiController extends Controller
                         'net_payable' => $netPayable,
                         'gross_payable' => $grossPayable
                     ]);
-
                 }
             } else { //if no attachment uploaded
                 $saleVoucher = new SaleVoucher;
@@ -322,9 +317,7 @@ class EmiController extends Controller
                     // $saleOrderDetails[$key]['created_by'] = $request->user()->id;
                 }
                 $saleVoucher->saleVoucherDetails()->insert($saleOrderDetails);
-
             }
-
         } catch (\Exception $e) {
             DB::rollback();
             return response()->json([
