@@ -148,7 +148,7 @@ class MainStoreTransferController extends Controller
         try {
 
 
-            $date = date('Y-m-d', strtotime($request->transfer_date));
+            $date = date('Y-m-d', strtotime($request->movement_date));
 
             $regionId = $request->region === 'null' ? null : $request->region;
             $extensionId = $request->extension === 'null' ? null : $request->extension;
@@ -350,6 +350,7 @@ class MainStoreTransferController extends Controller
                 }
             }
         } catch (\Exception $e) {
+
             DB::rollback();
             return response()->json([
                 'message' => $e->getMessage(),
