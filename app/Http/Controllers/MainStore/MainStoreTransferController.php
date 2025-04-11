@@ -148,7 +148,7 @@ class MainStoreTransferController extends Controller
         try {
 
 
-            $date = date('Y-m-d', strtotime($request->movement_date));
+            $date = date('Y-m-d', strtotime($request->transfer_date));
 
             $regionId = $request->region === 'null' ? null : $request->region;
             $extensionId = $request->extension === 'null' ? null : $request->extension;
