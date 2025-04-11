@@ -171,7 +171,8 @@ class MainStoreTransferController extends Controller
 
                 for ($i = 1; $i < count($flattenedArray); $i++) {
 
-                    $product = Product::where('serial_no', $flattenedArray[$i][1])->where('description', $flattenedArray[$i][0])->where('main_store_qty', '!=', 0)->first();
+                    // $product = Product::where('serial_no', $flattenedArray[$i][1])->where('description', $flattenedArray[$i][0])->where('main_store_qty', '!=', 0)->first();
+                    $product = Product::where('serial_no', $flattenedArray[$i][1])->where('main_store_qty', '!=', 0)->first();
 
 
                     if ($product) { // serial number present
