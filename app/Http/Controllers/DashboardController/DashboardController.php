@@ -90,7 +90,7 @@ class DashboardController extends Controller
                 }
             }
             $invoice = [];
-            if ($isSuperUser) {
+            if ($isSuperUser || $roles->id == 5) {
                 $invoice = SaleVoucher::with('saleVoucherDetails', 'customer', 'user')->orderBy('invoice_date', 'desc')->get();
             } elseif ($employee->assignAndEmployee == null) {
                 $invoice = SaleVoucher::with('saleVoucherDetails', 'customer', 'user')->orderBy('invoice_date', 'desc')
