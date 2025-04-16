@@ -47,7 +47,7 @@ class PostedSalesInvoiceController extends Controller
                             DB::raw('COALESCE(ph.paid_at, "--") AS paidAt'),
                             'u.name',
                             'sv.status',
-                            
+                            'p.description',
                             'svd.total AS netpay',
                             'svd.price as price',
                             'svd.quantity',
@@ -106,7 +106,7 @@ class PostedSalesInvoiceController extends Controller
                             'ph.payment_mode',
                             'u.name',
                             'sv.status',
-                            
+
                             'price',
                             'total', // 'price' is an alias and can be used directly in the groupBy clause
                             'p.serial_no',
@@ -189,7 +189,7 @@ class PostedSalesInvoiceController extends Controller
                         DB::raw('COALESCE(ph.paid_at, "--") AS paidAt'),
                         'u.name',
                         'sv.status',
-                        
+                        'p.description',
                         'svd.total AS netpay',
                         'svd.price as price',
                         'svd.quantity',
@@ -247,7 +247,7 @@ class PostedSalesInvoiceController extends Controller
                         'ph.payment_mode',
                         'u.name',
                         'sv.status',
-                        
+
                         'price',
                         'total', // 'price' is an alias and can be used directly in the groupBy clause
                         'p.serial_no',
@@ -326,7 +326,7 @@ class PostedSalesInvoiceController extends Controller
                         DB::raw('COALESCE(ph.paid_at, "--") AS paidAt'),
                         'u.name',
                         'sv.status',
-                        
+                        'p.description',
                         'svd.quantity',
                         'svd.total AS netpay',
                         'svd.price as price',
@@ -386,7 +386,6 @@ class PostedSalesInvoiceController extends Controller
                         'ph.payment_mode',
                         'u.name',
                         'sv.status',
-                        
                         'price',
                         'total', // 'price' is an alias and can be used directly in the groupBy clause
                         'p.serial_no',
