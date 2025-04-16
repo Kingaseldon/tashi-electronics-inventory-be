@@ -106,7 +106,7 @@ class PostedSalesInvoiceController extends Controller
                             'ph.payment_mode',
                             'u.name',
                             'sv.status',
-
+                            'p.description',
                             'price',
                             'total', // 'price' is an alias and can be used directly in the groupBy clause
                             'p.serial_no',
@@ -247,7 +247,7 @@ class PostedSalesInvoiceController extends Controller
                         'ph.payment_mode',
                         'u.name',
                         'sv.status',
-
+                        'p.description',
                         'price',
                         'total', // 'price' is an alias and can be used directly in the groupBy clause
                         'p.serial_no',
@@ -386,6 +386,7 @@ class PostedSalesInvoiceController extends Controller
                         'ph.payment_mode',
                         'u.name',
                         'sv.status',
+                        'p.description',
                         'price',
                         'total', // 'price' is an alias and can be used directly in the groupBy clause
                         'p.serial_no',
