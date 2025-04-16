@@ -95,6 +95,7 @@ class PostedSalesInvoiceController extends Controller
                         ->where('sv.status', 'closed')
                         ->orderBy('sv.invoice_date', 'DESC')
                         ->groupBy(
+                            'svd.id',
                             'sv.invoice_no',
                             'sv.invoice_date',
                             DB::raw('CASE WHEN sv.customer_id IS NOT NULL THEN c.customer_name ELSE sv.walk_in_customer END'),
@@ -236,6 +237,7 @@ class PostedSalesInvoiceController extends Controller
                     ->where('sv.status', 'closed')
                     ->orderBy('sv.invoice_date', 'DESC')
                     ->groupBy(
+                        'svd.id',
                         'sv.invoice_no',
                         'sv.invoice_date',
                         DB::raw('CASE WHEN sv.customer_id IS NOT NULL THEN c.customer_name ELSE sv.walk_in_customer END'),
@@ -375,6 +377,7 @@ class PostedSalesInvoiceController extends Controller
                     ->where('u.id', auth()->user()->id)
                     ->orderBy('sv.invoice_date', 'DESC')
                     ->groupBy(
+                        'svd.id',
                         'sv.invoice_no',
                         'sv.invoice_date',
                         DB::raw('CASE WHEN sv.customer_id IS NOT NULL THEN c.customer_name ELSE sv.walk_in_customer END'),
