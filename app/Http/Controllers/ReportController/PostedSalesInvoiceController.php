@@ -31,8 +31,9 @@ class PostedSalesInvoiceController extends Controller
 
 
                 if ($employee->assignAndEmployee == null && !$employee->roles->contains('is_super_user', 1)) {
-                    // Logic if the employee does not have the super user role
 
+
+                    // Logic if the employee does not have the super user role
 
                     $sales = DB::table('sale_vouchers as sv')
                         ->select(
@@ -164,7 +165,7 @@ class PostedSalesInvoiceController extends Controller
                                 'status' => $sale->status,
                                 'quantity' => $sale->quantity,
                                 'discount_name' => $sales->discount_name,
-                                'discount_amount' => $sale->price - $sale->netpay                                // Add other fields as needed
+                                'discount_amount' => ($sale->price * $sale->quantity) - ($sale->netpay)                            // Add other fields as needed
                             ];
                         }
 
@@ -176,6 +177,7 @@ class PostedSalesInvoiceController extends Controller
                         'sales' => $responseData
                     ], 200);
                 }
+
 
                 $sales = DB::table('sale_vouchers as sv')
                     ->select(
@@ -267,8 +269,6 @@ class PostedSalesInvoiceController extends Controller
 
                 $salesGrouped = $sales->groupBy(['invoice_no']);
 
-
-
                 // Prepare the grouped data for the API response
                 $responseData = [];
 
@@ -306,7 +306,7 @@ class PostedSalesInvoiceController extends Controller
                             'status' => $sale->status,
                             'quantity' => $sale->quantity,
                             'discount_name' => $sale->discount_name,
-                            'discount_amount' => $sale->price - $sale->netpay
+                            'discount_amount' => ($sale->price * $sale->quantity) - $sale->netpay
                             // Add other fields as needed
                         ];
                     }
@@ -444,7 +444,7 @@ class PostedSalesInvoiceController extends Controller
                             'status' => $sale->status,
                             'quantity' => $sale->quantity,
                             'discount_name' => $sale->discount_name,
-                            'discount_amount' => $sale->price - $sale->netpay                            // Add other fields as needed
+                            'discount_amount' => ($sale->price * $sale->quantity) - $sale->netpay                            // Add other fields as needed
                         ];
                     }
 
