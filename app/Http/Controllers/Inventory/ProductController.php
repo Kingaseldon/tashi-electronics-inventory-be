@@ -345,7 +345,7 @@ class ProductController extends Controller
                         ->leftJoin('product_transactions', 'product_transactions.product_id', '=', 'products.id')
                         ->leftJoin('extensions', 'extensions.id', '=', 'product_transactions.region_extension_id')
                         ->whereNotNull('product_transactions.region_extension_id')
-                        ->where('product_transactions.store_quantity', '>', 0)
+
                         ->where('products.price', $request->price) // Filter by price
                         ->groupBy('sale_types.name', 'sub_categories.name', 'store_name')
                 )
