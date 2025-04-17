@@ -38,7 +38,8 @@ class SalesOrderListController extends Controller
                         'sv.status',
                         'p.description',
                         'p.price',
-                        'p.serial_no'
+                        'p.serial_no',
+                        'svd.quantity'
                     )
                     ->leftJoin('customers as c', 'sv.customer_id', '=', 'c.id')
                     ->leftJoin('payment_histories as ph', 'sv.id', '=', 'ph.sale_voucher_id')
@@ -86,7 +87,8 @@ class SalesOrderListController extends Controller
                         'sv.status',
                         'p.description',
                         'p.price',
-                        'p.serial_no'
+                        'p.serial_no',
+                        'svd.quantity'
                     )
                     ->leftJoin('customers as c', 'sv.customer_id', '=', 'c.id')
                     ->leftJoin('payment_histories as ph', 'sv.id', '=', 'ph.sale_voucher_id')
