@@ -365,6 +365,7 @@ class ExtensionStoreSaleController extends Controller
 
                     if ($request->hasFile('attachment')) {
 
+
                         $file = $request->file('attachment');
                         $nestedCollection = Excel::toCollection(new SaleProduct, $file);
                         $flattenedArrays = $nestedCollection->flatten(1)->toArray();
@@ -374,6 +375,7 @@ class ExtensionStoreSaleController extends Controller
                                 return !is_null($value);
                             }));
                         });
+
 
                         // Remove the first row (header row) from the flattened array
                         array_shift($flattenedArrays);
@@ -404,19 +406,22 @@ class ExtensionStoreSaleController extends Controller
                                 ->where('Tb1.description', $data[0])
                                 ->first();
 
+
+
                             if ($product) {
+
                                 if ($product->store_quantity < $data[3]) {
                                     return response()->json([
                                         'success' => false,
-                                        'message' => 'Quantity cannot be greater than store quantity',
+                                        'message' => 'Quantity cannot be greater than store quantity for this serial_no ' . $product->serial_no,
                                     ], 406);
                                 }
-                                if ($product->description != $data[0]) {
+                                if (strcasecmp($product->description, $data[0]) !== 0) {
                                     return response()->json([
-                                        'success' => false,
-                                        'message' => 'Quantity cannot be greater than store quantity',
+                                        'success' => 'Description not matching for this serial_no ' . $product->serial_no,
                                     ], 406);
                                 }
+
 
 
                                 // Calculate the price
