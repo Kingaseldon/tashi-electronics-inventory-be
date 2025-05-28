@@ -93,6 +93,8 @@ class PostedSalesInvoiceController extends Controller
                             });
                         })
                         ->whereBetween(DB::raw('DATE_FORMAT(sv.invoice_date, "%Y-%m-%d")'), [$request->from_date, $request->to_date])
+                        ->whereBetween(DB::raw('DATE_FORMAT(ph.paid_at, "%Y-%m-%d")'), [$request->payment_from_date, $request->payment_to_date])
+
                         ->where('sv.status', 'closed')
                         ->orderBy('sv.invoice_date', 'DESC')
                         ->groupBy(
@@ -235,7 +237,12 @@ class PostedSalesInvoiceController extends Controller
                             $subquery->where('sv.region_extension_id', '=', $request->region_extension_id);
                         });
                     })
-                    ->whereBetween(DB::raw('DATE_FORMAT(sv.invoice_date, "%Y-%m-%d")'), [$request->from_date, $request->to_date])
+                    ->where(function ($query) use ($request) {
+                        $query->whereBetween(DB::raw('DATE_FORMAT(sv.invoice_date, "%Y-%m-%d")'), [$request->from_date, $request->to_date])
+                            ->orWhereBetween(DB::raw('DATE_FORMAT(ph.paid_at, "%Y-%m-%d")'), [$request->payment_from_date, $request->payment_to_date]);
+                    })
+
+
                     ->where('sv.status', 'closed')
                     ->orderBy('sv.invoice_date', 'DESC')
                     ->groupBy(
@@ -372,7 +379,13 @@ class PostedSalesInvoiceController extends Controller
                             $subquery->where('sv.region_extension_id', '=', $request->region_extension_id);
                         });
                     })
-                    ->whereBetween(DB::raw('DATE_FORMAT(sv.invoice_date, "%Y-%m-%d")'), [$request->from_date, $request->to_date])
+                    ->where(function ($query) use ($request) {
+                        $query->whereBetween(DB::raw('DATE_FORMAT(sv.invoice_date, "%Y-%m-%d")'), [$request->from_date, $request->to_date])
+                            ->orWhereBetween(DB::raw('DATE_FORMAT(ph.paid_at, "%Y-%m-%d")'), [$request->payment_from_date, $request->payment_to_date]);
+                    })
+
+
+
                     ->where('sv.status', 'closed')
                     ->where('u.id', auth()->user()->id)
                     ->orderBy('sv.invoice_date', 'DESC')
