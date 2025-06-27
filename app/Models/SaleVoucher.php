@@ -12,16 +12,23 @@ class SaleVoucher extends Model implements Auditable
     use HasFactory, CreatedByTrait, \OwenIt\Auditing\Auditable;
 
     protected $fillable = [
-        'status','service_charge',
+        'status',
+        'service_charge',
     ];
-    
+
     public function customer()
     {
         return $this->belongsTo(Customer::class, 'customer_id');
     }
 
-    public function user(){
-        return $this->belongsTo(User::class,'created_by');    
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function emi_user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
     }
 
 
@@ -29,7 +36,7 @@ class SaleVoucher extends Model implements Auditable
     {
         return $this->belongsTo(CustomerEmi::class, 'regional_id');
     }
-    
+
     public function extension()
     {
         return $this->belongsTo(Extension::class, 'region_extension_id');
