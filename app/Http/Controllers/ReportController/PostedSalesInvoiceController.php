@@ -92,8 +92,13 @@ class PostedSalesInvoiceController extends Controller
                                 $subquery->where('sv.region_extension_id', '=', null);
                             });
                         })
-                        ->whereBetween(DB::raw('DATE_FORMAT(sv.invoice_date, "%Y-%m-%d")'), [$request->from_date, $request->to_date])
-                        ->whereBetween(DB::raw('DATE_FORMAT(ph.paid_at, "%Y-%m-%d")'), [$request->payment_from_date, $request->payment_to_date])
+                        ->when($request->from_date && $request->to_date, function ($query) use ($request) {
+                            $query->whereBetween(DB::raw('DATE_FORMAT(sv.invoice_date, "%Y-%m-%d")'), [$request->from_date, $request->to_date]);
+                        })
+                        ->when($request->payment_from_date && $request->payment_to_date, function ($query) use ($request) {
+                            $query->whereBetween(DB::raw('DATE_FORMAT(ph.paid_at, "%Y-%m-%d")'), [$request->payment_from_date, $request->payment_to_date]);
+                        })
+
 
                         ->where('sv.status', 'closed')
                         ->orderBy('sv.invoice_date', 'DESC')
