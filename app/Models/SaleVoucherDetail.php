@@ -11,8 +11,8 @@ class SaleVoucherDetail extends Model implements Auditable
 {
     use HasFactory, CreatedByTrait, \OwenIt\Auditing\Auditable;
 
-    protected $table ='sale_voucher_details';
-    protected $fillable = ['sale_voucher_id', 'product_id', 'product_transaction_id', 'price', 'total'];
+    protected $table = 'sale_voucher_details';
+    protected $fillable = ['sale_voucher_id', 'product_id', 'product_transaction_id', 'quantity', 'gst', 'price', 'total', 'discount_type_id'];
 
     public function saleVoucher()
     {

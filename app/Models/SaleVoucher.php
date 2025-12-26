@@ -12,8 +12,26 @@ class SaleVoucher extends Model implements Auditable
     use HasFactory, CreatedByTrait, \OwenIt\Auditing\Auditable;
 
     protected $fillable = [
+        'regional_id',
+        'region_extension_id',
+        'customer_id',
+        'user_id',
+        'sale_type',
+        'walk_in_customer',
+        'contact_no',
+        'discount_type_id',
+        'invoice_no',
+        'invoice_date',
+        'gross_payable',
+        'discount_type',
+        'discount_rate',
+        'net_payable',
         'status',
         'service_charge',
+        'remarks',
+        'total_gst',
+        'cid_no'
+
     ];
 
     public function customer()

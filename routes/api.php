@@ -71,52 +71,53 @@ use App\Http\Controllers\Master\EmployeeController;
 | is assigned the "api" middleware group. Enjoy building your API!
 |
 */
-Route::post('login', [AuthController::Class, 'Login']);
+
+Route::post('login', [AuthController::class, 'Login']);
 
 Route::group(['middleware' => ['jwt.auth']], function () {
-    
+
     //route under system setting
     Route::get('activity-logs', [AuditsController::class, 'index']);
     Route::get('permission', [PermissionController::class, 'index']);
     Route::post('permission', [PermissionController::class, 'refresh']);
     Route::resource('roles', RoleController::class);
-    Route::get('edit-roles/{id}', [RoleController::Class, 'editRole']);
-    Route::get('roles-base/{id}', [RoleController::Class, 'getRoleBase']);
+    Route::get('edit-roles/{id}', [RoleController::class, 'editRole']);
+    Route::get('roles-base/{id}', [RoleController::class, 'getRoleBase']);
     Route::resource('users', UserController::class);
-    Route::get('edit-users/{id}', [UserController::Class, 'editUser']);
-    Route::put('reset-password/{id}', [UserController::Class, 'password']);
+    Route::get('edit-users/{id}', [UserController::class, 'editUser']);
+    Route::put('reset-password/{id}', [UserController::class, 'password']);
 
-    
 
-    //route under master 
+
+    //route under master
     Route::resource('dzongkhags', DzongkhagController::class);
-    Route::get('edit-dzongkhags/{id}', [DzongkhagController::Class, 'editDzongkhag']);
+    Route::get('edit-dzongkhags/{id}', [DzongkhagController::class, 'editDzongkhag']);
     Route::resource('gewogs', GewogController::class);
-    Route::get('edit-gewogs/{id}', [GewogController::Class, 'editGewog']);
+    Route::get('edit-gewogs/{id}', [GewogController::class, 'editGewog']);
     Route::resource('villages', VillageController::class);
-    Route::get('edit-villages/{id}', [VillageController::Class, 'editVillage']);
+    Route::get('edit-villages/{id}', [VillageController::class, 'editVillage']);
     Route::resource('sale-types', SaleTypeController::class);
-    Route::get('edit-sale-types/{id}', [SaleTypeController::Class, 'editSaleType']);
+    Route::get('edit-sale-types/{id}', [SaleTypeController::class, 'editSaleType']);
     Route::resource('regions', RegionController::class);
-    Route::get('edit-regions/{id}', [RegionController::Class, 'editRegion']);
-    // Route::resource('extensions', ExtensionController::class);  
-    // Route::get('edit-extensions/{id}', [ExtensionController::Class, 'editExtension']);    
+    Route::get('edit-regions/{id}', [RegionController::class, 'editRegion']);
+    // Route::resource('extensions', ExtensionController::class);
+    // Route::get('edit-extensions/{id}', [ExtensionController::class, 'editExtension']);
     Route::resource('categories', CategoryController::class);
-    Route::get('edit-categories/{id}', [CategoryController::Class, 'editCategory']);
-    // Route::resource('brands', BrandController::class);  
-    // Route::get('edit-brands/{id}', [BrandController::Class, 'editBrand']);  
+    Route::get('edit-categories/{id}', [CategoryController::class, 'editCategory']);
+    // Route::resource('brands', BrandController::class);
+    // Route::get('edit-brands/{id}', [BrandController::class, 'editBrand']);
     Route::resource('banks', BankController::class);
-    Route::get('edit-banks/{id}', [BankController::Class, 'editBank']);
-    Route::get('get-banks', [BankController::Class, 'getBanks']);
-    // Route::resource('units', UnitController::class);  
-    // Route::get('edit-units/{id}', [UnitController::Class, 'editUnit']);  
-    // Route::resource('stores', StoreController::class);  
-    // Route::get('edit-stores/{id}', [StoreController::Class, 'editStore']);  
+    Route::get('edit-banks/{id}', [BankController::class, 'editBank']);
+    Route::get('get-banks', [BankController::class, 'getBanks']);
+    // Route::resource('units', UnitController::class);
+    // Route::get('edit-units/{id}', [UnitController::class, 'editUnit']);
+    // Route::resource('stores', StoreController::class);
+    // Route::get('edit-stores/{id}', [StoreController::class, 'editStore']);
     Route::resource('assignings', AssigningController::class);
-    Route::get('edit-assignings/{id}', [AssigningController::Class, 'editAssigning']);
-    Route::post('edit-assignings/{id}', [AssigningController::Class, 'changeAssignRegion']);
+    Route::get('edit-assignings/{id}', [AssigningController::class, 'editAssigning']);
+    Route::post('edit-assignings/{id}', [AssigningController::class, 'changeAssignRegion']);
     Route::resource('colors', ColorController::class);
-    Route::get('edit-colors/{id}', [ColorController::Class, 'editColor']);
+    Route::get('edit-colors/{id}', [ColorController::class, 'editColor']);
 
     // Route::resource('employees', EmployeeController::class);
     // Route::get('edit-employees/{id}', [EmployeeController::class, 'editEmployee']);
@@ -124,54 +125,54 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     Route::resource('master-warranties', MasterWarrantyController::class);
     Route::get('edit-master-warranties/{id}', [MasterWarrantyController::class, 'editWarranty']);
 
-    //route under dealer management 
-    // Route::resource('promotion-types', PromotionTypeController::class);  
-    // Route::get('edit-promotions/{id}', [PromotionTypeController::Class, 'editPromotion']);  
+    //route under dealer management
+    // Route::resource('promotion-types', PromotionTypeController::class);
+    // Route::get('edit-promotions/{id}', [PromotionTypeController::class, 'editPromotion']);
     Route::resource('discount-types', DiscountTypeController::class);
-    Route::get('edit-discounts/{id}', [DiscountTypeController::Class, 'editDiscountType']);
+    Route::get('edit-discounts/{id}', [DiscountTypeController::class, 'editDiscountType']);
     // Route::get('get-products/{id}', [DiscountTypeController::class, 'getProduct']);
 
     Route::resource('customer-types', CustomerTypeController::class);
-    Route::get('edit-customer-types/{id}', [CustomerTypeController::Class, 'editCustomerType']);
+    Route::get('edit-customer-types/{id}', [CustomerTypeController::class, 'editCustomerType']);
     Route::resource('customers', CustomerController::class);
-    Route::get('edit-customers/{id}', [CustomerController::Class, 'editCustomer']);
-    Route::get('get-customers/{id}', [CustomerController::Class, 'getCustomers']);
+    Route::get('edit-customers/{id}', [CustomerController::class, 'editCustomer']);
+    Route::get('get-customers/{id}', [CustomerController::class, 'getCustomers']);
 
-    //route under inventory 
+    //route under inventory
     Route::resource('products', ProductController::class);
-    Route::get('edit-products/{id}', [ProductController::Class, 'editProduct']);
+    Route::get('edit-products/{id}', [ProductController::class, 'editProduct']);
 
 
 
-    Route::post('uploads', [ProductController::Class, 'importProduct']);
+    Route::post('uploads', [ProductController::class, 'importProduct']);
     Route::resource('product-movements', ProductMovementController::class);
-    Route::get('edit-product-movements/{id}', [ProductMovementController::Class, 'editBank']);
- 
-    // Route::resource('product-requisitions', ProductRequisitionController::class);  
-    // Route::get('edit-product-requisitions/{id}', [ProductRequisitionController::Class, 'editBank']); 
+    Route::get('edit-product-movements/{id}', [ProductMovementController::class, 'editBank']);
+
+    // Route::resource('product-requisitions', ProductRequisitionController::class);
+    // Route::get('edit-product-requisitions/{id}', [ProductRequisitionController::class, 'editBank']);
 
     //route for main store
 
-    Route::get('main-transfers/{id}', [MainStoreTransferController::Class, 'mainStoreTransfer']);
-    Route::get('request-transfers/{id}', [MainStoreTransferController::Class, 'requestedTransfer']);
-    // Route::post('verify-products', [MainStoreTransferController::Class, 'physicalVerification']);
+    Route::get('main-transfers/{id}', [MainStoreTransferController::class, 'mainStoreTransfer']);
+    Route::get('request-transfers/{id}', [MainStoreTransferController::class, 'requestedTransfer']);
+    // Route::post('verify-products', [MainStoreTransferController::class, 'physicalVerification']);
     Route::resource('main-stores', MainStoreTransferController::class);
 
     //route for sale voucher
     Route::resource('main-store-sales', MainStoreSaleController::class);
     Route::post('make-payments', [MainStoreSaleController::class, 'makePayment']);
     // Route::resource('phone-emis', PhoneEmiController::class);
- 
-    
+
+
     //route for regional office
     Route::resource('regional-stores', RegionalStoreTransferController::class);
-    Route::get('regional-transfer/{id}', [RegionalStoreTransferController::Class, 'requestedRegionalTransfer']);
+    Route::get('regional-transfer/{id}', [RegionalStoreTransferController::class, 'requestedRegionalTransfer']);
     //for transfer route in regional
-    Route::resource('regional-transfers', RegionProductTransferController::Class);
-    Route::get('regional-requisitions/{id}', [RegionProductTransferController::Class, 'requestedRegionalTransfer']);
+    Route::resource('regional-transfers', RegionProductTransferController::class);
+    Route::get('regional-requisitions/{id}', [RegionProductTransferController::class, 'requestedRegionalTransfer']);
 
-    // Route::get('get-transfer-regional/{id}', [RegionProductTransferController::Class, 'transferRegionalProduct']);  
-    // Route::put('regional-transfer/{id}', [RegionProductTransferController::Class, 'regionalTransfer']); 
+    // Route::get('get-transfer-regional/{id}', [RegionProductTransferController::class, 'transferRegionalProduct']);
+    // Route::put('regional-transfer/{id}', [RegionProductTransferController::class, 'regionalTransfer']);
 
     //route for sale voucher RegionProductTransferController
     Route::resource('region-store-sales', RegionStoreSaleController::class);
@@ -183,15 +184,15 @@ Route::group(['middleware' => ['jwt.auth']], function () {
 
     //for transfer route in extension
     Route::resource('extension-transfers', ExtensionProductTransferController::class);
-    Route::get('view-extension-requisitions/{id}', [ExtensionStoreTransferController::Class, 'viewExtensionRequisition']);
-    Route::get('get-extension-requisitions', [ExtensionStoreTransferController::Class, 'getExtensionRequisition']);
+    Route::get('view-extension-requisitions/{id}', [ExtensionStoreTransferController::class, 'viewExtensionRequisition']);
+    Route::get('get-extension-requisitions', [ExtensionStoreTransferController::class, 'getExtensionRequisition']);
     Route::post('extension-to-extension-transfers', [ExtensionStoreTransferController::class, 'extensionTransfer']);
 
 
     //for transfer route in extension
-    // Route::get('get-extension-transfer', [ExtensionStoreTransferController::Class, 'getExtensionTransfer']);
-    // Route::get('get-transfer-extension/{id}', [ExtensionStoreTransferController::Class, 'transferExtensionProduct']);
-    Route::put('extension-transfer/{id}', [ExtensionStoreTransferController::Class, 'extensionTransfer']);
+    // Route::get('get-extension-transfer', [ExtensionStoreTransferController::class, 'getExtensionTransfer']);
+    // Route::get('get-transfer-extension/{id}', [ExtensionStoreTransferController::class, 'transferExtensionProduct']);
+    Route::put('extension-transfer/{id}', [ExtensionStoreTransferController::class, 'extensionTransfer']);
     //route for sale voucher
     Route::resource('extension-store-sales', ExtensionStoreSaleController::class);
     Route::post('extension-payments', [ExtensionStoreSaleController::class, 'extensionPayment']);
@@ -202,7 +203,7 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     Route::resource('requisitions', ProductRequisitionController::class);
     Route::resource('extension-requisitions', ExtensionRequisitionController::class);
     Route::get('requisition-lists', [ExtensionRequisitionController::class, 'requisitionList']);
-    Route::get('edit-requisitions/{id}', [ProductRequisitionController::Class, 'editRequisition']);
+    Route::get('edit-requisitions/{id}', [ProductRequisitionController::class, 'editRequisition']);
 
     //dashboardController
     Route::resource('dashboards', DashboardController::class);
@@ -216,12 +217,12 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     //ReportController
     Route::resource('postedsalesinvoice', PostedSalesInvoiceController::class);
     Route::resource('onhanditems', OnHandItemsController::class);
-    Route::resource('salesandstocks',SalesAndStockController::class);
-    Route::resource('salesorderlist',SalesOrderListController::class);
-    Route::resource('cashreceipt',CashReceiptController::class);
-    Route::resource('onlinereceipt',OnlineReceiptController::class);
-    Route::resource('staff-emi',StaffEmiController::class);
-    Route::resource('transfer-reports',TransferController::class);
+    Route::resource('salesandstocks', SalesAndStockController::class);
+    Route::resource('salesorderlist', SalesOrderListController::class);
+    Route::resource('cashreceipt', CashReceiptController::class);
+    Route::resource('onlinereceipt', OnlineReceiptController::class);
+    Route::resource('staff-emi', StaffEmiController::class);
+    Route::resource('transfer-reports', TransferController::class);
 
     //warrantyCOntroller
     Route::resource('warranties', WarrantyController::class);
@@ -231,7 +232,7 @@ Route::group(['middleware' => ['jwt.auth']], function () {
 
 
     //Notification
-    Route::resource('notifications',NotificationController::class);
+    Route::resource('notifications', NotificationController::class);
     Route::get('get-notifications/{id}', [NotificationController::class, 'getNotificationsforUser']);
 
     //EMI
@@ -242,9 +243,6 @@ Route::group(['middleware' => ['jwt.auth']], function () {
 
     Route::resource('approve-emi', ApproveEmi::class);
     Route::put('update-product/{id}', [ApplyEmi::class, 'updateProduct']);
-
-
-
 });
 
 Route::get('_CHprd', [ProductController::class, 'checkStock']);

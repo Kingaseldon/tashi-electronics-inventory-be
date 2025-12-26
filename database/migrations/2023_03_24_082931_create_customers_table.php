@@ -19,7 +19,9 @@ class CreateCustomersTable extends Migration
             $table->string('contact_no');
             $table->text('address');
             $table->string('license_no')->nullable();
-            $table->foreignId('customer_type_id')->constrained('customer_types')->onDelete('cascade');           
+            $table->string('tpn_number')->nullable();
+            $table->string('gst_number')->nullable();
+            $table->foreignId('customer_type_id')->constrained('customer_types')->onDelete('cascade');
             $table->text('description')->nullable();
             $table->timestamps();
             $table->foreignId('created_by')->index()->constrained('users');

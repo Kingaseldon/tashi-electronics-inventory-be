@@ -65,7 +65,7 @@ class CustomerController extends Controller
         $this->validate($request, [
             'customer_name' => 'required',
         ]);
-
+        // dd($request->all());
         DB::beginTransaction();
 
         try {
@@ -74,6 +74,8 @@ class CustomerController extends Controller
             $customer->contact_no = $request->contact_no;
             $customer->address = $request->address;
             $customer->license_no = $request->license_no;
+            $customer->tpn_number = $request->tpn_number;
+            $customer->gst_number = $request->gst_number;
             $customer->customer_type_id = $request->customer_type;
             $customer->description = $request->description;
             $customer->save();
@@ -179,6 +181,8 @@ class CustomerController extends Controller
             $customer->contact_no = $request->contact_no;
             $customer->address = $request->address;
             $customer->license_no = $request->license_no;
+            $customer->tpn_number = $request->tpn_number;
+            $customer->gst_number = $request->gst_number;
             $customer->customer_type_id = $request->customer_type;
             $customer->description = $request->description;
             $customer->save();
