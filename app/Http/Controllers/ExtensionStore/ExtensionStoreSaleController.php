@@ -73,7 +73,7 @@ class ExtensionStoreSaleController extends Controller
                     'gst' => $gstTax
                 ], 200);
             } else {
-                $saleVouchers = SaleVoucher::with('saleVoucherDetails.discount', 'user')->orderBy('created_at', 'DESC')->LoggedInAssignExtension()->get();
+                $saleVouchers = SaleVoucher::with('saleVoucherDetails.discount', 'user', 'customer')->orderBy('created_at', 'DESC')->LoggedInAssignExtension()->get();
                 $customers = Customer::with('customerType')->orderBy('id')->get();
                 $giveProducts = ProductTransaction::with('product', 'region', 'extension')->orderBy('id')->where('store_quantity', '!=', 0)->LoggedInAssignExtension()->get();
 
