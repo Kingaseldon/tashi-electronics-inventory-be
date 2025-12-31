@@ -56,7 +56,7 @@ class ExtensionStoreSaleController extends Controller
 
 
             if ($isSuperUser) {
-                $saleVouchers = SaleVoucher::with('saleVoucherDetails.discount', 'user')->orderBy('created_at', 'DESC')->where('region_extension_id', '!=', null)->get();
+                $saleVouchers = SaleVoucher::with('saleVoucherDetails.discount', 'user', 'customer')->orderBy('created_at', 'DESC')->where('region_extension_id', '!=', null)->get();
                 $customers = Customer::with('customerType')->orderBy('id')->get();
 
 
@@ -190,7 +190,7 @@ class ExtensionStoreSaleController extends Controller
                 $saleVoucher->cid_no = $request->cid_no ?? null;
                 $saleVoucher->gross_payable = 0;
                 $saleVoucher->net_payable = 0;
-                $saleVoucher->service_charge = $request->service_charge ?? 0;
+                $saleVoucher->service_charge = ($request->service_charge ?? 0);
                 $saleVoucher->save();
 
                 $saleOrderDetails = [];
@@ -274,8 +274,8 @@ class ExtensionStoreSaleController extends Controller
                     ];
 
 
-                    $netPayable += $itemTotal;
-                    $grossPayable += $grossForEachItem + $itemGst;
+                    $netPayable += $itemTotal + ($request->service_charge ?? 0);
+                    $grossPayable += $grossForEachItem + $itemGst + ($request->service_charge ?? 0);
                     $totalGst += $itemGst;
 
                     // Update store quantities
@@ -366,7 +366,7 @@ class ExtensionStoreSaleController extends Controller
                             'invoice_date' => $request->invoice_date ?? now(),
                             'region_extension_id' => $extensionId,
                             'customer_id' => $request->customer,
-                            'service_charge' => $request->service_charge ?? 0,
+                            'service_charge' => ($request->service_charge ?? 0),
                             'status' => 'open',
                             'remarks' => $request->remarks,
 
@@ -417,8 +417,8 @@ class ExtensionStoreSaleController extends Controller
 
 
                             $gstAmount = $netPay * $gstTax;
-                            $netPayable += $netPay + $gstAmount;
-                            $grossPayable += $grossForEachItem + $gstAmount;
+                            $netPayable += $netPay + $gstAmount + ($request->service_charge ?? 0);
+                            $grossPayable += $grossForEachItem + $gstAmount + ($request->service_charge ?? 0);
 
                             $totalGst += $gstAmount;
 
@@ -497,7 +497,7 @@ class ExtensionStoreSaleController extends Controller
                         'walk_in_customer' => $request->walk_in_customer,
                         'contact_no' => $request->contact_no,
                         'cid_no' => $request->cid_no ?? null,
-                        'service_charge' => $request->service_charge ?? 0,
+                        'service_charge' => ($request->service_charge ?? 0),
                         'status' => 'open',
                         'remarks' => $request->remarks,
                     ]);
@@ -555,8 +555,8 @@ class ExtensionStoreSaleController extends Controller
                         }
 
                         $gstAmount = $netPay * $gstTax;
-                        $netPayable += $netPay + $gstAmount;
-                        $grossPayable += $grossForEachItem + $gstAmount;
+                        $netPayable += $netPay + $gstAmount + ($request->service_charge ?? 0);
+                        $grossPayable += $grossForEachItem + $gstAmount + ($request->service_charge ?? 0);
 
                         $totalGst += $gstAmount;
 
