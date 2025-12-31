@@ -258,7 +258,7 @@ class ExtensionStoreSaleController extends Controller
                         $discountName = isset($item['discount_type_id']) ? DiscountType::find($item['discount_type_id']) : null;
                     }
 
-                    $itemGst = $netPay * $gstTax;
+                    $itemGst = $grossForEachItem * $gstTax;
                     $itemTotal = $netPay + $itemGst;
 
                     $saleOrderDetails[] = [
@@ -276,6 +276,7 @@ class ExtensionStoreSaleController extends Controller
 
                     $netPayable += $itemTotal + ($request->service_charge ?? 0);
                     $grossPayable += $grossForEachItem + $itemGst + ($request->service_charge ?? 0);
+
                     $totalGst += $itemGst;
 
                     // Update store quantities
@@ -369,7 +370,6 @@ class ExtensionStoreSaleController extends Controller
                             'service_charge' => ($request->service_charge ?? 0),
                             'status' => 'open',
                             'remarks' => $request->remarks,
-
                         ]);
 
                         $netPayable = 0;
@@ -402,7 +402,7 @@ class ExtensionStoreSaleController extends Controller
 
                             // Price and discount calculation
                             $price = $data[4] ?? $product->price;
-                            $grossForEachItem = $data[3] * $price;
+                            $grossForEachItem = $data[3] * $price; //price * queantity
 
 
 
@@ -416,7 +416,7 @@ class ExtensionStoreSaleController extends Controller
                             }
 
 
-                            $gstAmount = $netPay * $gstTax;
+                            $gstAmount =  $grossForEachItem * $gstTax;
                             $netPayable += $netPay + $gstAmount + ($request->service_charge ?? 0);
                             $grossPayable += $grossForEachItem + $gstAmount + ($request->service_charge ?? 0);
 
@@ -554,7 +554,7 @@ class ExtensionStoreSaleController extends Controller
                             $netPay = $grossForEachItem;
                         }
 
-                        $gstAmount = $netPay * $gstTax;
+                        $gstAmount = $grossForEachItem * $gstTax;
                         $netPayable += $netPay + $gstAmount + ($request->service_charge ?? 0);
                         $grossPayable += $grossForEachItem + $gstAmount + ($request->service_charge ?? 0);
 
