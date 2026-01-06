@@ -258,7 +258,7 @@ class ExtensionStoreSaleController extends Controller
                         $discountName = isset($item['discount_type_id']) ? DiscountType::find($item['discount_type_id']) : null;
                     }
 
-                    $itemGst = $grossForEachItem * $gstTax;
+                    $itemGst = $netPay * $gstTax;
                     $itemTotal = $netPay + $itemGst;
 
                     $saleOrderDetails[] = [
@@ -416,7 +416,7 @@ class ExtensionStoreSaleController extends Controller
                             }
 
 
-                            $gstAmount =  $grossForEachItem * $gstTax;
+                            $gstAmount =  $netPay * $gstTax;
                             $netPayable += $netPay + $gstAmount + ($request->service_charge ?? 0);
                             $grossPayable += $grossForEachItem + $gstAmount + ($request->service_charge ?? 0);
 
@@ -554,7 +554,7 @@ class ExtensionStoreSaleController extends Controller
                             $netPay = $grossForEachItem;
                         }
 
-                        $gstAmount = $grossForEachItem * $gstTax;
+                        $gstAmount = $netPay * $gstTax;
                         $netPayable += $netPay + $gstAmount + ($request->service_charge ?? 0);
                         $grossPayable += $grossForEachItem + $gstAmount + ($request->service_charge ?? 0);
 
