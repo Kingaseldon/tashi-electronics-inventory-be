@@ -443,9 +443,9 @@ class ExtensionStoreSaleController extends Controller
                                 'sale_voucher_id' => $saleVoucher->id,
                                 'product_id' => $product->id,
                                 'quantity' => $data[3],
-                                'gst' => $price * $gstTax * $data[3],
+                                'gst' => $netPay + $gstAmount,
                                 'price' => $price,
-                                'total' => $netPay + ($netPay * $gstTax),
+                                'total' =>  $netPay + $gstAmount,
                                 'discount_type_id' => $discountName->id ?? null,
                             ];
 
@@ -564,7 +564,7 @@ class ExtensionStoreSaleController extends Controller
                             'sale_voucher_id' => $saleVoucher->id,
                             'product_id' => $value['product'],
                             'quantity' => $value['quantity'],
-                            'gst' => $price * $gstTax * $value['quantity'],
+                            'gst' => $netPay * $gstTax,
                             'price' => $price,
                             'total' => $netPay + $gstAmount,
                             'discount_type_id' => $value['discount_type_id'] ?? null,
