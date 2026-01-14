@@ -529,7 +529,9 @@ class PostedSalesInvoiceController extends Controller
                     'sv.gross_payable',
                     'd.discount_name',
                     'e.name as store',
-                    'sv.service_charge'
+                    'sv.service_charge',
+                    'sv.total_gst',
+                    'svd.gst'
                 )
                 ->leftJoin('customers as c', 'sv.customer_id', '=', 'c.id')
 
@@ -630,6 +632,7 @@ class PostedSalesInvoiceController extends Controller
                     'discount_name'         => $first->discount_name,
                     'discount_amount'       => $first->gross_payable - $first->net_payable,
                     'store'                 => $first->store,
+                    'total_gst'             => $first->total_gst,
                     'details'               => []
                 ];
 
@@ -642,7 +645,8 @@ class PostedSalesInvoiceController extends Controller
                         'net_payable'     => $row->netpay,
                         'discount_name'   => $row->discount_name,
                         'discount_amount' => ($row->price * $row->quantity) - $row->netpay,
-                        'status'          => $row->status
+                        'status'          => $row->status,
+                        'gst'             => $row->gst,
                     ];
                 }
 
