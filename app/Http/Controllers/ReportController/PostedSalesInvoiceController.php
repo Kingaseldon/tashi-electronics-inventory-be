@@ -531,7 +531,9 @@ class PostedSalesInvoiceController extends Controller
                     'e.name as store',
                     'sv.service_charge',
                     'sv.total_gst',
-                    'svd.gst'
+                    'svd.gst',
+                    'svd.discount_type_id'
+
                 )
                 ->leftJoin('customers as c', 'sv.customer_id', '=', 'c.id')
 
@@ -637,6 +639,11 @@ class PostedSalesInvoiceController extends Controller
                 ];
 
                 foreach ($rows as $row) {
+
+                    $discountAmount = ($row->discount_type_id != null)
+                        ? (($row->price * $row->quantity) - $row->netpay)
+                        : 0;
+
                     $invoice['details'][] = [
                         'serialNumbers'   => $row->serial_no,
                         'description'     => $row->description,
@@ -644,11 +651,12 @@ class PostedSalesInvoiceController extends Controller
                         'quantity'        => $row->quantity,
                         'net_payable'     => $row->netpay,
                         'discount_name'   => $row->discount_name,
-                        'discount_amount' => ($row->price * $row->quantity) - $row->netpay,
+                        'discount_amount' => $discountAmount,
                         'status'          => $row->status,
                         'gst'             => $row->gst,
                     ];
                 }
+
 
                 $responseData[] = $invoice;
             }
