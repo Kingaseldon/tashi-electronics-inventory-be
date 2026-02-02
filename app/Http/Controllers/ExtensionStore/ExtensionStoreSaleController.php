@@ -322,103 +322,184 @@ class ExtensionStoreSaleController extends Controller
                     ]);
                 }
             } else {
-                // ---------- NON-SUPER USER ----------
-                if ($request->customerType == 2 && $request->hasFile('attachment')) {
-                    // Excel Upload (same as above)
-                    $request->validate(['attachment' => 'required|mimes:xls,xlsx']);
-                    $file = $request->file('attachment');
-                    $nestedCollection = Excel::toCollection(new SaleProduct, $file);
-                    $flattenedArrays = array_filter(
-                        $nestedCollection->flatten(1)->toArray(),
-                        fn($row) => !empty(array_filter($row, fn($v) => !is_null($v)))
-                    );
-                    array_shift($flattenedArrays); // remove header
-                    $productsData = $flattenedArrays;
-                } else {
-                    // Manual input
-                    $productsData = $request->productDetails;
-                }
 
-                foreach ($productsData as $item) {
-                    $product = $request->customerType == 2
-                        ? ProductTransaction::with('product')
-                        ->join('products as Tb1', 'Tb1.id', '=', 'product_transactions.product_id')
-                        ->LoggedInAssignExtension()
-                        ->where('Tb1.serial_no', $item[1])
-                        ->where('Tb1.description', $item[0])
-                        ->first()
-                        : ProductTransaction::where('product_id', $item['product'])
-                        ->LoggedInAssignExtension()
-                        ->first();
+                DB::beginTransaction();
 
-                    if (!$product || $product->store_quantity < ($item[3] ?? $item['quantity'])) {
-                        $errorSerialNumbers[] = $request->customerType == 2 ? $item[1] : $item['product'];
-                        continue;
+                try {
+
+                    // -------------------------------
+                    // Product Source (Excel / Manual)
+                    // -------------------------------
+                    if ($request->customerType == 2 && $request->hasFile('attachment')) {
+
+                        $request->validate([
+                            'attachment' => 'required|mimes:xls,xlsx'
+                        ]);
+
+                        $file = $request->file('attachment');
+                        $nestedCollection = Excel::toCollection(new SaleProduct, $file);
+
+                        $productsData = array_values(array_filter(
+                            $nestedCollection->flatten(1)->toArray(),
+                            fn($row) => !empty(array_filter($row, fn($v) => !is_null($v)))
+                        ));
+
+                        array_shift($productsData); // remove header
+
+                    } else {
+                        $productsData = $request->productDetails;
                     }
 
-                    $quantity = $request->customerType == 2 ? $item[3] : $item['quantity'];
-                    $productData = $product->product ?? Product::find($item['product']);
-                    $price = $request->customerType == 2 ? ($item[4] ?? $productData->price) : $item['product_cost'];
+                    // -------------------------------
+                    // Process Products
+                    // -------------------------------
+                    foreach ($productsData as $item) {
 
-                    $gross = $quantity * $price;
-                    $discountText = $request->customerType == 2 ? trim($item[2]) : null;
-                    $discount = $request->customerType == 2
-                        ? DiscountType::where('discount_name', 'like', $discountText)->first()
-                        : (isset($item['discount_type_id']) ? DiscountType::find($item['discount_type_id']) : null);
+                        // Quantity
+                        $quantity = $request->customerType == 2
+                            ? (int) $item[3]
+                            : (int) $item['quantity'];
 
-                    $net = $gross;
-                    if ($discount) {
-                        $net = $discount->discount_type === 'Percentage'
-                            ? $gross - ($gross * ($discount->discount_value / 100))
-                            : $gross - $discount->discount_value;
+                        // -------------------------------
+                        // Fetch ProductTransaction (NO JOIN)
+                        // -------------------------------
+                        if ($request->customerType == 2) {
+
+                            $product = ProductTransaction::with('product')
+                                ->LoggedInAssignExtension()
+                                ->whereHas('product', function ($q) use ($item) {
+                                    $q->where('serial_no', $item[1])
+                                        ->where('description', $item[0]);
+                                })
+                                ->first();
+                        } else {
+
+                            $product = ProductTransaction::with('product')
+                                ->where('product_id', $item['product'])
+                                ->LoggedInAssignExtension()
+                                ->first();
+                        }
+
+                        // -------------------------------
+                        // Stock validation
+                        // -------------------------------
+                        if (!$product || $product->store_quantity < $quantity) {
+                            $errorSerialNumbers[] = $request->customerType == 2
+                                ? $item[1]
+                                : $item['product'];
+                            continue;
+                        }
+
+                        $productData = $product->product;
+
+                        // -------------------------------
+                        // Price
+                        // -------------------------------
+                        $price = $request->customerType == 2
+                            ? ($item[4] ?? $productData->price)
+                            : $item['product_cost'];
+
+                        $price = round((float) $price, 2);
+
+                        // -------------------------------
+                        // Gross
+                        // -------------------------------
+                        $gross = $quantity * $price;
+
+                        // -------------------------------
+                        // Discount
+                        // -------------------------------
+                        if ($request->customerType == 2) {
+                            $discountText = trim($item[2]);
+                            $discount = DiscountType::where('discount_name', 'like', $discountText)->first();
+                        } else {
+                            $discount = !empty($item['discount_type_id'])
+                                ? DiscountType::find($item['discount_type_id'])
+                                : null;
+                        }
+
+                        $net = $gross;
+
+                        if ($discount) {
+                            $net = $discount->discount_type === 'Percentage'
+                                ? $gross - ($gross * ($discount->discount_value / 100))
+                                : $gross - $discount->discount_value;
+                        }
+
+                        // -------------------------------
+                        // GST & Totals
+                        // -------------------------------
+                        $gstAmount = round($net * $gstTax, 2);
+                        $itemTotal = round($net + $gstAmount, 2);
+
+                        $grossPayable += $gross;
+                        $netPayable   += $itemTotal;
+                        $totalGst     += $gstAmount;
+
+                        // -------------------------------
+                        // Sale Order Details
+                        // -------------------------------
+                        $saleOrderDetails[] = [
+                            'sale_voucher_id'  => $saleVoucher->id,
+                            'product_id'       => $productData->id,
+                            'quantity'         => $quantity,
+                            'price'            => $price,
+                            'gst'              => $gstAmount,
+                            'total'            => $itemTotal,
+                            'discount_type_id' => $discount->id ?? null,
+                            'created_at'       => now(),
+                            'updated_at'       => now(),
+                        ];
+
+                        // -------------------------------
+                        // Update ProductTransaction Stock
+                        // -------------------------------
+                        $product->update([
+                            'store_quantity' => $product->store_quantity - $quantity,
+                            'sold_quantity'  => $product->sold_quantity + $quantity,
+                        ]);
+
+                        // -------------------------------
+                        // Update Product Master Stock
+                        // -------------------------------
+                        if ($productData->extension_store_qty < $quantity) {
+                            return response()->json([
+                                'success' => false,
+                                'message' => "Quantity cannot exceed store quantity",
+                            ], 406);
+                        }
+
+
+                        $productData->update([
+                            'extension_store_qty'        => $productData->extension_store_qty - $quantity,
+                            'extension_store_sold_qty'  => $productData->extension_store_sold_qty + $quantity,
+                            'updated_by'                => auth()->id(),
+                        ]);
+
+                        // -------------------------------
+                        // Audit
+                        // -------------------------------
+                        $store = Store::where('extension_id', $extensionId)->first();
+
+                        DB::table('transaction_audits')->insert([
+                            'store_id'      => $store->id,
+                            'sales_type_id' => $productData->sale_type_id,
+                            'product_id'    => $productData->id,
+                            'item_number'   => $productData->item_number,
+                            'description'   => $productData->description,
+                            'stock'         => -$quantity,
+                            'sales'         => $quantity,
+                            'created_date'  => $request->invoice_date ?? now(),
+                            'status'        => 'sale',
+                            'created_at'    => now(),
+                            'created_by'    => auth()->id(),
+                        ]);
                     }
 
-                    $gstAmount = round($net * $gstTax, 2);
-                    $itemTotal = round($net + $gstAmount, 2);
-
-                    $grossPayable += $gross;
-                    $netPayable += $itemTotal;
-                    $totalGst += $gstAmount;
-
-                    $saleOrderDetails[] = [
-                        'sale_voucher_id' => $saleVoucher->id,
-                        'product_id' => $productData->id,
-                        'quantity' => $quantity,
-                        'price' => round($price, 2),
-                        'gst' => $gstAmount,
-                        'total' => $itemTotal,
-                        'discount_type_id' => $discount->id ?? null,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ];
-
-                    // Update stock
-                    $product->update([
-                        'store_quantity' => $product->store_quantity - $quantity,
-                        'sold_quantity' => $product->sold_quantity + $quantity,
-                    ]);
-
-                    $productData->update([
-                        'extension_store_qty' => $productData->extension_store_qty - $quantity,
-                        'extension_store_sold_qty' => $productData->extension_store_sold_qty + $quantity,
-                        'updated_by' => auth()->id(),
-                    ]);
-
-                    // Audit
-                    $store = Store::where('extension_id', $extensionId)->first();
-                    DB::table('transaction_audits')->insert([
-                        'store_id' => $store->id,
-                        'sales_type_id' => $productData->sale_type_id,
-                        'product_id' => $productData->id,
-                        'item_number' => $productData->item_number,
-                        'description' => $productData->description,
-                        'stock' => -$quantity,
-                        'sales' => $quantity,
-                        'created_date' => $request->invoice_date ?? now(),
-                        'status' => 'sale',
-                        'created_at' => now(),
-                        'created_by' => auth()->id(),
-                    ]);
+                    DB::commit();
+                } catch (\Throwable $e) {
+                    DB::rollBack();
+                    throw $e;
                 }
             }
 
