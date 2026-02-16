@@ -462,12 +462,12 @@ class ExtensionStoreSaleController extends Controller
                         // -------------------------------
                         // Update Product Master Stock
                         // -------------------------------
-                        if ($productData->extension_store_qty < $quantity) {
-                            return response()->json([
-                                'success' => false,
-                                'message' => "Quantity cannot exceed store quantity",
-                            ], 406);
-                        }
+                        // if ($productData->extension_store_qty < $quantity) {
+                        //     return response()->json([
+                        //         'success' => false,
+                        //         'message' => "Quantity cannot exceed store quantity",
+                        //     ], 406);
+                        // }
 
 
                         $productData->update([
