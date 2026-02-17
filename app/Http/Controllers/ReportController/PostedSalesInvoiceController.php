@@ -509,6 +509,7 @@ class PostedSalesInvoiceController extends Controller
                     'sv.id',
                     'sv.invoice_no',
                     'sv.invoice_date',
+                    'sv.cid_no',
                     DB::raw('IFNULL(c.customer_name, sv.walk_in_customer) as customerName'),
                     DB::raw('IFNULL(c.contact_no, sv.contact_no) as contactNo'),
                     DB::raw('IFNULL(ph.payment_mode, "--") as paymentMode'),
@@ -532,7 +533,9 @@ class PostedSalesInvoiceController extends Controller
                     'sv.service_charge',
                     'sv.total_gst',
                     'svd.gst',
-                    'svd.discount_type_id'
+                    'svd.discount_type_id',
+                    'c.gst_number',
+                    'sv.customer_id'
 
                 )
                 ->leftJoin('customers as c', 'sv.customer_id', '=', 'c.id')
@@ -620,6 +623,7 @@ class PostedSalesInvoiceController extends Controller
                     'invoice_date'          => $first->invoice_date,
                     'receipt_no'            => $first->receiptNo,
                     'customer_name'         => $first->customerName,
+                    'customer_id'         => $first->customer_id,
                     'payment_mode'          => $first->paymentMode,
                     'online_amount'         => $first->online_amount_paid,
                     'cash_amount'           => $first->cash_amount_paid,
@@ -635,6 +639,8 @@ class PostedSalesInvoiceController extends Controller
                     'discount_amount'       => $first->gross_payable - $first->net_payable,
                     'store'                 => $first->store,
                     'total_gst'             => $first->total_gst,
+                    'cid_no'                => $first->cid_no,
+                    'gst_number'            => $first->gst_number,
                     'details'               => []
                 ];
 

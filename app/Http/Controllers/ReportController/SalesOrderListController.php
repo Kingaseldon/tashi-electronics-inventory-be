@@ -40,7 +40,11 @@ class SalesOrderListController extends Controller
                         'p.price',
                         'p.serial_no',
                         'svd.quantity',
-                        'svd.total'
+                        'svd.total',
+                        'c.gst_number',
+                        'sv.customer_id',
+                        'sv.cid_no',
+
                     )
                     ->leftJoin('customers as c', 'sv.customer_id', '=', 'c.id')
                     ->leftJoin('payment_histories as ph', 'sv.id', '=', 'ph.sale_voucher_id')
@@ -90,7 +94,10 @@ class SalesOrderListController extends Controller
                         'p.price',
                         'p.serial_no',
                         'svd.quantity',
-                        'svd.total'
+                        'svd.total',
+                        'c.gst_number',
+                        'sv.customer_id',
+                        'sv.cid_no',
                     )
                     ->leftJoin('customers as c', 'sv.customer_id', '=', 'c.id')
                     ->leftJoin('payment_histories as ph', 'sv.id', '=', 'ph.sale_voucher_id')
