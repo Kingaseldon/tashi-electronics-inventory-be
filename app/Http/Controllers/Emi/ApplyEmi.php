@@ -107,6 +107,8 @@ class ApplyEmi extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
+
+    //apply EMI
     public function store(Request $request)
     {
         $this->validate($request, []);
@@ -120,6 +122,7 @@ class ApplyEmi extends Controller
             $emi->emi_duration = $request->emi_duration;
             $emi->monthly_emi = $request->monthly_emi;
             $emi->total = $request->total;
+            $emi->gst = $request->gst;
             $emi->deduction_from = date('Y-m-d', strtotime($request->deduction_from));
             $emi->item_number = $request->item_number;
             $emi->status = 'pending';
@@ -191,6 +194,7 @@ class ApplyEmi extends Controller
             $emi->request_date = date('Y-m-d', strtotime($request->request_date));
             $emi->emi_duration = $request->emi_duration;
             $emi->monthly_emi = $request->monthly_emi;
+            $emi->gst = $request->gst;
             $emi->total = $request->total;
             $emi->deduction_from = date('Y-m-d', strtotime($request->deduction_from));
             $emi->item_number = $request->item_number;
@@ -318,6 +322,7 @@ class ApplyEmi extends Controller
             $saleVoucher->user_id = $emi->user_id;
             $saleVoucher->gross_payable = $request->gross_payable;
             $saleVoucher->net_payable = $request->net_payable;
+            $saleVoucher->total_gst = $request->total_gst;
             $saleVoucher->region_extension_id = $extensionID;
             $saleVoucher->status = "open";
             $saleVoucher->remarks = 'staff emi';
@@ -329,6 +334,7 @@ class ApplyEmi extends Controller
                 'quantity' => 1,
                 'price' => $request->gross_payable,
                 'total' => $request->net_payable,
+                'gst' => $request->gst,
                 'discount_type_id' => null,
             ]);
 

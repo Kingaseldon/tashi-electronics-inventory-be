@@ -24,6 +24,7 @@ class CreateCustomerEmisTable extends Migration
             $table->integer('emi_duration');
             $table->decimal('monthly_emi', 10, 2)->nullable()->default(0);
             $table->decimal('total', 10, 2)->nullable()->default(0);
+            $table->decimal('gst', 10, 2)->nullable()->default(0);
             $table->date('deduction_from')->nullable();
             $table->string('status')->nullable();
             $table->string('description')->nullable();
