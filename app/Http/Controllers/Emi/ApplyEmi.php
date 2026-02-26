@@ -152,7 +152,7 @@ class ApplyEmi extends Controller
     public function show($id)
     {
 
-        $emi = CustomerEmi::where('id', '=', $id)->get();
+        $emi = CustomerEmi::where('id', '=', $id)->with('saleVoucher')->get();
 
         //if no user
         return response([
