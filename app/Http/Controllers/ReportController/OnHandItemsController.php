@@ -51,11 +51,15 @@ class OnHandItemsController extends Controller
                     DB::raw('COALESCE(products.iccid, "--") AS iccid'),
                     'products.main_store_qty AS store_qty',
                     'products.description',
+                    'stores.store_name',
 
                 ])->union(
                     DB::table('product_transactions')->leftJoin('products', function ($join) {
                         $join->on('product_transactions.product_id', '=', 'products.id');
                     })
+                        ->leftJoin('stores', function ($join) {
+                            $join->on('products.store_id', '=', 'stores.id'); // ✅ ADD THIS
+                        })
                         ->where(function ($query) use ($request) {
                             if ('ALL' !== $request->category_id) {
                                 $query->where('products.category_id', '=', $request->category_id);
@@ -84,6 +88,7 @@ class OnHandItemsController extends Controller
                             DB::raw('COALESCE(products.iccid, "--") AS iccid'),
                             DB::raw('CASE WHEN product_transactions.regional_id IS NOT NULL THEN product_transactions.region_store_quantity ELSE product_transactions.store_quantity END AS store_qty'),
                             'products.description',
+                            'stores.store_name',
 
                         ])
                         ->where(DB::raw('CASE WHEN product_transactions.regional_id IS NOT NULL THEN product_transactions.region_store_quantity ELSE product_transactions.store_quantity END'), '>', 0)

@@ -82,7 +82,7 @@ class ApplyEmi extends Controller
                 'message' => 'success',
                 'product' => $products,
                 'emi' => $emi
-
+  
             ], 200);
         } catch (\Exception $e) {
             return response([
