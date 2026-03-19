@@ -535,7 +535,9 @@ class PostedSalesInvoiceController extends Controller
                     'svd.gst',
                     'svd.discount_type_id',
                     'c.gst_number',
-                    'sv.customer_id'
+                    'sv.customer_id',
+                    'd.discount_type',
+                    'd.discount_value'
 
                 )
                 ->leftJoin('customers as c', 'sv.customer_id', '=', 'c.id')
@@ -645,10 +647,19 @@ class PostedSalesInvoiceController extends Controller
                 ];
 
                 foreach ($rows as $row) {
+                    // $discountAmount = ($row->discount_type_id != null)
+                    //     ? (($row->price * $row->quantity) - $row->netpay)
+                    //     : 0;
 
-                    $discountAmount = ($row->discount_type_id != null)
-                        ? (($row->price * $row->quantity) - $row->netpay)
-                        : 0;
+                    if ($row->discount_type == "Lump Sum") {
+                        $discountAmount = $row->discount_value;
+                    } else {
+                        $discountAmount = $row->discount_value / 100 * $row->price;
+                    }
+                    // dd( $row->discount_value / 100 * $row->price);
+                    // $discountAmount = ($row->discount_type_id != null)
+                    //     ? (($row->price * $row->quantity) - $row->netpay)
+                    //     : 0;
 
                     $invoice['details'][] = [
                         'serialNumbers'   => $row->serial_no,
