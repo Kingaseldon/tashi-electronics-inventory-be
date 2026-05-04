@@ -37,7 +37,7 @@ class SalesOrderListController extends Controller
                         'u.name',
                         'sv.status',
                         'p.description',
-                        'p.price',
+                        'svd.price',
                         'p.serial_no',
                         'svd.quantity',
                         'svd.total',
