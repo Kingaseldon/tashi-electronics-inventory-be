@@ -58,7 +58,7 @@ class ApplyEmi extends Controller
 
             $emi = "";
 
-            if ($isSuperUser) {
+            if ($isSuperUser || $roleName == "Staff") {
                 $emi = CustomerEmi::with('user', 'saleVoucher')->join('products', 'customer_emis.item_number', '=', 'products.item_number')
                     ->select('customer_emis.*', 'products.description as product_description')
                     ->distinct()
@@ -82,7 +82,7 @@ class ApplyEmi extends Controller
                 'message' => 'success',
                 'product' => $products,
                 'emi' => $emi
-  
+
             ], 200);
         } catch (\Exception $e) {
             return response([
