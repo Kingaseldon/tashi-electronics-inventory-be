@@ -58,11 +58,13 @@ class ApplyEmi extends Controller
 
             $emi = "";
 
-            if ($isSuperUser || $roleName == "Staff") {
+            if ($isSuperUser) {
                 $emi = CustomerEmi::with('user', 'saleVoucher')->join('products', 'customer_emis.item_number', '=', 'products.item_number')
                     ->select('customer_emis.*', 'products.description as product_description')
                     ->distinct()
                     ->get();;
+            } elseif ($roleName == "Staff") {
+                $emi = "";
             } else if ($employee->assignAndEmployee->extension_id == B2B_ID || $employee->assignAndEmployee->extension_id == JUNGSHINA) {
                 $emi = CustomerEmi::with('user', 'saleVoucher')
                     ->join('products', 'customer_emis.item_number', '=', 'products.item_number')
