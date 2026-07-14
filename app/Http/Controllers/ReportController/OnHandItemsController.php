@@ -58,7 +58,8 @@ class OnHandItemsController extends Controller
                         $join->on('product_transactions.product_id', '=', 'products.id');
                     })
                         ->leftJoin('stores', function ($join) {
-                            $join->on('products.store_id', '=', 'stores.id'); // ✅ ADD THIS
+                            $join->on('product_transactions.regional_id', '=', 'stores.region_id')
+                                ->orOn('product_transactions.region_extension_id', '=', 'stores.extension_id');
                         })
                         ->where(function ($query) use ($request) {
                             if ('ALL' !== $request->category_id) {
@@ -94,7 +95,6 @@ class OnHandItemsController extends Controller
                         ->where(DB::raw('CASE WHEN product_transactions.regional_id IS NOT NULL THEN product_transactions.region_store_quantity ELSE product_transactions.store_quantity END'), '>', 0)
                 )
                 ->get();
-
 
 
             return response([
