@@ -142,6 +142,7 @@ class ExtensionStoreSaleController extends Controller
     public function store(Request $request, SerialNumberGenerator $invoice)
     {
 
+
         $extensionId = '';
         $extensionName = '';
         if ($request->extension == null && $request->extensionName == "") {
@@ -339,10 +340,12 @@ class ExtensionStoreSaleController extends Controller
                         $file = $request->file('attachment');
                         $nestedCollection = Excel::toCollection(new SaleProduct, $file);
 
+
                         $productsData = array_values(array_filter(
                             $nestedCollection->flatten(1)->toArray(),
                             fn($row) => !empty(array_filter($row, fn($v) => !is_null($v)))
                         ));
+
 
                         array_shift($productsData); // remove header
 
@@ -368,10 +371,16 @@ class ExtensionStoreSaleController extends Controller
                             $product = ProductTransaction::with('product')
                                 ->LoggedInAssignExtension()
                                 ->whereHas('product', function ($q) use ($item) {
-                                    $q->where('serial_no', $item[1])
-                                        ->where('description', $item[0]);
+                                    $descriptionWords = preg_split('/\s+/', trim((string) $item[0]), -1, PREG_SPLIT_NO_EMPTY);
+
+                                    $q->where('serial_no', $item[1]);
+
+                                    foreach ($descriptionWords as $word) {
+                                        $q->where('description', 'like', "%{$word}%");
+                                    }
                                 })
                                 ->first();
+                            // dd($product);
                         } else {
 
                             $product = ProductTransaction::with('product')
@@ -379,6 +388,8 @@ class ExtensionStoreSaleController extends Controller
                                 ->LoggedInAssignExtension()
                                 ->first();
                         }
+
+                        // dd($product);
 
                         // -------------------------------
                         // Stock validation
