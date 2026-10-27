@@ -6,8 +6,10 @@ use InvalidArgumentException;
 
 class WildcardPermissionNotProperlyFormatted extends InvalidArgumentException
 {
-    public static function create(string $permission)
+    public static function create(string $permission): static
     {
-        return new static("Wildcard permission `{$permission}` is not properly formatted.");
+        return new static(__('Wildcard permission `:permission` is not properly formatted.', [
+            'permission' => $permission,
+        ]));
     }
 }

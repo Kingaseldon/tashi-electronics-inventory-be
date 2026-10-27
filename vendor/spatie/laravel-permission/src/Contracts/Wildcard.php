@@ -4,8 +4,7 @@ namespace Spatie\Permission\Contracts;
 
 interface Wildcard
 {
-    /**
-     * @param  string|Wildcard  $permission
-     */
-    public function implies($permission): bool;
+    public function getIndex(): array;
+
+    public function implies(string $permission, string $guardName, array $index): bool;
 }

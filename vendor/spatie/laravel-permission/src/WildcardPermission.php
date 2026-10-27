@@ -2,7 +2,8 @@
 
 namespace Spatie\Permission;
 
-use Illuminate\Support\Collection;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 use Spatie\Permission\Contracts\Wildcard;
 use Spatie\Permission\Exceptions\WildcardPermissionNotProperlyFormatted;
 
@@ -11,100 +12,102 @@ class WildcardPermission implements Wildcard
     /** @var string */
     public const WILDCARD_TOKEN = '*';
 
-    /** @var string */
+    /** @var non-empty-string */
     public const PART_DELIMITER = '.';
 
-    /** @var string */
+    /** @var non-empty-string */
     public const SUBPART_DELIMITER = ',';
 
-    /** @var string */
-    protected $permission;
+    public function __construct(protected Model $record) {}
 
-    /** @var Collection */
-    protected $parts;
-
-    public function __construct(string $permission)
+    public function getIndex(): array
     {
-        $this->permission = $permission;
-        $this->parts = collect();
+        $index = [];
 
-        $this->setParts();
+        foreach ($this->record->getAllPermissions() as $permission) {
+            $index[$permission->guard_name] = $this->buildIndex(
+                $index[$permission->guard_name] ?? [],
+                explode(static::PART_DELIMITER, $permission->name),
+                $permission->name,
+            );
+        }
+
+        return $index;
     }
 
-    /**
-     * @param  string|WildcardPermission  $permission
-     */
-    public function implies($permission): bool
+    protected function buildIndex(array $index, array $parts, string $permission): array
     {
-        if (is_string($permission)) {
-            $permission = new static($permission);
+        if (empty($parts)) {
+            $index[''] = true;
+
+            return $index;
         }
 
-        $otherParts = $permission->getParts();
+        $part = array_shift($parts);
 
-        $i = 0;
-        $partsCount = $this->getParts()->count();
-        foreach ($otherParts as $otherPart) {
-            if ($partsCount - 1 < $i) {
-                return true;
-            }
-
-            if (! $this->parts->get($i)->contains(static::WILDCARD_TOKEN)
-                && ! $this->containsAll($this->parts->get($i), $otherPart)) {
-                return false;
-            }
-
-            $i++;
+        if (blank($part)) {
+            throw WildcardPermissionNotProperlyFormatted::create($permission);
         }
 
-        for ($i; $i < $partsCount; $i++) {
-            if (! $this->parts->get($i)->contains(static::WILDCARD_TOKEN)) {
-                return false;
-            }
+        if (! Str::contains($part, static::SUBPART_DELIMITER)) {
+            $index[$part] = $this->buildIndex(
+                $index[$part] ?? [],
+                $parts,
+                $permission,
+            );
         }
 
-        return true;
+        $subParts = explode(static::SUBPART_DELIMITER, $part);
+
+        foreach ($subParts as $subPart) {
+            if (blank($subPart)) {
+                throw WildcardPermissionNotProperlyFormatted::create($permission);
+            }
+
+            $index[$subPart] = $this->buildIndex(
+                $index[$subPart] ?? [],
+                $parts,
+                $permission,
+            );
+        }
+
+        return $index;
     }
 
-    protected function containsAll(Collection $part, Collection $otherPart): bool
+    public function implies(string $permission, string $guardName, array $index): bool
     {
-        foreach ($otherPart->toArray() as $item) {
-            if (! $part->contains($item)) {
-                return false;
-            }
+        if (! array_key_exists($guardName, $index)) {
+            return false;
         }
 
-        return true;
+        $permission = explode(static::PART_DELIMITER, $permission);
+
+        return $this->checkIndex($permission, $index[$guardName]);
     }
 
-    public function getParts(): Collection
+    protected function checkIndex(array $permission, array $index): bool
     {
-        return $this->parts;
-    }
-
-    /**
-     * Sets the different parts and subparts from permission string.
-     */
-    protected function setParts(): void
-    {
-        if (empty($this->permission) || $this->permission == null) {
-            throw WildcardPermissionNotProperlyFormatted::create($this->permission);
+        if (array_key_exists(strval(null), $index)) {
+            return true;
         }
 
-        $parts = collect(explode(static::PART_DELIMITER, $this->permission));
-
-        $parts->each(function ($item, $key) {
-            $subParts = collect(explode(static::SUBPART_DELIMITER, $item));
-
-            if ($subParts->isEmpty() || $subParts->contains('')) {
-                throw WildcardPermissionNotProperlyFormatted::create($this->permission);
-            }
-
-            $this->parts->add($subParts);
-        });
-
-        if ($this->parts->isEmpty()) {
-            throw WildcardPermissionNotProperlyFormatted::create($this->permission);
+        if (empty($permission)) {
+            return false;
         }
+
+        $firstPermission = array_shift($permission);
+
+        if (
+            array_key_exists($firstPermission, $index) &&
+            $this->checkIndex($permission, $index[$firstPermission])
+        ) {
+            return true;
+        }
+
+        if (array_key_exists(static::WILDCARD_TOKEN, $index)) {
+            return $this->checkIndex($permission, $index[static::WILDCARD_TOKEN]);
+        }
+
+        return false;
     }
 }

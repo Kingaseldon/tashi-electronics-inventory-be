@@ -3,15 +3,20 @@
 namespace Illuminate\Foundation\Console;
 
 use Illuminate\Console\GeneratorCommand;
+use Symfony\Component\Console\Attribute\AsCommand;
 
+#[AsCommand(name: 'make:cast')]
 class CastMakeCommand extends GeneratorCommand
 {
     /**
-     * The console command name.
+     * The name and signature of the console command.
      *
      * @var string
      */
-    protected $name = 'make:cast';
+    protected $signature = 'make:cast
+                    {name : The name of the cast}
+                    {--f|force : Create the class even if the cast already exists}
+                    {--inbound : Generate an inbound cast class}';
 
     /**
      * The console command description.
@@ -34,7 +39,9 @@ class CastMakeCommand extends GeneratorCommand
      */
     protected function getStub()
     {
-        return $this->resolveStubPath('/stubs/cast.stub');
+        return $this->option('inbound')
+            ? $this->resolveStubPath('/stubs/cast.inbound.stub')
+            : $this->resolveStubPath('/stubs/cast.stub');
     }
 
     /**

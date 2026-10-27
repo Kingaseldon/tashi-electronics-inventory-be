@@ -4,18 +4,21 @@ namespace Illuminate\Queue\Console;
 
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Cache\Repository as Cache;
+use Illuminate\Queue\Worker;
 use Illuminate\Support\InteractsWithTime;
+use Symfony\Component\Console\Attribute\AsCommand;
 
+#[AsCommand(name: 'queue:restart')]
 class RestartCommand extends Command
 {
     use InteractsWithTime;
 
     /**
-     * The console command name.
+     * The name and signature of the console command.
      *
      * @var string
      */
-    protected $name = 'queue:restart';
+    protected $signature = 'queue:restart';
 
     /**
      * The console command description.
@@ -35,7 +38,6 @@ class RestartCommand extends Command
      * Create a new queue restart command.
      *
      * @param  \Illuminate\Contracts\Cache\Repository  $cache
-     * @return void
      */
     public function __construct(Cache $cache)
     {
@@ -47,12 +49,20 @@ class RestartCommand extends Command
     /**
      * Execute the console command.
      *
-     * @return void
+     * @return int
      */
     public function handle()
     {
+        if (! Worker::$restartable) {
+            $this->components->error('Queue restarting is currently disabled.');
+
+            return self::FAILURE;
+        }
+
         $this->cache->forever('illuminate:queue:restart', $this->currentTime());
 
-        $this->info('Broadcasting queue restart signal.');
+        $this->components->info('Broadcasting queue restart signal.');
+
+        return self::SUCCESS;
     }
 }

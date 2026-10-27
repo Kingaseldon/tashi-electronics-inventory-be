@@ -2,17 +2,11 @@
 
 namespace Illuminate\Foundation\Testing;
 
-use Carbon\Carbon;
-use Carbon\CarbonImmutable;
-use Illuminate\Console\Application as Artisan;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Queue\Queue;
-use Illuminate\Support\Facades\Facade;
-use Illuminate\Support\Facades\ParallelTesting;
-use Illuminate\Support\Str;
-use Mockery;
-use Mockery\Exception\InvalidCountException;
+use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Foundation\Application;
+use Illuminate\Foundation\Testing\Attributes\UnitTest;
 use PHPUnit\Framework\TestCase as BaseTestCase;
+use ReflectionMethod;
 use Throwable;
 
 abstract class TestCase extends BaseTestCase
@@ -26,52 +20,46 @@ abstract class TestCase extends BaseTestCase
         Concerns\InteractsWithExceptionHandling,
         Concerns\InteractsWithSession,
         Concerns\InteractsWithTime,
-        Concerns\InteractsWithViews,
-        Concerns\MocksApplicationServices;
+        Concerns\InteractsWithTestCaseLifecycle,
+        Concerns\InteractsWithViews;
 
     /**
-     * The Illuminate application instance.
+     * The list of trait that this test uses, fetched recursively.
      *
-     * @var \Illuminate\Foundation\Application
+     * @var array<class-string, int>
      */
-    protected $app;
+    protected array $traitsUsedByTest;
 
     /**
-     * The callbacks that should be run after the application is created.
+     * Memoized result of the withoutBootingFramework check.
      *
-     * @var array
+     * @var bool|null
      */
-    protected $afterApplicationCreatedCallbacks = [];
-
-    /**
-     * The callbacks that should be run before the application is destroyed.
-     *
-     * @var array
-     */
-    protected $beforeApplicationDestroyedCallbacks = [];
-
-    /**
-     * The exception thrown while running an application destruction callback.
-     *
-     * @var \Throwable
-     */
-    protected $callbackException;
-
-    /**
-     * Indicates if we have made it through the base setUp function.
-     *
-     * @var bool
-     */
-    protected $setUpHasRun = false;
+    protected ?bool $withoutBootingFramework = null;
 
     /**
      * Creates the application.
      *
-     * Needs to be implemented by subclasses.
-     *
-     * @return \Symfony\Component\HttpKernel\HttpKernelInterface
+     * @return \Illuminate\Foundation\Application
      */
-    abstract public function createApplication();
+    public function createApplication()
+    {
+        $app = require Application::inferBasePath().'/bootstrap/app.php';
+
+        $this->traitsUsedByTest = class_uses_recursive(static::class);
+
+        if (isset(CachedState::$cachedConfig, $this->traitsUsedByTest[WithCachedConfig::class])) {
+            $this->markConfigCached($app);
+        }
+
+        if (isset(CachedState::$cachedRoutes, $this->traitsUsedByTest[WithCachedRoutes::class])) {
+            $app->booting(fn () => $this->markRoutesCached($app));
+        }
+
+        $app->make(Kernel::class)->bootstrap();
+
+        return $app;
+    }
 
     /**
      * Setup the test environment.
@@ -80,23 +68,11 @@ abstract class TestCase extends BaseTestCase
      */
     protected function setUp(): void
     {
-        Facade::clearResolvedInstances();
-
-        if (! $this->app) {
-            $this->refreshApplication();
-
-            ParallelTesting::callSetUpTestCaseCallbacks($this);
+        if ($this->withoutBootingFramework()) {
+            return;
         }
 
-        $this->setUpTraits();
-
-        foreach ($this->afterApplicationCreatedCallbacks as $callback) {
-            $callback();
-        }
-
-        Model::setEventDispatcher($this->app['events']);
-
-        $this->setUpHasRun = true;
+        $this->setUpTheTestEnvironment();
     }
 
     /**
@@ -110,42 +86,6 @@ abstract class TestCase extends BaseTestCase
     }
 
     /**
-     * Boot the testing helper traits.
-     *
-     * @return array
-     */
-    protected function setUpTraits()
-    {
-        $uses = array_flip(class_uses_recursive(static::class));
-
-        if (isset($uses[RefreshDatabase::class])) {
-            $this->refreshDatabase();
-        }
-
-        if (isset($uses[DatabaseMigrations::class])) {
-            $this->runDatabaseMigrations();
-        }
-
-        if (isset($uses[DatabaseTransactions::class])) {
-            $this->beginDatabaseTransaction();
-        }
-
-        if (isset($uses[WithoutMiddleware::class])) {
-            $this->disableMiddlewareForAllTests();
-        }
-
-        if (isset($uses[WithoutEvents::class])) {
-            $this->disableEventsForAllTests();
-        }
-
-        if (isset($uses[WithFaker::class])) {
-            $this->setUpFaker();
-        }
-
-        return $uses;
-    }
-
-    /**
      * Clean up the testing environment before the next test.
      *
      * @return void
@@ -154,101 +94,40 @@ abstract class TestCase extends BaseTestCase
      */
     protected function tearDown(): void
     {
-        if ($this->app) {
-            $this->callBeforeApplicationDestroyedCallbacks();
-
-            ParallelTesting::callTearDownTestCaseCallbacks($this);
-
-            $this->app->flush();
-
-            $this->app = null;
+        if ($this->withoutBootingFramework()) {
+            return;
         }
 
-        $this->setUpHasRun = false;
+        $this->tearDownTheTestEnvironment();
+    }
 
-        if (property_exists($this, 'serverVariables')) {
-            $this->serverVariables = [];
+    /**
+     * Determine if the test method should boot the framework.
+     *
+     * @return bool
+     *
+     * @throws \ReflectionException
+     */
+    protected function withoutBootingFramework(): bool
+    {
+        if ($this->withoutBootingFramework !== null) {
+            return $this->withoutBootingFramework;
         }
 
-        if (property_exists($this, 'defaultHeaders')) {
-            $this->defaultHeaders = [];
-        }
-
-        if (class_exists('Mockery')) {
-            if ($container = Mockery::getContainer()) {
-                $this->addToAssertionCount($container->mockery_getExpectationCount());
-            }
-
-            try {
-                Mockery::close();
-            } catch (InvalidCountException $e) {
-                if (! Str::contains($e->getMethodName(), ['doWrite', 'askQuestion'])) {
-                    throw $e;
-                }
-            }
-        }
-
-        if (class_exists(Carbon::class)) {
-            Carbon::setTestNow();
-        }
-
-        if (class_exists(CarbonImmutable::class)) {
-            CarbonImmutable::setTestNow();
-        }
-
-        $this->afterApplicationCreatedCallbacks = [];
-        $this->beforeApplicationDestroyedCallbacks = [];
-
-        Artisan::forgetBootstrappers();
-
-        Queue::createPayloadUsing(null);
-
-        if ($this->callbackException) {
-            throw $this->callbackException;
+        try {
+            return $this->withoutBootingFramework = (new ReflectionMethod(static::class, $this->name()))->getAttributes(UnitTest::class) !== [];
+        } catch (Throwable) {
+            return $this->withoutBootingFramework = false;
         }
     }
 
     /**
-     * Register a callback to be run after the application is created.
-     *
-     * @param  callable  $callback
-     * @return void
-     */
-    public function afterApplicationCreated(callable $callback)
-    {
-        $this->afterApplicationCreatedCallbacks[] = $callback;
-
-        if ($this->setUpHasRun) {
-            $callback();
-        }
-    }
-
-    /**
-     * Register a callback to be run before the application is destroyed.
-     *
-     * @param  callable  $callback
-     * @return void
-     */
-    protected function beforeApplicationDestroyed(callable $callback)
-    {
-        $this->beforeApplicationDestroyedCallbacks[] = $callback;
-    }
-
-    /**
-     * Execute the application's pre-destruction callbacks.
+     * Clean up the testing environment before the next test case.
      *
      * @return void
      */
-    protected function callBeforeApplicationDestroyedCallbacks()
+    public static function tearDownAfterClass(): void
     {
-        foreach ($this->beforeApplicationDestroyedCallbacks as $callback) {
-            try {
-                $callback();
-            } catch (Throwable $e) {
-                if (! $this->callbackException) {
-                    $this->callbackException = $e;
-                }
-            }
-        }
+        static::tearDownAfterClassUsingTestCase();
     }
 }

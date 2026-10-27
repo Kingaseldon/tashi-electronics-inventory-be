@@ -5,17 +5,20 @@ namespace Illuminate\Foundation\Console;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Console\Kernel as ConsoleKernelContract;
 use Illuminate\Filesystem\Filesystem;
+use Illuminate\Support\Arr;
 use LogicException;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Throwable;
 
+#[AsCommand(name: 'config:cache')]
 class ConfigCacheCommand extends Command
 {
     /**
-     * The console command name.
+     * The name and signature of the console command.
      *
      * @var string
      */
-    protected $name = 'config:cache';
+    protected $signature = 'config:cache';
 
     /**
      * The console command description.
@@ -35,7 +38,6 @@ class ConfigCacheCommand extends Command
      * Create a new config cache command instance.
      *
      * @param  \Illuminate\Filesystem\Filesystem  $files
-     * @return void
      */
     public function __construct(Filesystem $files)
     {
@@ -53,7 +55,7 @@ class ConfigCacheCommand extends Command
      */
     public function handle()
     {
-        $this->call('config:clear');
+        $this->callSilent('config:clear');
 
         $config = $this->getFreshConfiguration();
 
@@ -68,10 +70,18 @@ class ConfigCacheCommand extends Command
         } catch (Throwable $e) {
             $this->files->delete($configPath);
 
+            foreach (Arr::dot($config) as $key => $value) {
+                try {
+                    eval(var_export($value, true).';');
+                } catch (Throwable $e) {
+                    throw new LogicException("Your configuration files could not be serialized because the value at \"{$key}\" is non-serializable.", 0, $e);
+                }
+            }
+
             throw new LogicException('Your configuration files are not serializable.', 0, $e);
         }
 
-        $this->info('Configuration cached successfully!');
+        $this->components->info('Configuration cached successfully.');
     }
 
     /**
@@ -81,7 +91,7 @@ class ConfigCacheCommand extends Command
      */
     protected function getFreshConfiguration()
     {
-        $app = require $this->laravel->bootstrapPath().'/app.php';
+        $app = require $this->laravel->bootstrapPath('app.php');
 
         $app->useStoragePath($this->laravel->storagePath());
 

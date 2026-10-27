@@ -215,6 +215,23 @@ class ExtensionStoreSaleController extends Controller
                     $productsData = $request->productDetails;
                 }
 
+                $invalidQuantities = $this->invalidSaleQuantities(
+                    $productsData,
+                    $request->customerType == 2
+                );
+
+                if ($invalidQuantities !== []) {
+                    while (DB::transactionLevel() > 0) {
+                        DB::rollBack();
+                    }
+
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Each sale quantity must be a positive whole number.',
+                        'invalidQuantities' => $invalidQuantities,
+                    ], 422);
+                }
+
                 foreach ($productsData as $item) {
                     // ---------- FETCH PRODUCT ----------
                     if ($request->customerType == 2) {
@@ -351,6 +368,23 @@ class ExtensionStoreSaleController extends Controller
 
                     } else {
                         $productsData = $request->productDetails;
+                    }
+
+                    $invalidQuantities = $this->invalidSaleQuantities(
+                        $productsData,
+                        $request->customerType == 2
+                    );
+
+                    if ($invalidQuantities !== []) {
+                        while (DB::transactionLevel() > 0) {
+                            DB::rollBack();
+                        }
+
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Each sale quantity must be a positive whole number.',
+                            'invalidQuantities' => $invalidQuantities,
+                        ], 422);
                     }
 
                     // -------------------------------
@@ -549,6 +583,33 @@ class ExtensionStoreSaleController extends Controller
             'message' => 'Sale Voucher created Successfully',
             'invoice' => $invoiceNo
         ], 200);
+    }
+
+    private function invalidSaleQuantities(mixed $productsData, bool $isExcel): array
+    {
+        if (!is_array($productsData) || $productsData === []) {
+            return [[
+                'row' => 1,
+                'quantity' => null,
+            ]];
+        }
+
+        $invalidQuantities = [];
+
+        foreach ($productsData as $index => $item) {
+            $quantity = is_array($item)
+                ? ($isExcel ? ($item[3] ?? null) : ($item['quantity'] ?? null))
+                : null;
+
+            if (!is_numeric($quantity) || (float) $quantity < 1 || floor((float) $quantity) !== (float) $quantity) {
+                $invalidQuantities[] = [
+                    'row' => $index + ($isExcel ? 2 : 1),
+                    'quantity' => $quantity,
+                ];
+            }
+        }
+
+        return $invalidQuantities;
     }
 
     /**

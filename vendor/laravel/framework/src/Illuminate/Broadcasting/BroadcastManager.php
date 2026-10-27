@@ -4,24 +4,43 @@ namespace Illuminate\Broadcasting;
 
 use Ably\AblyRest;
 use Closure;
+use GuzzleHttp\Client as GuzzleClient;
 use Illuminate\Broadcasting\Broadcasters\AblyBroadcaster;
 use Illuminate\Broadcasting\Broadcasters\LogBroadcaster;
 use Illuminate\Broadcasting\Broadcasters\NullBroadcaster;
 use Illuminate\Broadcasting\Broadcasters\PusherBroadcaster;
 use Illuminate\Broadcasting\Broadcasters\RedisBroadcaster;
+use Illuminate\Broadcasting\Mercure\CreatesMercureDrivers;
+use Illuminate\Bus\UniqueLock;
 use Illuminate\Contracts\Broadcasting\Factory as FactoryContract;
+use Illuminate\Contracts\Broadcasting\ShouldBeUnique;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
+use Illuminate\Contracts\Broadcasting\ShouldRescue;
 use Illuminate\Contracts\Bus\Dispatcher as BusDispatcherContract;
+use Illuminate\Contracts\Cache\Repository as Cache;
 use Illuminate\Contracts\Foundation\CachesRoutes;
+use Illuminate\Queue\Attributes\Connection as ConnectionAttribute;
+use Illuminate\Queue\Attributes\Queue as QueueAttribute;
+use Illuminate\Queue\Attributes\ReadsQueueAttributes;
+use Illuminate\Queue\Events\UniqueJobSkipped;
+use Illuminate\Support\Queue\Concerns\ResolvesQueueRoutes;
+use Illuminate\Support\RebindsCallbacksToSelf;
 use InvalidArgumentException;
 use Psr\Log\LoggerInterface;
 use Pusher\Pusher;
+use ReflectionException;
+use RuntimeException;
+use Throwable;
+
+use function Illuminate\Support\enum_value;
 
 /**
  * @mixin \Illuminate\Contracts\Broadcasting\Broadcaster
  */
 class BroadcastManager implements FactoryContract
 {
+    use CreatesMercureDrivers, ReadsQueueAttributes, RebindsCallbacksToSelf, ResolvesQueueRoutes;
+
     /**
      * The application instance.
      *
@@ -47,7 +66,6 @@ class BroadcastManager implements FactoryContract
      * Create a new manager instance.
      *
      * @param  \Illuminate\Contracts\Container\Container  $app
-     * @return void
      */
     public function __construct($app)
     {
@@ -55,12 +73,12 @@ class BroadcastManager implements FactoryContract
     }
 
     /**
-     * Register the routes for handling broadcast authentication and sockets.
+     * Register the routes for handling broadcast channel authentication and sockets.
      *
      * @param  array|null  $attributes
      * @return void
      */
-    public function routes(array $attributes = null)
+    public function routes(?array $attributes = null)
     {
         if ($this->app instanceof CachesRoutes && $this->app->routesAreCached()) {
             return;
@@ -72,8 +90,43 @@ class BroadcastManager implements FactoryContract
             $router->match(
                 ['get', 'post'], '/broadcasting/auth',
                 '\\'.BroadcastController::class.'@authenticate'
-            )->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
+            )->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class]);
         });
+    }
+
+    /**
+     * Register the routes for handling broadcast user authentication.
+     *
+     * @param  array|null  $attributes
+     * @return void
+     */
+    public function userRoutes(?array $attributes = null)
+    {
+        if ($this->app instanceof CachesRoutes && $this->app->routesAreCached()) {
+            return;
+        }
+
+        $attributes = $attributes ?: ['middleware' => ['web']];
+
+        $this->app['router']->group($attributes, function ($router) {
+            $router->match(
+                ['get', 'post'], '/broadcasting/user-auth',
+                '\\'.BroadcastController::class.'@authenticateUser'
+            )->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class]);
+        });
+    }
+
+    /**
+     * Register the routes for handling broadcast authentication and sockets.
+     *
+     * Alias of "routes" method.
+     *
+     * @param  array|null  $attributes
+     * @return void
+     */
+    public function channelRoutes(?array $attributes = null)
+    {
+        $this->routes($attributes);
     }
 
     /**
@@ -94,9 +147,33 @@ class BroadcastManager implements FactoryContract
     }
 
     /**
+     * Begin sending an anonymous broadcast to the given channels.
+     */
+    public function on(Channel|string|array $channels): AnonymousEvent
+    {
+        return new AnonymousEvent($channels);
+    }
+
+    /**
+     * Begin sending an anonymous broadcast to the given private channels.
+     */
+    public function private(string $channel): AnonymousEvent
+    {
+        return $this->on(new PrivateChannel($channel));
+    }
+
+    /**
+     * Begin sending an anonymous broadcast to the given presence channels.
+     */
+    public function presence(string $channel): AnonymousEvent
+    {
+        return $this->on(new PresenceChannel($channel));
+    }
+
+    /**
      * Begin broadcasting an event.
      *
-     * @param  mixed|null  $event
+     * @param  mixed  $event
      * @return \Illuminate\Broadcasting\PendingBroadcast
      */
     public function event($event = null)
@@ -115,45 +192,90 @@ class BroadcastManager implements FactoryContract
         if ($event instanceof ShouldBroadcastNow ||
             (is_object($event) &&
              method_exists($event, 'shouldBroadcastNow') &&
-             $event->shouldBroadcastNow())) {
-            return $this->app->make(BusDispatcherContract::class)->dispatchNow(new BroadcastEvent(clone $event));
+             $event->shouldBroadcastNow()) ||
+            $this->broadcastsToSynchronousMercureConnections($event)) {
+            $dispatch = fn () => $this->app->make(BusDispatcherContract::class)
+                ->dispatchNow(new BroadcastEvent(clone $event));
+
+            return $event instanceof ShouldRescue
+                ? $this->rescue($dispatch)
+                : $dispatch();
         }
 
-        $queue = null;
+        $queue = match (true) {
+            method_exists($event, 'broadcastQueue') => $event->broadcastQueue(),
+            isset($event->broadcastQueue) => $event->broadcastQueue,
+            isset($event->queue) => $event->queue,
+            default => null,
+        };
 
-        if (method_exists($event, 'broadcastQueue')) {
-            $queue = $event->broadcastQueue();
-        } elseif (isset($event->broadcastQueue)) {
-            $queue = $event->broadcastQueue;
-        } elseif (isset($event->queue)) {
-            $queue = $event->queue;
+        if (is_null($queue)) {
+            $queue = $this->getAttributeValue($event, QueueAttribute::class, 'queue')
+                ?? $this->resolveQueueFromQueueRoute($event)
+                ?? null;
         }
 
-        $this->app->make('queue')->connection($event->connection ?? null)->pushOn(
-            $queue, new BroadcastEvent(clone $event)
-        );
+        $broadcastEvent = new BroadcastEvent(clone $event);
+
+        if ($event instanceof ShouldBeUnique) {
+            $broadcastEvent = new UniqueBroadcastEvent(clone $event);
+
+            if ($this->mustBeUniqueAndCannotAcquireLock($broadcastEvent)) {
+                $this->app->make('events')->dispatch(new UniqueJobSkipped($broadcastEvent));
+
+                return;
+            }
+        }
+
+        $push = fn () => $this->app->make('queue')
+            ->connection(
+                $event->connection
+                    ?? $this->getAttributeValue($event, ConnectionAttribute::class, 'connection')
+                    ?? $this->resolveConnectionFromQueueRoute($event)
+                    ?? null
+            )
+            ->pushOn($queue, $broadcastEvent);
+
+        $event instanceof ShouldRescue
+            ? $this->rescue($push)
+            : $push();
     }
 
     /**
-     * Get a driver instance.
+     * Determine if the broadcastable event must be unique and determine if we can acquire the necessary lock.
      *
-     * @param  string|null  $driver
+     * @param  mixed  $event
+     * @return bool
+     */
+    protected function mustBeUniqueAndCannotAcquireLock($event)
+    {
+        return ! (new UniqueLock(
+            method_exists($event, 'uniqueVia')
+                ? $event->uniqueVia()
+                : $this->app->make(Cache::class)
+        ))->acquire($event);
+    }
+
+    /**
+     * Get a broadcaster instance by name.
+     *
+     * @param  \UnitEnum|string|null  $name
      * @return mixed
      */
-    public function connection($driver = null)
+    public function connection($name = null)
     {
-        return $this->driver($driver);
+        return $this->driver($name);
     }
 
     /**
      * Get a driver instance.
      *
-     * @param  string|null  $name
+     * @param  \UnitEnum|string|null  $name
      * @return mixed
      */
     public function driver($name = null)
     {
-        $name = $name ?: $this->getDefaultDriver();
+        $name = enum_value($name) ?: $this->getDefaultDriver();
 
         return $this->drivers[$name] = $this->get($name);
     }
@@ -176,10 +298,15 @@ class BroadcastManager implements FactoryContract
      * @return \Illuminate\Contracts\Broadcasting\Broadcaster
      *
      * @throws \InvalidArgumentException
+     * @throws \RuntimeException
      */
     protected function resolve($name)
     {
         $config = $this->getConfig($name);
+
+        if (is_null($config)) {
+            throw new InvalidArgumentException("Broadcast connection [{$name}] is not defined.");
+        }
 
         if (isset($this->customCreators[$config['driver']])) {
             return $this->callCustomCreator($config);
@@ -191,7 +318,11 @@ class BroadcastManager implements FactoryContract
             throw new InvalidArgumentException("Driver [{$config['driver']}] is not supported.");
         }
 
-        return $this->{$driverMethod}($config);
+        try {
+            return $this->{$driverMethod}($config);
+        } catch (Throwable $e) {
+            throw new RuntimeException("Failed to create broadcaster for connection \"{$name}\" with error: {$e->getMessage()}.", 0, $e);
+        }
     }
 
     /**
@@ -211,18 +342,54 @@ class BroadcastManager implements FactoryContract
      * @param  array  $config
      * @return \Illuminate\Contracts\Broadcasting\Broadcaster
      */
+    protected function createReverbDriver(array $config)
+    {
+        return $this->createPusherDriver($config);
+    }
+
+    /**
+     * Create an instance of the driver.
+     *
+     * @param  array  $config
+     * @return \Illuminate\Contracts\Broadcasting\Broadcaster
+     */
     protected function createPusherDriver(array $config)
     {
+        return new PusherBroadcaster($this->pusher($config), $config['jsonp'] ?? false);
+    }
+
+    /**
+     * Get a Pusher instance for the given configuration.
+     *
+     * @param  array  $config
+     * @return \Pusher\Pusher
+     */
+    public function pusher(array $config)
+    {
+        $guzzleClient = new GuzzleClient(
+            array_merge(
+                [
+                    'connect_timeout' => 10,
+                    'crypto_method' => STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT,
+                    'timeout' => 30,
+                ],
+                $config['client_options'] ?? [],
+            ),
+        );
+
         $pusher = new Pusher(
-            $config['key'], $config['secret'],
-            $config['app_id'], $config['options'] ?? []
+            $config['key'],
+            $config['secret'],
+            $config['app_id'],
+            $config['options'] ?? [],
+            $guzzleClient,
         );
 
         if ($config['log'] ?? false) {
             $pusher->setLogger($this->app->make(LoggerInterface::class));
         }
 
-        return new PusherBroadcaster($pusher);
+        return $pusher;
     }
 
     /**
@@ -233,7 +400,18 @@ class BroadcastManager implements FactoryContract
      */
     protected function createAblyDriver(array $config)
     {
-        return new AblyBroadcaster(new AblyRest($config));
+        return new AblyBroadcaster($this->ably($config));
+    }
+
+    /**
+     * Get an Ably instance for the given configuration.
+     *
+     * @param  array  $config
+     * @return \Ably\AblyRest
+     */
+    public function ably(array $config)
+    {
+        return new AblyRest($config);
     }
 
     /**
@@ -278,7 +456,7 @@ class BroadcastManager implements FactoryContract
      * Get the connection configuration.
      *
      * @param  string  $name
-     * @return array
+     * @return array|null
      */
     protected function getConfig($name)
     {
@@ -296,29 +474,29 @@ class BroadcastManager implements FactoryContract
      */
     public function getDefaultDriver()
     {
-        return $this->app['config']['broadcasting.default'];
+        return $this->app['config']['broadcasting.default'] ?? 'null';
     }
 
     /**
      * Set the default driver name.
      *
-     * @param  string  $name
+     * @param  \UnitEnum|string  $name
      * @return void
      */
     public function setDefaultDriver($name)
     {
-        $this->app['config']['broadcasting.default'] = $name;
+        $this->app['config']['broadcasting.default'] = enum_value($name);
     }
 
     /**
-     * Disconnect the given disk and remove from local cache.
+     * Disconnect the given driver / connection and remove it from local cache.
      *
-     * @param  string|null  $name
+     * @param  \UnitEnum|string|null  $name
      * @return void
      */
     public function purge($name = null)
     {
-        $name = $name ?? $this->getDefaultDriver();
+        $name = enum_value($name) ?? $this->getDefaultDriver();
 
         unset($this->drivers[$name]);
     }
@@ -328,13 +506,37 @@ class BroadcastManager implements FactoryContract
      *
      * @param  string  $driver
      * @param  \Closure  $callback
+     *
+     * @param-closure-this  $this  $callback
+     *
      * @return $this
      */
     public function extend($driver, Closure $callback)
     {
+        try {
+            $callback = $this->bindCallbackToSelf($callback) ?? throw new RuntimeException('Unable to bind custom driver callback');
+        } catch (ReflectionException $e) {
+            throw new RuntimeException('Unable to bind custom driver callback', previous: $e);
+        }
+
         $this->customCreators[$driver] = $callback;
 
         return $this;
+    }
+
+    /**
+     * Execute the given callback using "rescue" if possible.
+     *
+     * @param  \Closure  $callback
+     * @return mixed
+     */
+    protected function rescue(Closure $callback)
+    {
+        if (function_exists('rescue')) {
+            return rescue($callback);
+        }
+
+        return $callback();
     }
 
     /**

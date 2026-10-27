@@ -6,6 +6,7 @@ use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use App\Services\SerialNumberGenerator;
 use App\Models\Product;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -32,7 +33,7 @@ class AccessoryImport implements ToModel, WithHeadingRow
     /**
      * @param Collection $collection
      */
-    public function model(array $row)
+    public function model(array $row): Model|array|null
     {
 
         // Create a new Product instance with the retrieved values
@@ -113,6 +114,8 @@ class AccessoryImport implements ToModel, WithHeadingRow
                 }
             }
         }
+
+        return null;
     }
     public function getValidationErrors()
     {

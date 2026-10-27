@@ -7,8 +7,15 @@ use Closure;
 use Illuminate\Contracts\Support\DeferringDisplayableValue;
 use Illuminate\Support\Enumerable;
 use IteratorAggregate;
+use Stringable;
+use Traversable;
 
-class InvokableComponentVariable implements DeferringDisplayableValue, IteratorAggregate
+/**
+ * @template-covariant TValue = mixed
+ *
+ * @mixin TValue
+ */
+class InvokableComponentVariable implements DeferringDisplayableValue, IteratorAggregate, Stringable
 {
     /**
      * The callable instance to resolve the variable value.
@@ -20,8 +27,7 @@ class InvokableComponentVariable implements DeferringDisplayableValue, IteratorA
     /**
      * Create a new variable instance.
      *
-     * @param  \Closure  $callable
-     * @return void
+     * @param  \Closure(): TValue  $callable
      */
     public function __construct(Closure $callable)
     {
@@ -39,12 +45,11 @@ class InvokableComponentVariable implements DeferringDisplayableValue, IteratorA
     }
 
     /**
-     * Get an interator instance for the variable.
+     * Get an iterator instance for the variable.
      *
      * @return \ArrayIterator
      */
-    #[\ReturnTypeWillChange]
-    public function getIterator()
+    public function getIterator(): Traversable
     {
         $result = $this->__invoke();
 
@@ -77,7 +82,7 @@ class InvokableComponentVariable implements DeferringDisplayableValue, IteratorA
     /**
      * Resolve the variable.
      *
-     * @return mixed
+     * @return TValue
      */
     public function __invoke()
     {
@@ -87,7 +92,7 @@ class InvokableComponentVariable implements DeferringDisplayableValue, IteratorA
     /**
      * Resolve the variable as a string.
      *
-     * @return mixed
+     * @return string
      */
     public function __toString()
     {

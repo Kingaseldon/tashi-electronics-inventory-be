@@ -3,15 +3,19 @@
 namespace Illuminate\Foundation\Console;
 
 use Illuminate\Console\GeneratorCommand;
+use Symfony\Component\Console\Attribute\AsCommand;
 
+#[AsCommand(name: 'make:event')]
 class EventMakeCommand extends GeneratorCommand
 {
     /**
-     * The console command name.
+     * The name and signature of the console command.
      *
      * @var string
      */
-    protected $name = 'make:event';
+    protected $signature = 'make:event
+                    {name : The name of the event}
+                    {--f|force : Create the class even if the event already exists}';
 
     /**
      * The console command description.
@@ -58,8 +62,8 @@ class EventMakeCommand extends GeneratorCommand
     protected function resolveStubPath($stub)
     {
         return file_exists($customPath = $this->laravel->basePath(trim($stub, '/')))
-                        ? $customPath
-                        : __DIR__.$stub;
+            ? $customPath
+            : __DIR__.$stub;
     }
 
     /**

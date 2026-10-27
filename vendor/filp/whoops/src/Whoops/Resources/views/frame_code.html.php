@@ -8,7 +8,7 @@
         <div class="frame-file">
           <?php $filePath = $frame->getFile(); ?>
           <?php if ($filePath && $editorHref = $handler->getEditorHref($filePath, (int) $line)): ?>
-            <a href="<?php echo $editorHref ?>" class="editor-link"<?php echo ($handler->getEditorAjax($filePath, (int) $line) ? ' data-ajax' : '') ?>>
+            <a href="<?php echo $tpl->escape($editorHref) ?>" class="editor-link"<?php echo ($handler->getEditorAjax($filePath, (int) $line) ? ' data-ajax' : '') ?>>
               Open:
               <strong><?php echo $tpl->breakOnDelimiter('/', $tpl->escape($filePath ?: '<#unknown>')) ?></strong>
             </a>
@@ -31,6 +31,7 @@
         ?>
             <pre class="code-block line-numbers"
               data-line="<?php echo $line ?>"
+              data-line-offset="<?php echo $start ?>"
               data-start="<?php echo $start ?>"
             ><code class="language-php"><?php echo $tpl->escape($code) ?></code></pre>
 

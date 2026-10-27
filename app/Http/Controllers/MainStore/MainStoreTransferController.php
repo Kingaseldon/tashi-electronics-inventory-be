@@ -161,23 +161,32 @@ class MainStoreTransferController extends Controller
 
                 $file = $request->file('attachment');
                 $nestedCollection = Excel::toCollection(new TransferProduct, $file);
+                $transferRows = $nestedCollection->first() ?? collect();
+                $firstRow = $transferRows->first();
+                $firstRow = $firstRow instanceof \Illuminate\Support\Collection ? $firstRow->all() : $firstRow;
 
-                // Flatten and transform the nested collection into a simple array
-                $flattenedArray = $nestedCollection->flatten(1)->toArray();
+                if (!is_array($firstRow) || !TransferProduct::hasRequiredColumns($firstRow)) {
+                    DB::rollBack();
 
+                    return response()->json([
+                        'message' => 'The attachment must include serial number and transfer quantity columns.'
+                    ], 422);
+                }
 
                 $errorMessage = "These serial numbers are not found";
                 $errorSerialNumbers = [];
 
-                for ($i = 1; $i < count($flattenedArray); $i++) {
+                foreach ($transferRows as $row) {
+                    $row = $row instanceof \Illuminate\Support\Collection ? $row->all() : $row;
+                    $serialNumber = TransferProduct::serialNumber($row);
+                    $transferQuantity = TransferProduct::transferQuantity($row);
 
-                    // $product = Product::where('serial_no', $flattenedArray[$i][1])->where('description', $flattenedArray[$i][0])->where('main_store_qty', '!=', 0)->first();
-                    $product = Product::where('serial_no', $flattenedArray[$i][1])->where('main_store_qty', '!=', 0)->first();
+                    if ($serialNumber === '') {
+                        continue;
+                    }
 
-
+                    $product = Product::where('serial_no', $serialNumber)->where('main_store_qty', '!=', 0)->first();
                     if ($product) { // serial number present
-                        $transferQuantity = $flattenedArray[$i][2];
-                        // $product = Product::where('serial_no', $value['serial_no'])->where('main_store_qty', '!=', 0)->first();
                         $quantityafterDistribute = $product->main_store_qty;
 
                         $totalDistribute = $product->main_store_distributed_qty;
@@ -185,6 +194,8 @@ class MainStoreTransferController extends Controller
 
                         //check when transfer quantity should not be greater than the stock quantity in
                         if ($transferQuantity > $quantityafterDistribute) {
+                            DB::rollBack();
+
                             return response()->json([
                                 'message' => 'Transfer Quantity should not be greater than the quantity in stock'
                             ], 422);
@@ -259,10 +270,12 @@ class MainStoreTransferController extends Controller
                             'created_by' => auth()->user()->id,
                         ]);
                     } else {
-                        $errorSerialNumbers[] = $flattenedArray[$i][1];
+                        $errorSerialNumbers[] = $serialNumber;
                     }
-                } // foreach ends
+                }
                 if (count($errorSerialNumbers) > 0) {
+                    DB::rollBack();
+
                     return response()->json([
                         'success' => false,
                         'message' => $errorMessage,
@@ -281,6 +294,8 @@ class MainStoreTransferController extends Controller
 
                     //check when transfer quantity should not be greater than the stock quantity in
                     if ($transferQuantity > $quantityafterDistribute) {
+                        DB::rollBack();
+
                         return response()->json([
                             'message' => 'Transfer Quantity should not be greater than the quantity in stock'
                         ], 422);

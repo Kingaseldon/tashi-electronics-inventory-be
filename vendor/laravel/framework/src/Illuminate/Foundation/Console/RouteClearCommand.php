@@ -4,15 +4,17 @@ namespace Illuminate\Foundation\Console;
 
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
+use Symfony\Component\Console\Attribute\AsCommand;
 
+#[AsCommand(name: 'route:clear')]
 class RouteClearCommand extends Command
 {
     /**
-     * The console command name.
+     * The name and signature of the console command.
      *
      * @var string
      */
-    protected $name = 'route:clear';
+    protected $signature = 'route:clear';
 
     /**
      * The console command description.
@@ -32,7 +34,6 @@ class RouteClearCommand extends Command
      * Create a new route clear command instance.
      *
      * @param  \Illuminate\Filesystem\Filesystem  $files
-     * @return void
      */
     public function __construct(Filesystem $files)
     {
@@ -50,6 +51,6 @@ class RouteClearCommand extends Command
     {
         $this->files->delete($this->laravel->getCachedRoutesPath());
 
-        $this->info('Route cache cleared!');
+        $this->components->info('Route cache cleared successfully.');
     }
 }

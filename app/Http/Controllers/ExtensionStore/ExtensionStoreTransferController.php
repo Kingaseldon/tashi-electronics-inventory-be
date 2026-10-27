@@ -395,36 +395,51 @@ class ExtensionStoreTransferController extends Controller
                 $file = $request->file('attachment');
 
                 $nestedCollection = Excel::toCollection(new TransferProduct, $file);
+                $transferRows = $nestedCollection->first() ?? collect();
+                $firstRow = $transferRows->first();
+                $firstRow = $firstRow instanceof \Illuminate\Support\Collection ? $firstRow->all() : $firstRow;
 
-                // Flatten and transform the nested collection into a simple array
-                $flattenedArray = $nestedCollection->flatten(1)->toArray();
+                if (!is_array($firstRow) || !TransferProduct::hasRequiredColumns($firstRow)) {
+                    DB::rollBack();
 
+                    return response()->json([
+                        'message' => 'The attachment must include serial number and transfer quantity columns.'
+                    ], 422);
+                }
 
                 $errorMessage = "These serial numbers are not found";
                 $errorSerialNumbers = [];
 
-                for ($i = 1; $i < count($flattenedArray); $i++) {
-                    $product = Product::where('serial_no', $flattenedArray[$i][1])->where('description', $flattenedArray[$i][0])
+                foreach ($transferRows as $row) {
+                    $row = $row instanceof \Illuminate\Support\Collection ? $row->all() : $row;
+                    $serialNumber = TransferProduct::serialNumber($row);
+                    $description = TransferProduct::description($row);
+                    $transferQuantity = TransferProduct::transferQuantity($row);
+
+                    if ($serialNumber === '') {
+                        continue;
+                    }
+
+                    $product = Product::where('serial_no', $serialNumber)->where('description', $description)
                         ->join('product_transactions as Tb1', 'Tb1.product_id', '=', 'products.id')
                         ->select('products.*', 'Tb1.*', 'products.description as product_description') // Ensures all product columns are retrieved
                         ->first();
 
                     if ($product) { // serial number present
-                        $transferQuantity = $flattenedArray[$i][2];
-
-
                         $requisition = ProductRequisition::where('description', $product->product_description)
                             ->where('sale_type_id', $product->sale_type_id)
                             ->where('requisition_number', $requisitionId)
                             ->first();
 
-                        $productTable = Product::where('serial_no',  $flattenedArray[$i][1])->first();
+                        $productTable = Product::where('serial_no', $serialNumber)->first();
                         $transaction = ProductTransaction::where('product_id', $product->product_id)->where('region_extension_id', $requisition->requested_extension)->first();
 
                         $extensionStoreQty = $transaction->store_quantity;
 
                         //check when transfer quantity should not be greater than the stock quantity in
                         if ($transferQuantity > $extensionStoreQty) {
+                            DB::rollBack();
+
                             return response()->json([
                                 'message' => 'Transfer Quantity should not be greater than the quantity in stock'
                             ], 422);
@@ -521,10 +536,12 @@ class ExtensionStoreTransferController extends Controller
                             $notification->save();
                         }
                     } else {
-                        $errorSerialNumbers[] = $flattenedArray[$i][1];
+                        $errorSerialNumbers[] = $serialNumber;
                     }
-                } // foreach ends
+                }
                 if (count($errorSerialNumbers) > 0) {
+                    DB::rollBack();
+
                     return response()->json([
                         'success' => false,
                         'message' => $errorMessage,

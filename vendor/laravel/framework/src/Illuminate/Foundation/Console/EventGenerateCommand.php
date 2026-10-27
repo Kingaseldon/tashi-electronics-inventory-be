@@ -4,16 +4,17 @@ namespace Illuminate\Foundation\Console;
 
 use Illuminate\Console\Command;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider;
-use Illuminate\Support\Str;
+use Symfony\Component\Console\Attribute\AsCommand;
 
+#[AsCommand(name: 'event:generate')]
 class EventGenerateCommand extends Command
 {
     /**
-     * The console command name.
+     * The name and signature of the console command.
      *
      * @var string
      */
-    protected $name = 'event:generate';
+    protected $signature = 'event:generate';
 
     /**
      * The console command description.
@@ -21,6 +22,13 @@ class EventGenerateCommand extends Command
      * @var string
      */
     protected $description = 'Generate the missing events and listeners based on registration';
+
+    /**
+     * Indicates whether the command should be shown in the Artisan command list.
+     *
+     * @var bool
+     */
+    protected $hidden = true;
 
     /**
      * Execute the console command.
@@ -37,7 +45,7 @@ class EventGenerateCommand extends Command
             }
         }
 
-        $this->info('Events and listeners generated successfully!');
+        $this->components->info('Events and listeners generated successfully.');
     }
 
     /**
@@ -49,7 +57,7 @@ class EventGenerateCommand extends Command
      */
     protected function makeEventAndListeners($event, $listeners)
     {
-        if (! Str::contains($event, '\\')) {
+        if (! str_contains($event, '\\')) {
             return;
         }
 

@@ -4,16 +4,24 @@ namespace Illuminate\Foundation\Console;
 
 use Illuminate\Console\GeneratorCommand;
 use InvalidArgumentException;
-use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\OutputInterface;
 
+use function Laravel\Prompts\suggest;
+
+#[AsCommand(name: 'make:observer')]
 class ObserverMakeCommand extends GeneratorCommand
 {
     /**
-     * The console command name.
+     * The name and signature of the console command.
      *
      * @var string
      */
-    protected $name = 'make:observer';
+    protected $signature = 'make:observer
+                    {name : The name of the observer}
+                    {--f|force : Create the class even if the observer already exists}
+                    {--m|model= : The model that the observer applies to}';
 
     /**
      * The console command description.
@@ -82,7 +90,7 @@ class ObserverMakeCommand extends GeneratorCommand
      */
     protected function parseModel($model)
     {
-        if (preg_match('([^A-Za-z0-9_/\\\\])', $model)) {
+        if (preg_match('/[^A-Za-z0-9_\/\\\\]/', $model)) {
             throw new InvalidArgumentException('Model name contains invalid characters.');
         }
 
@@ -126,14 +134,25 @@ class ObserverMakeCommand extends GeneratorCommand
     }
 
     /**
-     * Get the console command arguments.
+     * Interact further with the user if they were prompted for missing arguments.
      *
-     * @return array
+     * @param  \Symfony\Component\Console\Input\InputInterface  $input
+     * @param  \Symfony\Component\Console\Output\OutputInterface  $output
+     * @return void
      */
-    protected function getOptions()
+    protected function afterPromptingForMissingArguments(InputInterface $input, OutputInterface $output)
     {
-        return [
-            ['model', 'm', InputOption::VALUE_OPTIONAL, 'The model that the observer applies to.'],
-        ];
+        if ($this->isReservedName($this->getNameInput()) || $this->didReceiveOptions($input)) {
+            return;
+        }
+
+        $model = suggest(
+            'What model should be observed? (Optional)',
+            $this->findAvailableModels(),
+        );
+
+        if ($model) {
+            $input->setOption('model', $model);
+        }
     }
 }

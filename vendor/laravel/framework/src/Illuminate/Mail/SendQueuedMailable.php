@@ -6,10 +6,22 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Mail\Factory as MailFactory;
 use Illuminate\Contracts\Mail\Mailable as MailableContract;
 use Illuminate\Contracts\Queue\ShouldBeEncrypted;
+use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
+use Illuminate\Queue\Attributes\Backoff;
+use Illuminate\Queue\Attributes\Connection;
+use Illuminate\Queue\Attributes\CountCrashesAsExceptions;
+use Illuminate\Queue\Attributes\DeleteWhenMissingModels;
+use Illuminate\Queue\Attributes\FailOnTimeout;
+use Illuminate\Queue\Attributes\MaxExceptions;
+use Illuminate\Queue\Attributes\Queue as QueueAttribute;
+use Illuminate\Queue\Attributes\ReadsQueueAttributes;
+use Illuminate\Queue\Attributes\Timeout;
+use Illuminate\Queue\Attributes\Tries;
+use Illuminate\Queue\InteractsWithQueue;
 
 class SendQueuedMailable
 {
-    use Queueable;
+    use InteractsWithQueue, Queueable, ReadsQueueAttributes;
 
     /**
      * The mailable message instance.
@@ -33,6 +45,13 @@ class SendQueuedMailable
     public $timeout;
 
     /**
+     * The maximum number of unhandled exceptions to allow before failing.
+     *
+     * @var int|null
+     */
+    public $maxExceptions;
+
+    /**
      * Indicates if the job should be encrypted.
      *
      * @var bool
@@ -40,18 +59,48 @@ class SendQueuedMailable
     public $shouldBeEncrypted = false;
 
     /**
+     * Indicates if the job should be deleted when models are missing.
+     */
+    public bool $deleteWhenMissingModels = false;
+
+    /**
+     * Indicates if the job should be marked as failed on timeout.
+     *
+     * @var bool
+     */
+    public $failOnTimeout = false;
+
+    /**
+     * Indicates if worker crashes should count towards the maximum exceptions.
+     *
+     * @var bool
+     */
+    public $countCrashesAsExceptions = false;
+
+    /**
      * Create a new job instance.
      *
      * @param  \Illuminate\Contracts\Mail\Mailable  $mailable
-     * @return void
      */
     public function __construct(MailableContract $mailable)
     {
         $this->mailable = $mailable;
-        $this->tries = property_exists($mailable, 'tries') ? $mailable->tries : null;
-        $this->timeout = property_exists($mailable, 'timeout') ? $mailable->timeout : null;
-        $this->afterCommit = property_exists($mailable, 'afterCommit') ? $mailable->afterCommit : null;
+
+        if ($mailable instanceof ShouldQueueAfterCommit) {
+            $this->afterCommit = true;
+        } else {
+            $this->afterCommit = property_exists($mailable, 'afterCommit') ? $mailable->afterCommit : null;
+        }
+
+        $this->connection = $this->getAttributeValue($mailable, Connection::class, 'connection');
+        $this->maxExceptions = $this->getAttributeValue($mailable, MaxExceptions::class, 'maxExceptions');
+        $this->queue = $this->getAttributeValue($mailable, QueueAttribute::class, 'queue');
         $this->shouldBeEncrypted = $mailable instanceof ShouldBeEncrypted;
+        $this->timeout = $this->getAttributeValue($mailable, Timeout::class, 'timeout');
+        $this->tries = $this->getAttributeValue($mailable, Tries::class, 'tries');
+        $this->deleteWhenMissingModels = $this->getAttributeValue($mailable, DeleteWhenMissingModels::class, 'deleteWhenMissingModels') ?? false;
+        $this->failOnTimeout = $this->getAttributeValue($mailable, FailOnTimeout::class, 'failOnTimeout') ?? false;
+        $this->countCrashesAsExceptions = $this->getAttributeValue($mailable, CountCrashesAsExceptions::class, 'countCrashesAsExceptions') ?? false;
     }
 
     /**
@@ -66,13 +115,33 @@ class SendQueuedMailable
     }
 
     /**
-     * Get the display name for the queued job.
+     * Get the number of seconds before a released mailable will be available.
      *
-     * @return string
+     * @return mixed
      */
-    public function displayName()
+    public function backoff()
     {
-        return get_class($this->mailable);
+        $backoff = $this->getAttributeValue($this->mailable, Backoff::class, 'backoff');
+
+        if (method_exists($this->mailable, 'backoff')) {
+            $backoff = $this->mailable->backoff();
+        }
+
+        return $backoff;
+    }
+
+    /**
+     * Determine the time at which the job should timeout.
+     *
+     * @return \DateTime|null
+     */
+    public function retryUntil()
+    {
+        if (! method_exists($this->mailable, 'retryUntil') && ! isset($this->mailable->retryUntil)) {
+            return;
+        }
+
+        return $this->mailable->retryUntil ?? $this->mailable->retryUntil();
     }
 
     /**
@@ -89,17 +158,13 @@ class SendQueuedMailable
     }
 
     /**
-     * Get the number of seconds before a released mailable will be available.
+     * Get the display name for the queued job.
      *
-     * @return mixed
+     * @return string
      */
-    public function backoff()
+    public function displayName()
     {
-        if (! method_exists($this->mailable, 'backoff') && ! isset($this->mailable->backoff)) {
-            return;
-        }
-
-        return $this->mailable->backoff ?? $this->mailable->backoff();
+        return get_class($this->mailable);
     }
 
     /**

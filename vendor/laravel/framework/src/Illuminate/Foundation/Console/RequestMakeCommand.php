@@ -3,15 +3,19 @@
 namespace Illuminate\Foundation\Console;
 
 use Illuminate\Console\GeneratorCommand;
+use Symfony\Component\Console\Attribute\AsCommand;
 
+#[AsCommand(name: 'make:request')]
 class RequestMakeCommand extends GeneratorCommand
 {
     /**
-     * The console command name.
+     * The name and signature of the console command.
      *
      * @var string
      */
-    protected $name = 'make:request';
+    protected $signature = 'make:request
+                    {name : The name of the request}
+                    {--f|force : Create the class even if the request already exists}';
 
     /**
      * The console command description.
@@ -46,8 +50,8 @@ class RequestMakeCommand extends GeneratorCommand
     protected function resolveStubPath($stub)
     {
         return file_exists($customPath = $this->laravel->basePath(trim($stub, '/')))
-                        ? $customPath
-                        : __DIR__.$stub;
+            ? $customPath
+            : __DIR__.$stub;
     }
 
     /**

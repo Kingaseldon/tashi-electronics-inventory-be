@@ -4,6 +4,7 @@ namespace App\Imports;
 
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use App\Models\Product;
 use Carbon\Carbon;
@@ -27,7 +28,7 @@ class SimImport implements ToModel, WithHeadingRow
     /**
      * @param Collection $collection
      */
-    public function model(array $row)
+    public function model(array $row): Model|array|null
     {
         $existingProduct = Product::where('serial_no', $row['mobile_number'])->first();
 
@@ -83,6 +84,8 @@ class SimImport implements ToModel, WithHeadingRow
                 return $product;
             }
         }
+
+        return null;
     }
     public function getValidationErrors()
     {

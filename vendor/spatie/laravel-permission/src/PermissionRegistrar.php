@@ -2,87 +2,99 @@
 
 namespace Spatie\Permission;
 
+use DateInterval;
 use Illuminate\Cache\CacheManager;
 use Illuminate\Contracts\Auth\Access\Authorizable;
 use Illuminate\Contracts\Auth\Access\Gate;
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Contracts\Cache\Store;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Model;
 use Spatie\Permission\Contracts\Permission;
+use Spatie\Permission\Contracts\PermissionsTeamResolver;
 use Spatie\Permission\Contracts\Role;
+use Spatie\Permission\Models\Permission as PermissionModel;
 
 class PermissionRegistrar
 {
-    /** @var \Illuminate\Contracts\Cache\Repository */
-    protected $cache;
+    protected Repository $cache;
 
-    /** @var \Illuminate\Cache\CacheManager */
-    protected $cacheManager;
+    protected CacheManager $cacheManager;
 
-    /** @var string */
-    protected $permissionClass;
+    protected string $permissionClass;
 
-    /** @var string */
-    protected $roleClass;
+    protected string $roleClass;
 
-    /** @var \Illuminate\Database\Eloquent\Collection */
-    protected $permissions;
+    protected ?string $teamClass = null;
 
-    /** @var string */
-    public static $pivotRole;
+    protected Collection|array|null $permissions = null;
 
-    /** @var string */
-    public static $pivotPermission;
+    public string $pivotRole;
 
-    /** @var \DateInterval|int */
-    public static $cacheExpirationTime;
+    public string $pivotPermission;
 
-    /** @var bool */
-    public static $teams;
+    public DateInterval|int $cacheExpirationTime;
 
-    /** @var string */
-    public static $teamsKey;
+    public bool $teams;
 
-    /** @var int|string */
-    protected $teamId = null;
+    protected PermissionsTeamResolver $teamResolver;
 
-    /** @var string */
-    public static $cacheKey;
+    public string $teamsKey;
 
-    /** @var array */
-    private $cachedRoles = [];
+    public string $cacheKey;
 
-    /** @var array */
-    private $alias = [];
+    private array $cachedRoles = [];
 
-    /** @var array */
-    private $except = [];
+    private array $alias = [];
 
-    /**
-     * PermissionRegistrar constructor.
-     */
+    private array $except = [];
+
+    private array $wildcardPermissionsIndex = [];
+
+    /** @var array<string, array<string, array<int|string, int>>> */
+    private array $permissionsLookupIndex = [];
+
+    /** @var array<int, array{Model, array<string, mixed>}> */
+    private array $returnedPermissions = [];
+
+    private bool $isLoadingPermissions = false;
+
     public function __construct(CacheManager $cacheManager)
     {
         $this->permissionClass = config('permission.models.permission');
         $this->roleClass = config('permission.models.role');
+        $this->teamClass = config('permission.models.team');
+        $this->teamResolver = new (config('permission.team_resolver', DefaultTeamResolver::class));
 
         $this->cacheManager = $cacheManager;
         $this->initializeCache();
     }
 
-    public function initializeCache()
+    public function initializeCache(): void
     {
-        self::$cacheExpirationTime = config('permission.cache.expiration_time') ?: \DateInterval::createFromDateString('24 hours');
+        $this->cacheExpirationTime = config('permission.cache.expiration_time') ?: DateInterval::createFromDateString('24 hours');
 
-        self::$teams = config('permission.teams', false);
-        self::$teamsKey = config('permission.column_names.team_foreign_key');
+        $this->teams = config('permission.teams', false);
+        $this->teamsKey = config('permission.column_names.team_foreign_key', 'team_id');
 
-        self::$cacheKey = config('permission.cache.key');
+        $this->cacheKey = config('permission.cache.key');
 
-        self::$pivotRole = config('permission.column_names.role_pivot_key') ?: 'role_id';
-        self::$pivotPermission = config('permission.column_names.permission_pivot_key') ?: 'permission_id';
+        $this->pivotRole = config('permission.column_names.role_pivot_key') ?: 'role_id';
+        $this->pivotPermission = config('permission.column_names.permission_pivot_key') ?: 'permission_id';
 
+        // Re-resolve the cache manager from the container on every call, rather than
+        // trusting the instance captured in the constructor. Long-lived registrars
+        // (Octane, or apps that rebind the 'cache' singleton on tenant switch, e.g.
+        // spatie/laravel-multitenancy's PrefixCacheTask) would otherwise keep asking
+        // a stale CacheManager for a store and get one memoised under the previous
+        // cache prefix.
+        $this->cacheManager = app('cache');
         $this->cache = $this->getCacheStoreFromConfig();
+
+        // Discard any in-memory permissions/roles loaded under the previous cache config,
+        // so a subsequent call rebuilds them from the new cache/tenant.
+        $this->clearPermissionsCollection();
+        $this->cachedRoles = [];
     }
 
     protected function getCacheStoreFromConfig(): Repository
@@ -97,43 +109,35 @@ class PermissionRegistrar
         }
 
         // if an undefined cache store is specified, fallback to 'array' which is Laravel's closest equiv to 'none'
-        if (! \array_key_exists($cacheDriver, config('cache.stores'))) {
+        if (! array_key_exists($cacheDriver, config('cache.stores'))) {
             $cacheDriver = 'array';
         }
 
         return $this->cacheManager->store($cacheDriver);
     }
 
-    /**
-     * Set the team id for teams/groups support, this id is used when querying permissions/roles
-     *
-     * @param  int|string|\Illuminate\Database\Eloquent\Model  $id
-     */
-    public function setPermissionsTeamId($id)
+    public function setPermissionsTeamId(int|string|Model|null $id): void
     {
-        if ($id instanceof \Illuminate\Database\Eloquent\Model) {
-            $id = $id->getKey();
-        }
-        $this->teamId = $id;
+        $this->teamResolver->setPermissionsTeamId($id);
     }
 
-    /**
-     * @return int|string
-     */
-    public function getPermissionsTeamId()
+    public function getPermissionsTeamId(): int|string|null
     {
-        return $this->teamId;
+        return $this->teamResolver->getPermissionsTeamId();
     }
 
     /**
      * Register the permission check method on the gate.
      * We resolve the Gate fresh here, for benefit of long-running instances.
      */
-    public function registerPermissions(): bool
+    public function registerPermissions(Gate $gate): bool
     {
-        app(Gate::class)->before(function (Authorizable $user, string $ability) {
+        $gate->before(function (Authorizable $user, string $ability, array &$args = []) {
+            if (is_string($args[0] ?? null) && ! class_exists($args[0])) {
+                $guard = array_shift($args);
+            }
             if (method_exists($user, 'checkPermissionTo')) {
-                return $user->checkPermissionTo($ability) ?: null;
+                return $user->checkPermissionTo($ability, $guard ?? null) ?: null;
             }
         });
 
@@ -143,52 +147,98 @@ class PermissionRegistrar
     /**
      * Flush the cache.
      */
-    public function forgetCachedPermissions()
+    public function forgetCachedPermissions(): bool
     {
         $this->permissions = null;
+        $this->permissionsLookupIndex = [];
+        $this->returnedPermissions = [];
+        $this->forgetWildcardPermissionIndex();
 
-        return $this->cache->forget(self::$cacheKey);
+        return $this->cache->forget($this->cacheKey);
+    }
+
+    public function forgetWildcardPermissionIndex(?Model $record = null): void
+    {
+        if ($record) {
+            unset($this->wildcardPermissionsIndex[$record::class][$record->getKey()]);
+
+            return;
+        }
+
+        $this->wildcardPermissionsIndex = [];
+    }
+
+    public function getWildcardPermissionIndex(Model $record): array
+    {
+        if (isset($this->wildcardPermissionsIndex[$record::class][$record->getKey()])) {
+            return $this->wildcardPermissionsIndex[$record::class][$record->getKey()];
+        }
+
+        return $this->wildcardPermissionsIndex[$record::class][$record->getKey()] = app($record->getWildcardClass(), ['record' => $record])->getIndex();
     }
 
     /**
-     * Clear class permissions.
+     * Clear already-loaded permissions collection.
      * This is only intended to be called by the PermissionServiceProvider on boot,
-     * so that long-running instances like Swoole don't keep old data in memory.
+     * so that long-running instances like Octane or Swoole don't keep old data in memory.
      */
-    public function clearClassPermissions()
+    public function clearPermissionsCollection(): void
     {
         $this->permissions = null;
+        $this->permissionsLookupIndex = [];
+        $this->returnedPermissions = [];
+        $this->wildcardPermissionsIndex = [];
+        $this->isLoadingPermissions = false;
     }
 
     /**
      * Load permissions from cache
-     * This get cache and turns array into \Illuminate\Database\Eloquent\Collection
+     * And turns permissions array into a \Illuminate\Database\Eloquent\Collection
+     *
+     * Thread-safe implementation to prevent race conditions in concurrent environments
+     * (e.g., Laravel Octane, Swoole, parallel requests)
      */
-    private function loadPermissions()
+    private function loadPermissions(int $retries = 0): void
     {
+        // First check (without lock) - fast path for already loaded permissions
         if ($this->permissions) {
             return;
         }
 
-        $this->permissions = $this->cache->remember(self::$cacheKey, self::$cacheExpirationTime, function () {
-            return $this->getSerializedPermissionsForCache();
-        });
+        // Prevent concurrent loading using a flag-based lock
+        // This protects against cache stampede and duplicate database queries
+        if ($this->isLoadingPermissions && $retries < 10) {
+            // Another thread is loading, wait and retry
+            usleep(10000); // Wait 10ms
+            $retries++;
 
-        // fallback for old cache method, must be removed on next mayor version
-        if (! isset($this->permissions['alias'])) {
-            $this->forgetCachedPermissions();
-            $this->loadPermissions();
+            // After wait, recursively check again if permissions were loaded
+            $this->loadPermissions($retries);
 
             return;
         }
 
-        $this->alias = $this->permissions['alias'];
+        // Set loading flag to prevent concurrent loads
+        $this->isLoadingPermissions = true;
 
-        $this->hydrateRolesCache();
+        try {
+            $this->permissions = $this->cache->remember(
+                $this->cacheKey, $this->cacheExpirationTime, fn () => $this->getSerializedPermissionsForCache()
+            );
 
-        $this->permissions = $this->getHydratedPermissionCollection();
+            $this->alias = $this->permissions['alias'];
 
-        $this->cachedRoles = $this->alias = $this->except = [];
+            $this->hydrateRolesCache();
+
+            $this->permissions = $this->getHydratedPermissionCollection();
+
+            $this->indexPermissionsForLookup();
+
+            $this->cachedRoles = $this->alias = $this->except = [];
+        } finally {
+            // Always release the loading flag, even if an exception occurs
+            $this->isLoadingPermissions = false;
+        }
     }
 
     /**
@@ -198,34 +248,133 @@ class PermissionRegistrar
     {
         $this->loadPermissions();
 
+        if ($onlyOne && ($indexed = $this->getIndexedPermission($params)) !== false) {
+            if ($indexed) {
+                $this->rememberReturnedPermission($indexed);
+            }
+
+            return new Collection($indexed ? [$indexed] : []);
+        }
+
         $method = $onlyOne ? 'first' : 'filter';
 
         $permissions = $this->permissions->$method(static function ($permission) use ($params) {
-            foreach ($params as $attr => $value) {
-                if ($permission->getAttribute($attr) != $value) {
-                    return false;
-                }
-            }
+            return array_all($params, fn ($value, $attr) => $permission->getAttribute($attr) == $value);
 
-            return true;
         });
 
         if ($onlyOne) {
             $permissions = new Collection($permissions ? [$permissions] : []);
         }
 
+        if ($this->permissionsLookupIndex) {
+            foreach ($permissions as $permission) {
+                $this->rememberReturnedPermission($permission);
+            }
+        }
+
         return $permissions;
     }
 
-    /**
-     * Get an instance of the permission class.
-     */
-    public function getPermissionClass(): Permission
+    private function indexPermissionsForLookup(): void
     {
-        return app($this->permissionClass);
+        $this->permissionsLookupIndex = [];
+        $this->returnedPermissions = [];
+        $index = ['name' => [], 'id' => []];
+
+        if (! array_is_list($this->permissions->all())) {
+            return;
+        }
+
+        foreach ($this->permissions as $position => $permission) {
+            // Custom accessors and casts may depend on state outside the model.
+            if ($permission::class !== PermissionModel::class || $permission->getCasts() !== ['id' => 'int']) {
+                return;
+            }
+
+            $attributes = $permission->getAttributes();
+
+            if (! is_string($attributes['name'] ?? null) || ! is_string($attributes['guard_name'] ?? null)) {
+                return;
+            }
+
+            if (! isset($attributes['id']) || ! is_int($permission->getKey())) {
+                return;
+            }
+
+            $guardName = $attributes['guard_name'];
+
+            $index['name'][$guardName][$attributes['name']] ??= $position;
+            $index['id'][$guardName][$permission->getKey()] ??= $position;
+        }
+
+        $this->permissionsLookupIndex = $index;
     }
 
-    public function setPermissionClass($permissionClass)
+    /**
+     * Return false when the lookup needs the original loose-comparison filter.
+     */
+    private function getIndexedPermission(array $params): Model|null|false
+    {
+        if (count($params) !== 2 || ! array_key_exists('guard_name', $params)) {
+            return false;
+        }
+
+        $attribute = array_key_first(array_diff_key($params, ['guard_name' => true]));
+
+        if (! isset($this->permissionsLookupIndex[$attribute])) {
+            return false;
+        }
+
+        if (! is_string($params['guard_name']) || is_numeric($params['guard_name'])) {
+            return false;
+        }
+
+        $value = $params[$attribute];
+
+        if ($attribute === 'name' && (! is_string($value) || is_numeric($value))) {
+            return false;
+        }
+
+        if ($attribute === 'id' && ! is_int($value)) {
+            if (! is_string($value) || (string) (int) $value !== $value) {
+                return false;
+            }
+        }
+
+        $position = $this->permissionsLookupIndex[$attribute][$params['guard_name']][$value] ?? null;
+
+        // An early hit needs fewer model reads through the original filter.
+        if ($position !== null && $position < count($this->returnedPermissions)) {
+            return false;
+        }
+
+        // Returned models are shared and mutable, even after syncOriginal().
+        // Checking only the candidate would miss an earlier model renamed to match it.
+        foreach ($this->returnedPermissions as [$permission, $attributes]) {
+            if ($permission->getCasts() !== ['id' => 'int'] || $permission->getAttributes() !== $attributes) {
+                $this->permissionsLookupIndex = $this->returnedPermissions = [];
+
+                return false;
+            }
+        }
+
+        return $position === null ? null : $this->permissions[$position];
+    }
+
+    private function rememberReturnedPermission(Model $permission): void
+    {
+        $this->returnedPermissions[spl_object_id($permission)] ??= [
+            $permission, $permission->getAttributes(),
+        ];
+    }
+
+    public function getPermissionClass(): string
+    {
+        return $this->permissionClass;
+    }
+
+    public function setPermissionClass(string $permissionClass): static
     {
         $this->permissionClass = $permissionClass;
         config()->set('permission.models.permission', $permissionClass);
@@ -234,19 +383,29 @@ class PermissionRegistrar
         return $this;
     }
 
-    /**
-     * Get an instance of the role class.
-     */
-    public function getRoleClass(): Role
+    public function getRoleClass(): string
     {
-        return app($this->roleClass);
+        return $this->roleClass;
     }
 
-    public function setRoleClass($roleClass)
+    public function setRoleClass(string $roleClass): static
     {
         $this->roleClass = $roleClass;
         config()->set('permission.models.role', $roleClass);
         app()->bind(Role::class, $roleClass);
+
+        return $this;
+    }
+
+    public function getTeamClass(): ?string
+    {
+        return $this->teamClass;
+    }
+
+    public function setTeamClass(?string $teamClass): static
+    {
+        $this->teamClass = $teamClass;
+        config()->set('permission.models.team', $teamClass);
 
         return $this;
     }
@@ -263,24 +422,23 @@ class PermissionRegistrar
 
     protected function getPermissionsWithRoles(): Collection
     {
-        return $this->getPermissionClass()->select()->with('roles')->get();
+        return $this->permissionClass::select()->with('roles')->get();
     }
 
     /**
      * Changes array keys with alias
      */
-    private function aliasedArray($model): array
+    private function aliasedArray(array|Model $model): array
     {
         return collect(is_array($model) ? $model : $model->getAttributes())->except($this->except)
-            ->keyBy(function ($value, $key) {
-                return $this->alias[$key] ?? $key;
-            })->all();
+            ->keyBy(fn ($value, $key) => $this->alias[$key] ?? $key)
+            ->all();
     }
 
     /**
      * Array for cache alias
      */
-    private function aliasModelFields($newKeys = []): void
+    private function aliasModelFields(Model $newKeys): void
     {
         $i = 0;
         $alphas = ! count($this->alias) ? range('a', 'h') : range('j', 'p');
@@ -297,7 +455,7 @@ class PermissionRegistrar
     /*
      * Make the cache smaller using an array with only required fields
      */
-    private function getSerializedPermissionsForCache()
+    private function getSerializedPermissionsForCache(): array
     {
         $this->except = config('permission.cache.column_names_except', ['created_at', 'updated_at', 'deleted_at']);
 
@@ -315,7 +473,7 @@ class PermissionRegistrar
         return ['alias' => array_flip($this->alias)] + compact('permissions', 'roles');
     }
 
-    private function getSerializedRoleRelation($permission)
+    private function getSerializedRoleRelation(Model $permission): array
     {
         if (! $permission->roles->count()) {
             return [];
@@ -337,37 +495,56 @@ class PermissionRegistrar
         ];
     }
 
-    private function getHydratedPermissionCollection()
+    private function getHydratedPermissionCollection(): Collection
     {
-        $permissionClass = $this->getPermissionClass();
-        $permissionInstance = new $permissionClass();
+        $permissionInstance = (new ($this->getPermissionClass())())->newInstance([], true);
 
-        return Collection::make(
-            array_map(function ($item) use ($permissionInstance) {
-                return $permissionInstance
-                    ->newFromBuilder($this->aliasedArray(array_diff_key($item, ['r' => 0])))
-                    ->setRelation('roles', $this->getHydratedRoleCollection($item['r'] ?? []));
-            }, $this->permissions['permissions'])
-        );
+        return Collection::make(array_map(
+            fn ($item) => (clone $permissionInstance)
+                ->setRawAttributes($this->aliasedArray(array_diff_key($item, ['r' => 0])), true)
+                ->setRelation('roles', $this->getHydratedRoleCollection($item['r'] ?? [])),
+            $this->permissions['permissions']
+        ));
     }
 
-    private function getHydratedRoleCollection(array $roles)
+    private function getHydratedRoleCollection(array $roles): Collection
     {
         return Collection::make(array_values(
             array_intersect_key($this->cachedRoles, array_flip($roles))
         ));
     }
 
-    private function hydrateRolesCache()
+    private function hydrateRolesCache(): void
     {
-        $roleClass = $this->getRoleClass();
-        $roleInstance = new $roleClass();
+        $roleInstance = (new ($this->getRoleClass())())->newInstance([], true);
 
         array_map(function ($item) use ($roleInstance) {
-            $role = $roleInstance->newFromBuilder($this->aliasedArray($item));
+            $role = (clone $roleInstance)
+                ->setRawAttributes($this->aliasedArray($item), true);
             $this->cachedRoles[$role->getKey()] = $role;
         }, $this->permissions['roles']);
 
         $this->permissions['roles'] = [];
+    }
+
+    public static function isUid(mixed $value): bool
+    {
+        if (! is_string($value) || empty(trim($value))) {
+            return false;
+        }
+
+        // check if is UUID/GUID
+        $uid = preg_match('/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/iD', $value) > 0;
+        if ($uid) {
+            return true;
+        }
+
+        // check if is ULID
+        $ulid = strlen($value) === 26 && strspn($value, '0123456789ABCDEFGHJKMNPQRSTVWXYZabcdefghjkmnpqrstvwxyz') === 26 && $value[0] <= '7';
+        if ($ulid) {
+            return true;
+        }
+
+        return false;
     }
 }

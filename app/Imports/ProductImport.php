@@ -7,6 +7,7 @@ use illuminate\Support\Facades\log;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use App\Models\Product;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Hash;
@@ -35,7 +36,7 @@ class ProductImport implements ToModel, WithHeadingRow
      * @return \Illuminate\Database\Eloquent\Model|null
      */
 
-    public function model(array $row)
+    public function model(array $row): Model|array|null
     {
         $existingProduct = Product::where('serial_no', $row['imei_number'])->first();
 
@@ -94,6 +95,8 @@ class ProductImport implements ToModel, WithHeadingRow
                 return $product;
             }
         }
+
+        return null;
     }
     public function getValidationErrors()
     {

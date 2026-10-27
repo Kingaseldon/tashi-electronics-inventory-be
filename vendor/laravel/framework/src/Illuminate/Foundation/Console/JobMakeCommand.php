@@ -4,18 +4,23 @@ namespace Illuminate\Foundation\Console;
 
 use Illuminate\Console\Concerns\CreatesMatchingTest;
 use Illuminate\Console\GeneratorCommand;
-use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Attribute\AsCommand;
 
+#[AsCommand(name: 'make:job')]
 class JobMakeCommand extends GeneratorCommand
 {
     use CreatesMatchingTest;
 
     /**
-     * The console command name.
+     * The name and signature of the console command.
      *
      * @var string
      */
-    protected $name = 'make:job';
+    protected $signature = 'make:job
+                    {name : The name of the job}
+                    {--f|force : Create the class even if the job already exists}
+                    {--sync : Indicates that the job should be synchronous}
+                    {--batched : Indicates that the job should be batchable}';
 
     /**
      * The console command description.
@@ -38,9 +43,13 @@ class JobMakeCommand extends GeneratorCommand
      */
     protected function getStub()
     {
+        if ($this->option('batched')) {
+            return $this->resolveStubPath('/stubs/job.batched.queued.stub');
+        }
+
         return $this->option('sync')
-                        ? $this->resolveStubPath('/stubs/job.stub')
-                        : $this->resolveStubPath('/stubs/job.queued.stub');
+            ? $this->resolveStubPath('/stubs/job.stub')
+            : $this->resolveStubPath('/stubs/job.queued.stub');
     }
 
     /**
@@ -52,8 +61,8 @@ class JobMakeCommand extends GeneratorCommand
     protected function resolveStubPath($stub)
     {
         return file_exists($customPath = $this->laravel->basePath(trim($stub, '/')))
-                        ? $customPath
-                        : __DIR__.$stub;
+            ? $customPath
+            : __DIR__.$stub;
     }
 
     /**
@@ -65,17 +74,5 @@ class JobMakeCommand extends GeneratorCommand
     protected function getDefaultNamespace($rootNamespace)
     {
         return $rootNamespace.'\Jobs';
-    }
-
-    /**
-     * Get the console command options.
-     *
-     * @return array
-     */
-    protected function getOptions()
-    {
-        return [
-            ['sync', null, InputOption::VALUE_NONE, 'Indicates that job should be synchronous'],
-        ];
     }
 }

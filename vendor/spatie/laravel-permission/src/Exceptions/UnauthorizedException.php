@@ -2,20 +2,22 @@
 
 namespace Spatie\Permission\Exceptions;
 
+use Illuminate\Contracts\Auth\Access\Authorizable;
+use Spatie\Permission\Support\Config;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class UnauthorizedException extends HttpException
 {
-    private $requiredRoles = [];
+    private array $requiredRoles = [];
 
-    private $requiredPermissions = [];
+    private array $requiredPermissions = [];
 
-    public static function forRoles(array $roles): self
+    public static function forRoles(array $roles): static
     {
-        $message = 'User does not have the right roles.';
+        $message = __('User does not have the right roles.');
 
-        if (config('permission.display_role_in_exception')) {
-            $message .= ' Necessary roles are '.implode(', ', $roles);
+        if (Config::displayRoleInException()) {
+            $message .= ' '.__('Necessary roles are :roles', ['roles' => implode(', ', $roles)]);
         }
 
         $exception = new static(403, $message, null, []);
@@ -24,12 +26,12 @@ class UnauthorizedException extends HttpException
         return $exception;
     }
 
-    public static function forPermissions(array $permissions): self
+    public static function forPermissions(array $permissions): static
     {
-        $message = 'User does not have the right permissions.';
+        $message = __('User does not have the right permissions.');
 
-        if (config('permission.display_permission_in_exception')) {
-            $message .= ' Necessary permissions are '.implode(', ', $permissions);
+        if (Config::displayPermissionInException()) {
+            $message .= ' '.__('Necessary permissions are :permissions', ['permissions' => implode(', ', $permissions)]);
         }
 
         $exception = new static(403, $message, null, []);
@@ -38,12 +40,12 @@ class UnauthorizedException extends HttpException
         return $exception;
     }
 
-    public static function forRolesOrPermissions(array $rolesOrPermissions): self
+    public static function forRolesOrPermissions(array $rolesOrPermissions): static
     {
-        $message = 'User does not have any of the necessary access rights.';
+        $message = __('User does not have any of the necessary access rights.');
 
-        if (config('permission.display_permission_in_exception') && config('permission.display_role_in_exception')) {
-            $message .= ' Necessary roles or permissions are '.implode(', ', $rolesOrPermissions);
+        if (Config::displayPermissionInException() && Config::displayRoleInException()) {
+            $message .= ' '.__('Necessary roles or permissions are :values', ['values' => implode(', ', $rolesOrPermissions)]);
         }
 
         $exception = new static(403, $message, null, []);
@@ -52,9 +54,16 @@ class UnauthorizedException extends HttpException
         return $exception;
     }
 
-    public static function notLoggedIn(): self
+    public static function missingTraitHasRoles(Authorizable $user): static
     {
-        return new static(403, 'User is not logged in.', null, []);
+        return new static(403, __('Authorizable class `:class` must use Spatie\\Permission\\Traits\\HasRoles trait.', [
+            'class' => $user::class,
+        ]), null, []);
+    }
+
+    public static function notLoggedIn(): static
+    {
+        return new static(403, __('User is not logged in.'), null, []);
     }
 
     public function getRequiredRoles(): array
