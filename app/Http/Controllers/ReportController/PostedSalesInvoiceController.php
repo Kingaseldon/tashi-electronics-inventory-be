@@ -520,10 +520,12 @@ class PostedSalesInvoiceController extends Controller
                     'u.name as updated_by',
                     'sv.status',
                     'p.description',
+                    'sub_categories.name as sub_category_name',
                     'svd.price',
                     'svd.quantity',
                     'svd.total as netpay',
                     'p.serial_no',
+                    'p.sub_category_id',
                     'ph.cash_amount_paid',
                     'ph.online_amount_paid',
                     'sv.net_payable',
@@ -552,6 +554,7 @@ class PostedSalesInvoiceController extends Controller
                 ->leftJoin('users as u', 'sv.created_by', '=', 'u.id')
                 ->leftJoin('sale_voucher_details as svd', 'sv.id', '=', 'svd.sale_voucher_id')
                 ->leftJoin('products as p', 'p.id', '=', 'svd.product_id')
+                ->leftJoin('sub_categories', 'sub_categories.id', '=', 'p.sub_category_id')
                 ->leftJoin('discount_types as d', 'd.id', '=', 'svd.discount_type_id')
                 ->leftJoin('extensions as e', 'sv.region_extension_id', '=', 'e.id')
                 ->where('sv.status', 'closed');
@@ -663,6 +666,7 @@ class PostedSalesInvoiceController extends Controller
 
                     $invoice['details'][] = [
                         'serialNumbers'   => $row->serial_no,
+                        'subCategory'   => $row->sub_category_name,
                         'description'     => $row->description,
                         'price'           => $row->price,
                         'quantity'        => $row->quantity,
