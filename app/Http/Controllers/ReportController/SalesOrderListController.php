@@ -37,6 +37,7 @@ class SalesOrderListController extends Controller
                         'u.name',
                         'sv.status',
                         'p.description',
+                        'sub_categories.name as subCategory',
                         'svd.price',
                         'p.serial_no',
                         'svd.quantity',
@@ -52,6 +53,7 @@ class SalesOrderListController extends Controller
                     ->leftJoin('users as u', 'sv.created_by', '=', 'u.id')
                     ->leftJoin('sale_voucher_details as svd', 'sv.id', '=', 'svd.sale_voucher_id')
                     ->leftJoin('products as p', 'p.id', '=', 'svd.product_id')
+                    ->leftJoin('sub_categories', 'sub_categories.id', '=', 'p.sub_category_id')
                     ->where(function ($query) use ($request) { // Use $request in the closure
                         $query->when('ALL' === $request->category_id, function ($subquery) {
                             $subquery->whereRaw('1 = 1');
@@ -91,6 +93,7 @@ class SalesOrderListController extends Controller
                         'u.name',
                         'sv.status',
                         'p.description',
+                        'sub_categories.name as subCategory',
                         'svd.price',
                         'p.serial_no',
                         'svd.quantity',
@@ -105,6 +108,7 @@ class SalesOrderListController extends Controller
                     ->leftJoin('users as u', 'sv.created_by', '=', 'u.id')
                     ->leftJoin('sale_voucher_details as svd', 'sv.id', '=', 'svd.sale_voucher_id')
                     ->leftJoin('products as p', 'p.id', '=', 'svd.product_id')
+                    ->leftJoin('sub_categories', 'sub_categories.id', '=', 'p.sub_category_id')
                     ->where(function ($query) use ($request) { // Use $request in the closure
                         $query->when('ALL' === $request->category_id, function ($subquery) {
                             $subquery->whereRaw('1 = 1');

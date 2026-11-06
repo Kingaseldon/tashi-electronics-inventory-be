@@ -32,6 +32,7 @@ class CashReceiptController extends Controller
                 $endDate = $request->to_date;
 
                 $query = DB::table('products AS pr')
+                    ->leftJoin('sub_categories AS sc', 'sc.id', '=', 'pr.sub_category_id')
                     ->leftJoin('product_transactions AS pt', 'pt.product_id', '=', 'pr.id')
                     ->leftJoin('sale_voucher_details AS svd', 'svd.product_id', '=', 'pr.id')
                     ->leftJoin('sale_vouchers AS sv', 'sv.id', '=', 'svd.sale_voucher_id')
@@ -51,6 +52,7 @@ class CashReceiptController extends Controller
                         'sv.total_gst',
                         'u.name AS createdBy',
                         'pr.description',
+                        'sc.name AS subCategory',
                         'pr.price',
                         'pr.serial_no'
                     )
@@ -84,6 +86,7 @@ class CashReceiptController extends Controller
                 $endDate = $request->to_date;
 
                 $query = DB::table('products AS pr')
+                    ->leftJoin('sub_categories AS sc', 'sc.id', '=', 'pr.sub_category_id')
                     ->leftJoin('product_transactions AS pt', 'pt.product_id', '=', 'pr.id')
                     ->leftJoin('sale_voucher_details AS svd', 'svd.product_id', '=', 'pr.id')
                     ->leftJoin('sale_vouchers AS sv', 'sv.id', '=', 'svd.sale_voucher_id')
@@ -103,6 +106,7 @@ class CashReceiptController extends Controller
                         'sv.total_gst',
                         'u.name AS createdBy',
                         'pr.description',
+                        'sc.name AS subCategory',
                         'pr.price',
                         'pr.serial_no'
                     )
