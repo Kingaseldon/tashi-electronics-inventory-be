@@ -139,6 +139,7 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     Route::get('get-customers/{id}', [CustomerController::class, 'getCustomers']);
 
     //route under inventory
+    Route::put('update-product-price-by-serial', [ProductController::class, 'updatePriceBySerial']);
     Route::resource('products', ProductController::class);
     Route::get('edit-products/{id}', [ProductController::class, 'editProduct']);
 

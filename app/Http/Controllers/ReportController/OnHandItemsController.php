@@ -24,7 +24,9 @@ class OnHandItemsController extends Controller
     public function index(Request $request)
     {
         try {
-            $onhand = DB::table('products')->leftJoin('stores', function ($join) {
+            $onhand = DB::table('products')
+                ->leftJoin('sub_categories', 'sub_categories.id', '=', 'products.sub_category_id')
+                ->leftJoin('stores', function ($join) {
                 $join->on('products.store_id', '=', 'stores.id');
             })
                 ->where(function ($query) use ($request) {
@@ -51,12 +53,14 @@ class OnHandItemsController extends Controller
                     DB::raw('COALESCE(products.iccid, "--") AS iccid'),
                     'products.main_store_qty AS store_qty',
                     'products.description',
+                    'sub_categories.name as subCategory',
                     'stores.store_name',
 
                 ])->union(
                     DB::table('product_transactions')->leftJoin('products', function ($join) {
                         $join->on('product_transactions.product_id', '=', 'products.id');
                     })
+                        ->leftJoin('sub_categories', 'sub_categories.id', '=', 'products.sub_category_id')
                         ->leftJoin('stores', function ($join) {
                             $join->on('product_transactions.regional_id', '=', 'stores.region_id')
                                 ->orOn('product_transactions.region_extension_id', '=', 'stores.extension_id');
@@ -89,6 +93,7 @@ class OnHandItemsController extends Controller
                             DB::raw('COALESCE(products.iccid, "--") AS iccid'),
                             DB::raw('CASE WHEN product_transactions.regional_id IS NOT NULL THEN product_transactions.region_store_quantity ELSE product_transactions.store_quantity END AS store_qty'),
                             'products.description',
+                            'sub_categories.name as subCategory',
                             'stores.store_name',
 
                         ])

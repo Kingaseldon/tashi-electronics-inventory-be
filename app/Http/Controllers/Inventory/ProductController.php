@@ -29,7 +29,7 @@ class ProductController extends Controller
     {
         $this->middleware('permission:products.view')->only('index', 'show');
         $this->middleware('permission:products.store')->only('store');
-        $this->middleware('permission:products.update')->only('update');
+        $this->middleware('permission:products.update')->only('update', 'updatePriceBySerial');
         $this->middleware('permission:products.edit-products')->only('editProduct');
         $this->middleware('permission:products.uploads')->only('importProduct');
     }
@@ -447,6 +447,44 @@ class ProductController extends Controller
         return response()->json([
             'message' => 'Product has been updated Successfully'
         ], 200);
+    }
+
+    /**
+     * Update only the price of the product identified by its serial number.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function updatePriceBySerial(Request $request)
+    {
+        $validated = $request->validate([
+            'serial_no' => 'required|string',
+            'price' => 'required|numeric|min:0',
+        ]);
+
+        try {
+            $product = Product::where('serial_no', $validated['serial_no'])->first();
+
+            if (!$product) {
+                return response()->json([
+                    'message' => 'Product with the provided serial number was not found.',
+                ], 404);
+            }
+
+            $product->price = $validated['price'];
+            $product->save();
+
+            return response()->json([
+                'message' => 'Product price updated successfully.',
+                'product' => [
+                    'serial_no' => $product->serial_no,
+                    'price' => $product->price,
+                ],
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**

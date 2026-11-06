@@ -35,35 +35,42 @@ class SalesAndStockController extends Controller
             SELECT
                 a.item_number,
                 a.description,
+                sc.name AS subCategory,
                 a.store_id,
                 s.store_name,
                 COALESCE(SUM(a.received) - SUM(a.sales) - SUM(a.transfer), 0) AS prev_stock
             FROM transaction_audits a
+            LEFT JOIN products p ON a.product_id = p.id
+            LEFT JOIN sub_categories sc ON p.sub_category_id = sc.id
             LEFT JOIN stores s ON a.store_id = s.id
             WHERE DATE(a.created_date) < ?
                 AND (? = 'ALL' OR a.sales_type_id = ?)
                 AND ((? = 'ALL' OR s.region_id = ?) AND (? = 'ALL' OR s.extension_id = ?))
-            GROUP BY a.item_number, a.description, a.store_id, s.store_name
+            GROUP BY a.item_number, a.description, sc.name, a.store_id, s.store_name
         ),
         Current_Transactions AS (
             SELECT
                 a.item_number,
                 a.description,
+                sc.name AS subCategory,
                 a.store_id,
                 s.store_name,
                 COALESCE(SUM(a.received), 0) AS received,
                 COALESCE(SUM(a.transfer), 0) AS transfer,
                 COALESCE(SUM(a.sales), 0) AS sales
             FROM transaction_audits a
+            LEFT JOIN products p ON a.product_id = p.id
+            LEFT JOIN sub_categories sc ON p.sub_category_id = sc.id
             LEFT JOIN stores s ON a.store_id = s.id
             WHERE DATE(a.created_date) BETWEEN ? AND ?
                 AND (? = 'ALL' OR a.sales_type_id = ?)
                 AND ((? = 'ALL' OR s.region_id = ?) AND (? = 'ALL' OR s.extension_id = ?))
-            GROUP BY a.item_number, a.description, a.store_id, s.store_name
+            GROUP BY a.item_number, a.description, sc.name, a.store_id, s.store_name
         )
         SELECT
             COALESCE(ct.item_number, pc.item_number) AS item_number,
             COALESCE(ct.description, pc.description) AS description,
+            COALESCE(ct.subCategory, pc.subCategory) AS subCategory,
             COALESCE(ct.store_id, pc.store_id) AS store_id,
             COALESCE(ct.store_name, pc.store_name) AS store_name,
             COALESCE(pc.prev_stock, 0) AS opening,
@@ -75,11 +82,13 @@ class SalesAndStockController extends Controller
         LEFT JOIN Current_Transactions ct
             ON pc.item_number = ct.item_number
             AND pc.description = ct.description
+            AND pc.subCategory <=> ct.subCategory
             AND pc.store_id = ct.store_id
         UNION ALL
         SELECT
             ct.item_number,
             ct.description,
+            ct.subCategory,
             ct.store_id,
             ct.store_name,
             COALESCE(pc.prev_stock, 0) AS opening,
@@ -91,6 +100,7 @@ class SalesAndStockController extends Controller
         LEFT JOIN Previous_Closing pc
             ON ct.item_number = pc.item_number
             AND ct.description = pc.description
+            AND ct.subCategory <=> pc.subCategory
             AND ct.store_id = pc.store_id
         WHERE pc.item_number IS NULL;
     ";

@@ -32,13 +32,15 @@ class TransferController extends Controller
                     'e.name as extension',
                     'r.name as region',
                     'p.serial_no',
-                    'p.description'
+                    'p.description',
+                    'sc.name as subCategory'
                 )
                 ->leftJoin('users as u', 'm.created_by', '=', 'u.id')
                 ->leftJoin('users as u1', 'm.updated_by', '=', 'u1.id')
                 ->leftJoin('regions as r', 'm.regional_id', '=', 'r.id')
                 ->leftJoin('extensions as e', 'm.region_extension_id', '=', 'e.id')
                 ->leftJoin('products as p', 'm.product_id', '=', 'p.id')
+                ->leftJoin('sub_categories as sc', 'sc.id', '=', 'p.sub_category_id')
                 ->where(function ($query) use ($request) { // Use $request in the closure
                     $query->when('ALL' === $request->category_id, function ($subquery) {
                         $subquery->whereRaw('1 = 1');
